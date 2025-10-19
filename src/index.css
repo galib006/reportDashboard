@@ -1,0 +1,10 @@
+@import "tailwindcss";
+@plugin "daisyui";
+@layer base {
+  .input:focus,
+  .input:focus-within {
+    --input-color: oklch(0.21 0.01 0);
+    outline: none !important;
+    box-shadow: 0 2px var(--input-color);
+  }
+}
