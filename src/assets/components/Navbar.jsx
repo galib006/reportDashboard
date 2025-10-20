@@ -69,7 +69,7 @@ function Navbar() {
         <div className="navbar-end">
           {/* Open the modal using document.getElementById('ID').showModal() method */}
           <button
-            className="btn px-9 btn-success"
+            className="btn px-9 btn-success text-neutral"
             onClick={() => document.getElementById("my_modal_1").showModal()}
           >
             Key

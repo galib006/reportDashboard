@@ -6,6 +6,8 @@ function Key() {
   const btnSave = () => {
     if (apiKey.trim() == "") {
       toast.error("Field Empty!");
+    }else{
+      toast.success("Key Add Successfull!")
     }
   };
 
