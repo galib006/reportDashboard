@@ -14,6 +14,8 @@ import Gtotal from "../components/Gtotal";
 function Home() {
   const [apiData, setapiData] = useState([]);
   const [grpData, setgrpData] = useState([]);
+  const [grandTotal, setgrandTotal] = useState([]);
+  // console.log(apiData);
 
   useEffect(() => {
     axios
@@ -26,62 +28,33 @@ function Home() {
             if (!acc[key]) {
               acc[key] = {
                 WorkOrderNo: item.WorkOrderNo,
-                OrderReceiveDate: item.OrderReceiveDate,
-                id: item.ID,
+                challanqty: 0,
                 BreakDownQTY: 0,
-                OrderValue: 0,
-                Delivery: 0,
-                DeliveryValue: 0,
               };
             }
+            acc[key].challanqty += Number(item.ChallanQTY);
             acc[key].BreakDownQTY += Number(item.BreakDownQTY || 0);
-            acc[key].OrderValue += Number(item.TotalOrderValue || 0);
-            acc[key].Delivery += Number(item.ChallanQTY || 0);
-            acc[key].DeliveryValue += Number(item.ChallanValue || 0);
-
             return acc;
           }, {})
         );
+        const setgrandTotal = groupedData.reduce((acc, item) => {
+          acc.TotalChallanQty += Number(item.challanqty);
+          acc.TotalOrderQty += Number(item.BreakDownQTY);
+        });
+        setgrandTotal(setgrandTotal);
         setapiData(response.data);
         setgrpData(groupedData);
       })
       .catch(function (error) {
-        // handle error
         console.log(error);
       })
       .finally(function () {
         // always executed
       });
   }, []);
-
-  const {
-    GrandTotalOrderQTY,
-    GrandTotalOrderValue,
-    GrandTotalDeliveryQTY,
-    GrandTotalDeliveryValue,
-    GrandTotalBalanceValue,
-  } = React.useMemo(() => {
-    const totals = grpData.reduce(
-      (acc, item) => {
-        acc.GrandTotalOrderQTY += Number(item.BreakDownQTY || 0);
-        acc.GrandTotalOrderValue += Number(item.OrderValue || 0);
-        acc.GrandTotalDeliveryQTY += Number(item.Delivery || 0);
-        acc.GrandTotalDeliveryValue += Number(item.ChallanValue || 0);
-        acc.GrandTotalBalanceValue +=
-          Number(item.OrderValue || 0) - Number(item.ChallanValue || 0);
-        return acc;
-      },
-      {
-        GrandTotalOrderQTY: 0,
-        GrandTotalOrderValue: 0,
-        GrandTotalDeliveryQTY: 0,
-        GrandTotalDeliveryValue: 0,
-        GrandTotalBalanceValue: 0,
-      }
-    );
-
-    return totals;
-  }, [grpData]);
+  // console.log(grpData);
+  console.log(grandTotal);
+  console.log(grandTotal);
 
   return (
     <div>
