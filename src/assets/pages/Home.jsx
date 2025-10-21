@@ -15,7 +15,9 @@ import BarChartData from "../components/BarChartData";
 function Home() {
   const [apiData,setapiData] = useState([]);
   const [grpData,setgrpData] = useState([]);
-  console.log(apiData);
+  const [grandTotal,setgrandTotal] = useState([]);
+  // console.log(apiData);
+
 
   
 
@@ -34,15 +36,16 @@ function Home() {
           }
         }
         acc[key].challanqty += Number(item.ChallanQTY);
-          acc[key].BreakDownQTY += Number(item.BreakDownQTY || 0); 
+        acc[key].BreakDownQTY += Number(item.BreakDownQTY || 0); 
         return acc;
       },{})
 
     )
-    const grandTotal =  groupedData.reduce((acc,item)=>{
-      
+    const setgrandTotal =  groupedData.reduce((acc,item)=>{
+       acc.TotalChallanQty += Number(item.challanqty);
+       acc.TotalOrderQty += Number(item.BreakDownQTY);
     })
-
+    setgrandTotal(setgrandTotal);
     setapiData(response.data);
     setgrpData(groupedData);
   }).catch(function (error) {
@@ -51,12 +54,10 @@ function Home() {
   .finally(function () {
     // always executed
   });
-  },[grpData])
-  console.log(grpData);
-
-
+  },[])
+  // console.log(grpData);
+    console.log(grandTotal);
   
- 
   return (
     <div>
       <BarChartData grpData={grpData}></BarChartData>

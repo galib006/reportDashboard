@@ -10,7 +10,7 @@ import {
 } from 'recharts';
 
 function BarChartComponent({ grpData }) {
-  console.log(grpData);
+
 
   return (
     <div>
