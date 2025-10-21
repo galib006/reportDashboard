@@ -16,7 +16,7 @@ function Home() {
   const [apiData,setapiData] = useState([]);
   const [grpData,setgrpData] = useState([]);
   console.log(apiData);
-  console.log(grpData);
+
   
 
   useEffect(()=>{
@@ -25,24 +25,36 @@ function Home() {
     const data = response.data;
     const groupedData = Object.values(
       data.reduce((acc,item)=>{
-        if(!acc[item.WorkOrderNo]){
-          acc[item.WorkOrderNo] = { WorkOrderNo: item.WorkOrderNo, BreakDownQTY: 0 };
+        const key = item.WorkOrderNo
+        if(!acc[key]){
+          acc[key] = {
+            WorkOrderNo: item.WorkOrderNo,
+            challanqty: 0,
+            BreakDownQTY: 0
+          }
         }
-         acc[item.WorkOrderNo, item.OrderReceiveDate].BreakDownQTY += Number(item.BreakDownQTY || 0);
-            return acc;
+        acc[key].challanqty += Number(item.ChallanQTY);
+          acc[key].BreakDownQTY += Number(item.BreakDownQTY || 0); 
+        return acc;
       },{})
+
     )
+    const grandTotal =  groupedData.reduce((acc,item)=>{
+      
+    })
+
     setapiData(response.data);
     setgrpData(groupedData);
   }).catch(function (error) {
-    // handle error
-    // console.log(error);
+    console.log(error);
   })
   .finally(function () {
     // always executed
   });
-  },[])
-  // console.log(grpData);
+  },[grpData])
+  console.log(grpData);
+
+
   
  
   return (
