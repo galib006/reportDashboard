@@ -10,11 +10,6 @@ import {
 } from "recharts";
 
 function BarChartComponent({ grpData }) {
-<<<<<<< HEAD
-=======
-
-
->>>>>>> d7cfa9d2e7e6385d43f8f3c61bdb479238040ca6
   return (
     <div>
       <ReBarChart width={1000} height={600} data={grpData}>

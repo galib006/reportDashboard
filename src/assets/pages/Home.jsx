@@ -22,39 +22,92 @@ function Home() {
       .get("/public/data.json")
       .then(function (response) {
         const data = response.data;
-        const groupedData = Object.values(
+        const groupData = Object.values(
           data.reduce((acc, item) => {
             const key = item.WorkOrderNo;
             if (!acc[key]) {
               acc[key] = {
-                WorkOrderNo: item.WorkOrderNo,
-                challanqty: 0,
-                BreakDownQTY: 0,
+                WorkOrder: item.WorkOrderNo,
+                OrderQty: 0,
+                ChallanQTY: 0,
+                BalanceQTY: 0,
               };
             }
-            acc[key].challanqty += Number(item.ChallanQTY);
-            acc[key].BreakDownQTY += Number(item.BreakDownQTY || 0);
+            acc[key].OrderQty += Number(item.BreakDownQTY || 0);
+            acc[key].ChallanQTY += Number(item.ChallanQTY || 0);
+            acc[key].BalanceQTY += Number(item.BalanceQTY || 0);
             return acc;
           }, {})
         );
-        const setgrandTotal = groupedData.reduce((acc, item) => {
-          acc.TotalChallanQty += Number(item.challanqty);
-          acc.TotalOrderQty += Number(item.BreakDownQTY);
-        });
-        setgrandTotal(setgrandTotal);
-        setapiData(response.data);
-        setgrpData(groupedData);
+
+        const OrderCount = groupData.length;
+        // console.log(OrderCount);
+
+        const { GrandTotalOrderQTY, GrandTotalDeliveryQTY } = groupData.reduce(
+          (acc, item) => {
+            acc.GrandTotalOrderQTY += Number(item.OrderQty || 0);
+            acc.GrandTotalDeliveryQTY += Number(item.ChallanQTY || 0);
+            return acc;
+          },
+          { GrandTotalOrderQTY: 0, GrandTotalDeliveryQTY: 0 }
+        );
+        const GtotalData = {
+          TotalOrder: OrderCount,
+          GrandTotalOrderQTY: GrandTotalOrderQTY,
+          GrandTotalDeliveryQTY: GrandTotalDeliveryQTY,
+        };
+        setgrandTotal(GtotalData);
+
+        // console.log(GrandTotalOrderQTY, GrandTotalDeliveryQTY);
+        // setgrpData({ grpData, GrandTotalOrderQTY, GrandTotalDeliveryQTY });
       })
       .catch(function (error) {
         console.log(error);
       })
-      .finally(function () {
-        // always executed
-      });
-  }, []);
-  // console.log(grpData);
-  console.log(grandTotal);
-  console.log(grandTotal);
+      .finally(function (final) {});
+  });
+
+  // useEffect(() => {
+  //   axios
+  //     .get("/public/data.json")
+  //     .then(function (response) {
+  //       const data = response.data;
+  //       const groupedData = Object.values(
+  //         data.reduce((acc, item) => {
+  //           const key = item.WorkOrderNo;
+  //           if (!acc[key]) {
+  //             acc[key] = {
+  //               WorkOrderNo: item.WorkOrderNo,
+  //               challanqty: 0,
+  //               BreakDownQTY: 0,
+  //             };
+  //           }
+  //           acc[key].challanqty += Number(item.ChallanQTY);
+  //           acc[key].BreakDownQTY += Number(item.BreakDownQTY || 0);
+  //           return acc;
+  //         }, {})
+  //       );
+  //       const { TotalChallanQty, TotalOrderQty } = groupedData.reduce(
+  //         (acc, item) => {
+  //           acc.TotalChallanQty += Number(item.challanqty);
+  //           acc.TotalOrderQty += Number(item.BreakDownQTY);
+  //           return acc;
+  //         },
+  //         { TotalChallanQty: 0, TotalOrderQty: 0 }
+  //       );
+  //       setgrandTotal({ TotalChallanQty, TotalOrderQty });
+  //       setapiData(response.data);
+  //       setgrpData(groupedData);
+  //     })
+  //     .catch(function (error) {
+  //       console.log(error);
+  //     })
+  //     .finally(function () {
+  //       // always executed
+  //     });
+  // }, []);
+  // // console.log(grpData);
+  // console.log(grandTotal);
 
   return (
     <div>
@@ -69,34 +122,34 @@ function Home() {
             ></Gtotal>
             <Gtotal
               title={"Order Value"}
-              Value={GrandTotalOrderValue.toFixed(0)}
+              // Value={GrandTotalOrderValue.toFixed(0)}
               sign={"$ "}
               fontStyle={"text-white"}
               bgStyle={"bg-blue"}
             ></Gtotal>
             <Gtotal
               title={"Sales QTY"}
-              Value={GrandTotalDeliveryQTY.toFixed(0)}
+              // Value={GrandTotalDeliveryQTY.toFixed(0)}
               fontStyle={"text-white"}
               bgStyle={"bg-blue"}
             ></Gtotal>
             <Gtotal
               title={"Sales Value"}
-              Value={GrandTotalOrderValue.toFixed(0)}
+              // Value={GrandTotalOrderValue.toFixed(0)}
               sign={"$ "}
               fontStyle={"text-white"}
               bgStyle={"bg-blue"}
             ></Gtotal>
             <Gtotal
               title={"Balance QTY"}
-              Value={GrandTotalOrderValue.toFixed(0)}
+              // Value={GrandTotalOrderValue.toFixed(0)}
               sign={"$ "}
               fontStyle={"text-white"}
               bgStyle={"bg-blue"}
             ></Gtotal>
             <Gtotal
               title={"Balance Value"}
-              Value={GrandTotalOrderValue.toFixed(0)}
+              // Value={GrandTotalOrderValue.toFixed(0)}
               sign={"$ "}
               fontStyle={"text-white"}
               bgStyle={"bg-blue"}
