@@ -25,17 +25,24 @@ function Home() {
         const groupData = Object.values(
           data.reduce((acc, item) => {
             const key = item.WorkOrderNo;
+             const date = item.OrderReceiveDate
+             const formatDate = new date.toLocaleDateString('en-GB')
             if (!acc[key]) {
               acc[key] = {
                 WorkOrder: item.WorkOrderNo,
+                OrderDate: formatDate,
                 OrderQty: 0,
                 ChallanQTY: 0,
                 BalanceQTY: 0,
+                CustomerPINo:item.CustomerPINo
               };
             }
             acc[key].OrderQty += Number(item.BreakDownQTY || 0);
+            acc[key].OrderValue += Number(item.TotalOrderValue || 0);
             acc[key].ChallanQTY += Number(item.ChallanQTY || 0);
+            acc[key].ChallanQTY += Number(item.ChallanValue || 0);
             acc[key].BalanceQTY += Number(item.BalanceQTY || 0);
+            acc[key].BalanceValue += Number(item.BalanceValue || 0);
             return acc;
           }, {})
         );
@@ -116,7 +123,7 @@ function Home() {
           <div className="grid grid-cols-6 gap-5 my-3">
             <Gtotal
               title={"Order QTY"}
-              Value={GrandTotalOrderQTY.toFixed(0)}
+              Value={grandTotal..toFixed(0)}
               fontStyle={"text-white"}
               bgStyle={"bg-blue"}
             ></Gtotal>
