@@ -58,7 +58,7 @@ function Navbar() {
               <NavLink to={"/"}>Item 1</NavLink>
             </li>
             <li>
-              <NavLink to={""}>Item 2</NavLink>
+              <NavLink to={"OrderReport"}>Order Report</NavLink>
             </li>
 
             <li>
