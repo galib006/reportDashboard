@@ -1,38 +1,67 @@
-import React from "react";
 import {
-  BarChart as ReBarChart,
-  Bar,
+  LineChart,
+  Line,
   XAxis,
   YAxis,
   Tooltip,
-  Legend,
   CartesianGrid,
+  ResponsiveContainer,
 } from "recharts";
 
-function BarChartComponent({ grpData }) {
+function Chart({ grpData }) {
+  if (!grpData || !Array.isArray(grpData) || grpData.length === 0) {
+    return <p>Loading chart data...</p>;
+  }
+
+  // Parse date from string "dd/mm/yyyy" or ISO format
+  const parseDate = (dateStr) => new Date(dateStr);
+
+  // Get last 7 days range
+  const today = new Date();
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(today.getDate() - 7);
+
+  // Filter last 7 days data
+  const last7DaysData = grpData;
+
+  if (last7DaysData.length === 0) {
+    return <p>No data available for the last 7 days.</p>;
+  }
+
+  // Aggregate data by date
+  const aggregatedData = last7DaysData.reduce((acc, item) => {
+    const date = parseDate(item.OrderDate || item.Date).toLocaleDateString(
+      "en-GB"
+    );
+    const existing = acc.find((d) => d.OrderDate === date);
+    if (existing) {
+      existing.OrderQty += item.OrderQty || 0;
+      existing.ChallanQTY += item.ChallanQTY || 0;
+    } else {
+      acc.push({
+        OrderDate: date,
+        OrderQty: item.OrderQty || 0,
+        ChallanQTY: item.ChallanQTY || 0,
+      });
+    }
+    return acc;
+  }, []);
+
+  // Sort by date ascending
+  aggregatedData.sort((a, b) => new Date(a.OrderDate) - new Date(b.OrderDate));
+
   return (
-    <div>
-      <ReBarChart width={1000} height={600} data={grpData}>
-        <XAxis dataKey="WorkOrderNo" stroke="#8884d8" />
+    <ResponsiveContainer width="100%" height={300}>
+      <LineChart data={aggregatedData}>
+        <CartesianGrid strokeDasharray="3 3" />
+        <XAxis dataKey="OrderDate" />
         <YAxis />
-        <Tooltip wrapperStyle={{ width: 100, backgroundColor: "#ccc" }} />
-        <Legend
-          width={100}
-          wrapperStyle={{
-            top: 40,
-            right: 20,
-            backgroundColor: "#f5f5f5",
-            border: "1px solid #d5d5d5",
-            borderRadius: 3,
-            lineHeight: "40px",
-          }}
-        />
-        <CartesianGrid stroke="#ccc" strokeDasharray="5 5" />
-        <Bar dataKey="OrderValue" fill="#8884d8" barSize={30} />
-        <Bar dataKey="DeliveryValue" fill="#8884d8" barSize={30} />
-      </ReBarChart>
-    </div>
+        <Tooltip />
+        <Line type="monotone" dataKey="OrderQty" stroke="#8884d8" />
+        <Line type="monotone" dataKey="ChallanQTY" stroke="#82ca9d" />
+      </LineChart>
+    </ResponsiveContainer>
   );
 }
 
-export default BarChartComponent;
+export default Chart;
