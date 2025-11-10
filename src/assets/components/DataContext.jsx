@@ -17,6 +17,8 @@ function DataContext({ children }) {
             if (!acc[key]) {
               acc[key] = {
                 WorkOrderNo: item.WorkOrderNo,
+                Buyer: item.BuyerName,
+                Category: item.ProductCategoryName,
                 challanqty: 0,
                 BreakDownQTY: 0,
                 TotalOrderValue: 0,
