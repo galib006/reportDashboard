@@ -30,7 +30,7 @@ function Navbar() {
               className="menu menu-sm dropdown-content bg-base-100 rounded-box z-1 mt-3 w-52 p-2 shadow"
             >
               <li>
-                <a>Item 1</a>
+                <a>Home</a>
               </li>
               <li>
                 <a>Parent</a>
@@ -55,7 +55,7 @@ function Navbar() {
         <div className="navbar-center hidden lg:flex">
           <ul className="menu menu-horizontal px-1">
             <li>
-              <NavLink to={"/"}>Item 1</NavLink>
+              <NavLink to={"/"}>Home</NavLink>
             </li>
             <li>
               <NavLink to={"OrderReport"}>Order Report</NavLink>

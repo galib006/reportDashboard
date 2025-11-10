@@ -21,9 +21,9 @@ const router = createBrowserRouter([
 ]);
 
 createRoot(document.getElementById("root")).render(
-  <StrictMode>
+  // <StrictMode>
     <DataContext>
     <RouterProvider router={router} />
     </DataContext>
-  </StrictMode>
+  // </StrictMode>
 );
