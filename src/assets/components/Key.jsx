@@ -1,19 +1,25 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { toast, ToastContainer } from "react-toastify";
 
 function Key() {
+  const modalref1 = useRef(null);
   const [apiKey, setapiKey] = useState("");
+  function localStorage(key,value){
+    <localStorage className="setItem"></localStorage>
+  }
   const btnSave = () => {
     if (apiKey.trim() == "") {
       toast.error("Field Empty!");
     }else{
+      apiKey.tolocalstorage('')
       toast.success("Key Add Successfull!")
+      modalref1.current.close();
     }
   };
 
   return (
     <div>
-      <dialog id="my_modal_1" className="modal">
+      <dialog id="my_modal_1" className="modal" ref={modalref1}>
         <ToastContainer />
         <div className="modal-box">
           <div className="join w-full">

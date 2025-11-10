@@ -8,7 +8,6 @@ function OrderReport() {
  const grpData = cndata[0]?.groupedData || [];
  const grpDataTotal = grpData.reduce((sum,item)=>sum + Number(item.TotalOrderValue || 0),0
  );
- console.log(grpDataTotal);
   useEffect(() => {
     console.log("grpData:", grpData);
   }, [grpData]);
