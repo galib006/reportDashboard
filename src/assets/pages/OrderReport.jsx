@@ -4,12 +4,15 @@ import TableRow from '../components/TableRow'
 import { GetDataContext } from '../components/DataContext'
 
 function OrderReport() {
-  const {cndata} = useContext(GetDataContext);
+const {cndata} = useContext(GetDataContext);
  const grpData = cndata[0]?.groupedData || [];
+ const apiData = cndata[0]?.apiData || [];
  const grpDataTotal = grpData.reduce((sum,item)=>sum + Number(item.TotalOrderValue || 0),0
  );
+//  console.log(apiData);
+ 
   useEffect(() => {
-    console.log("grpData:", grpData);
+    // console.log("grpData:", grpData);
   }, [grpData]);
  
   return (

@@ -1,7 +1,12 @@
 import React from 'react'
+import SingleOrderContent from '../OrderReport/SingleOrderContent';
 
 function TableRow({data,length}) {
+
   
+  const getId = () =>{
+    console.log(data.WorkOrderNo);
+  }
   return (
  
        <tr>
@@ -35,7 +40,7 @@ function TableRow({data,length}) {
         </td>
         <td className=''>{data.TotalOrderValue.toFixed(2)}</td>
         <th>
-          <button className="btn btn-success btn-xs">Details</button>
+          <SingleOrderContent data={data.WorkOrderNo}></SingleOrderContent>
         </th>
       </tr>
 
