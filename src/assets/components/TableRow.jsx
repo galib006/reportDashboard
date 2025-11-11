@@ -5,7 +5,7 @@ function TableRow({data,length}) {
 
   
   const getId = () =>{
-    console.log(data.WorkOrderNo);
+
   }
   return (
  
@@ -38,7 +38,9 @@ function TableRow({data,length}) {
           <br />
           <span className="badge badge-ghost badge-sm font-bold ">Buyer: <sapn className="text-blue-500">{data.Buyer}</sapn></span>
         </td>
-        <td className=''>{data.TotalOrderValue.toFixed(2)}</td>
+        <td className=''>{data.BreakDownQTY.toFixed(2)}</td>
+        <td className=''>{data.challanqty.toFixed(2)}</td>
+        <td className=''>{(data.challanqty.toFixed(2) / data.BreakDownQTY.toFixed(2)) * 100}</td>
         <th>
           <SingleOrderContent data={data.WorkOrderNo}></SingleOrderContent>
         </th>

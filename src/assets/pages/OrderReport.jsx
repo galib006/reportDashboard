@@ -31,7 +31,7 @@ const {cndata} = useContext(GetDataContext);
         <th>Order No.</th>
         <th>Customer</th>
         <th>Order Qty</th>
-        <th>Order Value</th>
+        <th>Delivery Qty</th>
         <th>Delivery Complete</th>
         
         <th></th>
@@ -39,9 +39,6 @@ const {cndata} = useContext(GetDataContext);
     </thead>
     <tbody>
       {/* row 1 */}
-
-        <td>Hsdfdf</td>
-
       {
         grpData.map((data,idx)=>(
           <TableRow key={idx} data={data} length={idx}></TableRow>
