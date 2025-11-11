@@ -29,9 +29,12 @@ function SingleOrderData({data}) {
         <th>Style</th>
         <th>Color</th>
         <th>PO</th>
+        <th>Description</th>
         <th>Order Qty</th>
         <th>Delivery Qty</th>
         <th>Balacne Qty</th>
+        <th>Challan No.</th>
+        <th>Challan Date</th>
       </tr>
     </thead>
     <tbody>
@@ -39,18 +42,22 @@ function SingleOrderData({data}) {
     {sngData.matched.map((item,idx)=>(
         <tr key={idx}>
         <th>{idx+1}</th>
-        <td>{item.KeyEntry1Value}</td>
-        <td>{item.KeyEntry2Value}</td>
-        <td>{item.KeyEntry3Value}</td>
+        <td>{item.KeyEntry1Value || '-'}</td>
+        <td>{item.KeyEntry2Value || '-'}</td>
+        <td>{item.KeyEntry3Value || '-'}</td>
+        <td>{item.KeyEntry9Value || '-'}</td>
         <td>{item.BreakDownQTY}</td>
         <td>{item.ChallanQTY}</td>
         <td>{ item.BreakDownQTY - item.ChallanQTY}</td>
+        <td>{ item.ChallanNo || '-'}</td>
+        <td>{item.ChallanDate ? new Date(item.ChallanDate).toLocaleDateString('en-GB') : '-'}</td>
       </tr>
     ))}
     </tbody>
     <tfoot>
         <tr>
             <th></th>
+            <td></td>
             <td></td>
             <td>Total = </td>
             <td></td>

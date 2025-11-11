@@ -30,22 +30,25 @@ const {cndata} = useContext(GetDataContext);
         <th>SL.</th>
         <th>Order No.</th>
         <th>Customer</th>
+        <th>Order Qty</th>
         <th>Order Value</th>
+        <th>Delivery Complete</th>
+        
         <th></th>
       </tr>
     </thead>
     <tbody>
       {/* row 1 */}
+
+        <td>Hsdfdf</td>
+
       {
         grpData.map((data,idx)=>(
           <TableRow key={idx} data={data} length={idx}></TableRow>
           // setgrpDataTotal()
         ))
       }
-     
-
-    
-      
+          
     </tbody>
     {/* foot */}
     <tfoot>
