@@ -1,9 +1,10 @@
-import React, { useContext, useState } from "react";
+import React, { useContext, useEffect, useState } from "react";
 import TableRow from "../components/TableRow";
 import { GetDataContext } from "../components/DataContext";
 
 function OrderReport() {
   const [search, setSearch] = useState("");
+
   const { cndata } = useContext(GetDataContext);
 
   const grpData = cndata[0]?.groupedData || [];
@@ -15,10 +16,20 @@ function OrderReport() {
       String(value).toLowerCase().includes(search.toLowerCase())
     )
   );
+
   const grpDataTotal = filteredData.reduce(
-    (sum, item) => sum + Number(item.TotalOrderValue || 0),
+    (sum, item) => sum + Number(item.BreakDownQTY || 0),
     0
   );
+  const grpDelivery = filteredData.reduce(
+    (sum, item) => sum + Number(item.challanqty || 0),
+    0
+  );
+
+  const deliveryPercent = grpDataTotal
+    ? ((grpDelivery / grpDataTotal) * 100).toFixed(0)
+    : 0;
+
   console.log(filteredData);
 
   return (
@@ -75,7 +86,17 @@ function OrderReport() {
               <th></th>
               <th></th>
               <th>Grand Total</th>
-              <th>{grpDataTotal.toFixed(2)}</th>
+              <th>
+                {grpDataTotal.toLocaleString(undefined, {
+                  minimumFractionDigits: 2,
+                })}
+              </th>
+              <th>
+                {grpDelivery.toLocaleString(undefined, {
+                  minimumFractionDigits: 2,
+                })}
+              </th>
+              <th>{deliveryPercent}%</th>
             </tr>
           </tfoot>
         </table>
