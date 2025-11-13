@@ -23,6 +23,7 @@ function OrderReport() {
 
   return (
     <div className="overflow-x-auto">
+<<<<<<< HEAD
       <div className="my-5">
         <input
           type="text"
@@ -76,6 +77,50 @@ function OrderReport() {
         </tfoot>
       </table>
     </div>
+=======
+  <table className="table">
+    {/* head */}
+    <thead>
+      <tr>
+        <th>
+          <label>
+            <input type="checkbox" className="checkbox" />
+          </label>
+        </th>
+        <th>SL.</th>
+        <th>Order No.</th>
+        <th>Customer</th>
+        <th>Order Qty</th>
+        <th>Delivery Qty</th>
+        <th>Delivery Complete</th>
+        
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {/* row 1 */}
+      {
+        grpData.map((data,idx)=>(
+          <TableRow key={idx} data={data} length={idx}></TableRow>
+          // setgrpDataTotal()
+        ))
+      }
+          
+    </tbody>
+    {/* foot */}
+    <tfoot>
+      <tr>
+        <th></th>
+        <th></th>
+        <th></th>
+        <th>Grand Total</th>
+        <th>{grpDataTotal.toFixed(2)}</th>
+      </tr>
+    </tfoot>
+  </table>
+</div>
+    </>
+>>>>>>> 97bec7201a2d3972e480043b20e3a898de328997
   )
 }
 
