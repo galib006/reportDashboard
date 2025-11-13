@@ -14,6 +14,7 @@ function OrderReport() {
     0
   );
 
+
   // Global search
   const filteredData = apiData.filter((item) =>
     Object.values(item).some((value) =>
@@ -54,17 +55,15 @@ function OrderReport() {
         </thead>
 
         <tbody>
-          {/* {filteredData.length > 0 ? (
+          {filteredData.length > 0 ? (
             filteredData.map((data, idx) => (
               <TableRow key={idx} data={data} idx={idx} />
             ))
           ) : (
-            <tr>
-              <td colSpan="10" className="text-center text-gray-400 py-3">
-                No matching data found
-              </td>
-            </tr>
-          )} */}
+            grpData.map((data, idx) => (
+              <TableRow key={idx} data={data} idx={idx} />
+            ))
+          )}
         </tbody>
 
         <tfoot>
