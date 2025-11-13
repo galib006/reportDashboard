@@ -1,53 +1,49 @@
-import React, { useState } from 'react'
-import SingleOrderContent from '../OrderReport/SingleOrderContent'
-import { useContext } from 'react';
-function TableRow({data,idx}) {
-  // const [orderQty,setorderQty] = useState(0);
-  // const [challanQty,sechallanQty] = useState(0);
-  // const [deliveryPercent,setdeliveryPercent] = useState(0);
+import React, { useState } from "react";
+import SingleOrderContent from "../OrderReport/SingleOrderContent";
+import { useContext } from "react";
+function TableRow({ data, idx }) {
   const orderQty = Number(data.BreakDownQTY).toFixed(2);
   const challanQty = Number(data.challanqty).toFixed(2);
   const deliveryPercent = ((challanQty / orderQty) * 100).toFixed(0);
-  // sechallanQty(data.challanqty);
-  // setdeliveryPercent(((orderQty-challanQty)*100))
-
-
-// console.log(index); 
-  
-<>
-
+  return (
+    <>
       <tr>
-      <th>
-        <label>
-          <input type="checkbox" className="checkbox" />
-        </label>
-      </th>
-      <td>{Number(idx) + 1}</td>
-      <td>
-        <div className="flex items-center gap-3">
-          <div>
-            <div className="font-bold">{data.WorkOrderNo}</div>
-            <div className="text-sm opacity-50">{data.Category}</div>
+        <th>
+          <label>
+            <input type="checkbox" className="checkbox" />
+          </label>
+        </th>
+        <td>{Number(idx) + 1}</td>
+        <td>
+          <div className="flex items-center gap-3">
+            <div>
+              <div className="font-bold">{data.WorkOrderNo}</div>
+              <div className="text-sm opacity-50">{data.Category}</div>
+            </div>
           </div>
-        </div>
-      </td>
-      <td>
-        {data.CustomerName}
-        <br />
-        <span className="badge badge-ghost badge-sm font-bold">
-          Buyer: <span className="text-blue-500">{data.Buyer}</span>
-        </span>
-      </td>
-      <td>{orderQty}</td>
-      <td>{challanQty}</td>
-      <td className={`${deliveryPercent == 100 ? "text-green-700" : "text-red-600"} `}>{deliveryPercent}%</td>
-      <th>
-        <SingleOrderContent data={data.WorkOrderNo} />
-      </th>
-    </tr>
-
+        </td>
+        <td>
+          {data.CustomerName}
+          <br />
+          <span className="badge badge-ghost badge-sm font-bold">
+            Buyer: <span className="text-blue-500">{data.Buyer}</span>
+          </span>
+        </td>
+        <td>{orderQty}</td>
+        <td>{challanQty}</td>
+        <td
+          className={`${
+            deliveryPercent == 100 ? "text-green-700" : "text-red-600"
+          } `}
+        >
+          {deliveryPercent}%
+        </td>
+        <th>
+          <SingleOrderContent data={data.WorkOrderNo} />
+        </th>
+      </tr>
     </>
-  
+  );
 }
 
-export default TableRow
+export default TableRow;
