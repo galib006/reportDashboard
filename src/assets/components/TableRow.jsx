@@ -39,7 +39,7 @@ function TableRow({ data, idx }) {
           {deliveryPercent}%
         </td>
         <th>
-          <SingleOrderContent data={data.WorkOrderNo} />
+          <SingleOrderContent Wrk={data.WorkOrderNo} data={data} />
         </th>
       </tr>
     </>

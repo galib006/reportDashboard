@@ -3,17 +3,19 @@ import { toast, ToastContainer } from "react-toastify";
 
 function Key() {
   const modalref1 = useRef(null);
-  const [apiKey, setapiKey] = useState("");
-  function localStorage(key,value){
-    <localStorage className="setItem"></localStorage>
-  }
+  const [apiKey, setApiKey] = useState("");
+
   const btnSave = () => {
-    if (apiKey.trim() == "") {
+    if (apiKey.trim() === "") {
       toast.error("Field Empty!");
-    }else{
-      apiKey.tolocalstorage('')
-      toast.success("Key Add Successfull!")
+    } else {
+      // save to localStorage
+      localStorage.setItem("apiKey", apiKey);
+
+      toast.success("Key Add Successful!");
+
       modalref1.current.close();
+      setApiKey("");
     }
   };
 
@@ -31,7 +33,7 @@ function Key() {
                   className="input input-neutral no-outline w-full"
                   value={apiKey}
                   onChange={(e) => {
-                    setapiKey(e.target.value);
+                    setApiKey(e.target.value);
                   }}
                 />
               </label>

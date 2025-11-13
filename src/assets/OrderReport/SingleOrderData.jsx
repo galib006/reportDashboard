@@ -32,39 +32,41 @@ function SingleOrderData({ data }) {
       <div className="overflow-x-auto">
         <table className="table">
           {/* head */}
-          <thead>
+          <thead className="text-center">
             <tr>
               <th>SL.</th>
               <th>Style</th>
               <th>Color</th>
               <th>PO</th>
               <th>Description</th>
-              <th>Order Qty</th>
-              <th>Delivery Qty</th>
-              <th>Balacne Qty</th>
+              <th className="text-right">Order Qty</th>
+              <th className="text-right">Delivery Qty</th>
+              <th className="text-right">Balacne Qty</th>
               <th>Challan No.</th>
               <th>Challan Date</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="text-cente">
             {/* row 1 */}
             {sngData.matched.map((item, idx) => (
               <tr
                 key={idx}
-                className={
+                className={`text-center ${
                   item.ChallanQTY < item.BreakDownQTY
-                    ? "text-red-400"
-                    : "text-gray-400"
-                }
+                    ? "text-red-400 hover:bg-gray-300"
+                    : "text-gray-400 hover:bg-gray-300 hover:text-gray-600"
+                }`}
               >
                 <th>{idx + 1}</th>
                 <td>{item.KeyEntry1Value || "-"}</td>
                 <td>{item.KeyEntry2Value || "-"}</td>
                 <td>{item.KeyEntry3Value || "-"}</td>
                 <td>{item.KeyEntry9Value || "-"}</td>
-                <td>{item.BreakDownQTY}</td>
-                <td>{item.ChallanQTY}</td>
-                <td>{item.BreakDownQTY - item.ChallanQTY}</td>
+                <td className="text-right">{item.BreakDownQTY}</td>
+                <td className="text-right">{item.ChallanQTY}</td>
+                <td className="text-right">
+                  {item.BreakDownQTY - item.ChallanQTY}
+                </td>
                 <td>{item.ChallanNo || "-"}</td>
                 <td>
                   {item.ChallanDate
@@ -75,15 +77,15 @@ function SingleOrderData({ data }) {
             ))}
           </tbody>
           <tfoot>
-            <tr>
+            <tr className="text-xl text-black font-bold">
               <th></th>
               <td></td>
               <td></td>
-              <td>Total = </td>
               <td></td>
-              <td>{sngData.Ordertotal}</td>
-              <td>{sngData.Deliverytotal}</td>
-              <td>{sngData.Balancetotal}</td>
+              <td className="text-right">Total = </td>
+              <td className="text-right">{sngData.Ordertotal}</td>
+              <td className="text-right">{sngData.Deliverytotal}</td>
+              <td className="text-right">{sngData.Balancetotal}</td>
             </tr>
           </tfoot>
         </table>

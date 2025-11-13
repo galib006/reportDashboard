@@ -1,11 +1,13 @@
 import React, { useContext, useEffect, useState } from "react";
 import TableRow from "../components/TableRow";
 import { GetDataContext } from "../components/DataContext";
+import { FourSquare } from "react-loading-indicators";
+import DateRangePicker from "../components/DatePickerData";
 
 function OrderReport() {
   const [search, setSearch] = useState("");
 
-  const { cndata } = useContext(GetDataContext);
+  const { cndata, loading } = useContext(GetDataContext);
 
   const grpData = cndata[0]?.groupedData || [];
   const apiData = cndata[0]?.apiData || [];
@@ -31,11 +33,19 @@ function OrderReport() {
     : 0;
 
   console.log(filteredData);
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <FourSquare color="#32cd32" size="large" text="" textColor="" />
+      </div>
+    );
+  }
 
   return (
     <>
+      <DateRangePicker></DateRangePicker>
       <div className="overflow-x-auto">
-        <div className="my-5">
+        <div className="my-5 px-9">
           <input
             type="text"
             className="input"
@@ -73,7 +83,10 @@ function OrderReport() {
               //     <TableRow key={idx} data={data} idx={idx} />
 
               <tr>
-                <td colSpan="8" className="text-center">
+                <td
+                  colSpan="8"
+                  className="text-center text-red-500 text-2xl font-bold"
+                >
                   No data found
                 </td>
               </tr>
