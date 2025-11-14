@@ -1,16 +1,81 @@
-import React from "react";
+import React, { useContext } from "react";
 import DateRangePicker from "../components/DatePickerData";
+import axios from "axios";
+import { GetDataContext } from "../components/DataContext";
+
 function OrderForm() {
-  const dateSubmit = (e) => e.preventDefault();
+  const { cndata, setcndata } = useContext(GetDataContext);
+  const apiKey = localStorage.getItem("apiKey");
+
+  const dateSubmit = (e) => {
+    e.preventDefault();
+
+    if (!cndata?.startDate || !cndata?.endDate) {
+      console.log("Missing Date");
+      return;
+    }
+
+    const stDate = cndata.startDate.toISOString().split("T")[0];
+    const edDate = cndata.endDate.toISOString().split("T")[0];
+
+    axios
+      .get(
+        `https://tpl-api.ebs365.info/api/OrderReport/BI_OrderRelatedInformationReport?CompanyID=1&ProductCategoryID=0&ProductSubCategoryID=0&MarketingID=0&CustomerID=0&BuyerID=0&JobCardID=0&StartDate=${stDate}&EndDate=${edDate}&CommandID=5&EmpID=0`,
+        {
+          headers: {
+            Authorization: `${apiKey}`,
+          },
+        }
+      )
+      .then((response) => {
+        const data = response.data;
+
+        const groupedData = Object.values(
+          data.reduce((acc, item) => {
+            const key = item.WorkOrderNo;
+            const formateDate = new Date(
+              item.OrderReceiveDate
+            ).toLocaleDateString("en-GB");
+
+            if (!acc[key]) {
+              acc[key] = {
+                WorkOrderNo: item.WorkOrderNo,
+                Buyer: item.BuyerName,
+                Category: item.ProductCategoryName,
+                challanqty: 0,
+                BreakDownQTY: 0,
+                TotalOrderValue: 0,
+                ChallanValue: 0,
+                BalanceQTY: 0,
+                BalanceValue: 0,
+                OrderReceiveDate: formateDate,
+              };
+            }
+
+            acc[key].CustomerName = item.CName;
+            acc[key].challanqty += Number(item.ChallanQTY);
+            acc[key].BreakDownQTY += Number(item.BreakDownQTY || 0);
+            acc[key].TotalOrderValue += Number(item.TotalOrderValue || 0);
+            acc[key].ChallanValue += Number(item.ChallanValue || 0);
+            acc[key].BalanceQTY += Number(item.BalanceQTY || 0);
+            acc[key].BalanceValue += Number(item.BalanceValue || 0);
+
+            return acc;
+          }, {})
+        );
+
+        setcndata([{ groupedData, apiData: data }]);
+      })
+      .catch(console.log);
+  };
+
   return (
     <>
       <form
-        onSubmit={(e) => dateSubmit(e)}
-        action=""
-        method="get"
-        className="flex gap-5 content-center align-middle justify-center items-center"
+        onSubmit={dateSubmit}
+        className="flex gap-5 justify-center items-center"
       >
-        <DateRangePicker></DateRangePicker>
+        <DateRangePicker />
         <input type="submit" value="Submit" className="btn btn-info" />
       </form>
     </>
