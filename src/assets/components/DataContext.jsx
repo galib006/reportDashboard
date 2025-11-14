@@ -100,7 +100,9 @@ function DataContext({ children }) {
 
   return (
     <>
-      <GetDataContext.Provider value={{ cndata, setcndata, loading }}>
+      <GetDataContext.Provider
+        value={{ cndata, setcndata, loading, setLoading }}
+      >
         {children}
       </GetDataContext.Provider>
     </>

@@ -4,11 +4,12 @@ import axios from "axios";
 import { GetDataContext } from "../components/DataContext";
 
 function OrderForm() {
-  const { cndata, setcndata } = useContext(GetDataContext);
+  const { cndata, setcndata, setLoading } = useContext(GetDataContext);
   const apiKey = localStorage.getItem("apiKey");
 
   const dateSubmit = (e) => {
     e.preventDefault();
+    setLoading(true);
 
     if (!cndata?.startDate || !cndata?.endDate) {
       console.log("Missing Date");
@@ -66,7 +67,8 @@ function OrderForm() {
 
         setcndata([{ groupedData, apiData: data }]);
       })
-      .catch(console.log);
+      .catch((err) => console.log(err))
+      .finally(() => setLoading(false));
   };
 
   return (
