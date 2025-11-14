@@ -1,41 +1,54 @@
-import React, { useState } from "react";
-import DatePicker from "react-datepicker";
-import "react-datepicker/dist/react-datepicker.css";
+import React, { useContext, useEffect, useState } from "react";
+import TextField from "@mui/material/TextField";
+import { LocalizationProvider, DesktopDatePicker } from "@mui/x-date-pickers";
+import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
+import { enGB } from "date-fns/locale";
+import { GetDataContext } from "../components/DataContext";
 
 function DateRangePicker() {
-  const [startDate, setStartDate] = useState(null);
-  const [endDate, setEndDate] = useState(null);
+  const { cndata, setcndata } = useContext(GetDataContext);
+
+  const today = new Date();
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(today.getDate() - 7);
+
+  const [startDate, setStartDate] = useState(cndata?.startDate || sevenDaysAgo);
+  const [endDate, setEndDate] = useState(cndata?.endDate || today);
+
+  // Update context whenever date changes
+  useEffect(() => {
+    if (setcndata) {
+      setcndata((prev) => ({
+        ...prev,
+        startDate,
+        endDate,
+      }));
+    }
+  }, [startDate, endDate, setcndata]);
 
   return (
-    <div className="flex gap-4">
-      <div>
-        <label>Start Date:</label>
-        <DatePicker
-          selected={startDate}
-          onChange={(date) => setStartDate(date)}
-          selectsStart
-          startDate={startDate}
-          endDate={endDate}
-          maxDate={endDate} // start date end date er por jete parbe na
-          placeholderText="Select start date"
-          dateFormat="dd/MM/yyyy"
+    <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={enGB}>
+      <div style={{ display: "flex", gap: "16px" }}>
+        <DesktopDatePicker
+          label="Start Date"
+          value={startDate}
+          onChange={(newValue) => setStartDate(newValue)}
+          maxDate={endDate}
+          inputFormat="dd/MM/yyyy"
+          mask="__/__/____"
+          renderInput={(params) => <TextField {...params} />}
+        />
+        <DesktopDatePicker
+          label="End Date"
+          value={endDate}
+          onChange={(newValue) => setEndDate(newValue)}
+          minDate={startDate}
+          inputFormat="dd/MM/yyyy"
+          mask="__/__/____"
+          renderInput={(params) => <TextField {...params} />}
         />
       </div>
-
-      <div>
-        <label>End Date:</label>
-        <DatePicker
-          selected={endDate}
-          onChange={(date) => setEndDate(date)}
-          selectsEnd
-          startDate={startDate}
-          endDate={endDate}
-          minDate={startDate} // end date start date er age jete parbe na
-          placeholderText="Select end date"
-          dateFormat="dd/MM/yyyy"
-        />
-      </div>
-    </div>
+    </LocalizationProvider>
   );
 }
 

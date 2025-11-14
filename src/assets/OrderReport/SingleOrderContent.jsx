@@ -3,7 +3,7 @@ import SingleOrderData from "./SingleOrderData";
 
 function SingleOrderContent({ Wrk, data }) {
   const modalID = `modal_${Wrk}`;
-  console.log(data);
+  // console.log(data);
 
   return (
     <>

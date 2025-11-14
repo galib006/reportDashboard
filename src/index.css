@@ -8,3 +8,26 @@
     box-shadow: 0 2px var(--input-color);
   }
 }
+/* ul.pagination{
+  display: flex;
+
+
+}
+ul.pagination li{
+  padding: 10px;
+  cursor: pointer;
+  color: blue;
+  border: 1px solid blue;
+  min-width: 60px;
+  text-align: center;
+
+}
+ul.pagination li.active{
+  cursor: text;
+  color: white;
+  background-color: blue;
+}
+ul.pagination li.disabled{
+  cursor: text;
+  color: rgba(128, 128, 128, 0.418);
+} */

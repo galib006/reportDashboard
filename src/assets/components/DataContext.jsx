@@ -7,21 +7,26 @@ function DataContext({ children }) {
   const [cndata, setcndata] = useState([]);
   const [loading, setLoading] = useState(false); // 🔹 loading state
 
+  const StartDate = cndata.startDate;
+  const endDate = cndata.endDate;
   useEffect(() => {
     const apiKey = localStorage.getItem("apiKey");
+    console.log();
+
     if (!apiKey) return; // যদি key না থাকে, fetch skip করবে
 
     setLoading(true); // 🔹 spinner start
 
     axios
-      .get(
-        "https://tpl-api.ebs365.info/api/OrderReport/BI_OrderRelatedInformationReport?CompanyID=1&ProductCategoryID=0&ProductSubCategoryID=0&MarketingID=0&CustomerID=0&BuyerID=0&JobCardID=0&StartDate=2025-10-27T15:05:04.149Z&EndDate=2025-11-13T15:05:04.149Z&CommandID=5&EmpID=0",
-        {
-          headers: {
-            Authorization: `Bearer ${apiKey}`, // 🔹 Bearer token fix
-          },
-        }
-      )
+      // .get(
+      //   "https://tpl-api.ebs365.info/api/OrderReport/BI_OrderRelatedInformationReport?CompanyID=1&ProductCategoryID=0&ProductSubCategoryID=0&MarketingID=0&CustomerID=0&BuyerID=0&JobCardID=0&StartDate=${new Date(sd).toISOString()}&EndDate=${new Date(ed).toISOString()}&CommandID=5&EmpID=0",
+      //   {
+      //     headers: {
+      //       Authorization: `Bearer ${apiKey}`, // 🔹 Bearer token fix
+      //     },
+      //   }
+      // )
+      .get("data.json")
       .then((response) => {
         const data = response.data;
 
@@ -64,6 +69,7 @@ function DataContext({ children }) {
       .catch(console.log)
       .finally(() => setLoading(false)); // 🔹 spinner stop
   }, []);
+  console.log(StartDate);
 
   return (
     <GetDataContext.Provider value={{ cndata, setcndata, loading }}>
