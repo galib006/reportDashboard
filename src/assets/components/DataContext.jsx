@@ -8,7 +8,34 @@ function DataContext({ children }) {
   const [loading, setLoading] = useState(false); // 🔹 loading state
 
   const StartDate = cndata.startDate;
+  let stDate = null;
+
+  if (StartDate) {
+    const d = new Date(StartDate);
+    if (!isNaN(d.getTime())) {
+      // valid date check
+      stDate = d.toISOString();
+    } else {
+      console.error("Invalid StartDate:", StartDate);
+    }
+  } else {
+    console.error("StartDate is missing");
+  }
+
   const endDate = cndata.endDate;
+  let edDate = null;
+
+  if (endDate) {
+    const d = new Date(endDate);
+    if (!isNaN(d.getTime())) {
+      edDate = d.toISOString();
+    } else {
+      console.error("Invalid endDate:", endDate);
+    }
+  } else {
+    console.error("endDate is missing");
+  }
+
   useEffect(() => {
     const apiKey = localStorage.getItem("apiKey");
     console.log();
@@ -18,15 +45,15 @@ function DataContext({ children }) {
     setLoading(true); // 🔹 spinner start
 
     axios
-      // .get(
-      //   "https://tpl-api.ebs365.info/api/OrderReport/BI_OrderRelatedInformationReport?CompanyID=1&ProductCategoryID=0&ProductSubCategoryID=0&MarketingID=0&CustomerID=0&BuyerID=0&JobCardID=0&StartDate=${new Date(sd).toISOString()}&EndDate=${new Date(ed).toISOString()}&CommandID=5&EmpID=0",
-      //   {
-      //     headers: {
-      //       Authorization: `Bearer ${apiKey}`, // 🔹 Bearer token fix
-      //     },
-      //   }
-      // )
-      .get("data.json")
+      .get(
+        `https://tpl-api.ebs365.info/api/OrderReport/BI_OrderRelatedInformationReport?CompanyID=1&ProductCategoryID=0&ProductSubCategoryID=0&MarketingID=0&CustomerID=0&BuyerID=0&JobCardID=0&StartDate=${stDate}&EndDate=${edDate}&CommandID=5&EmpID=0`,
+        {
+          headers: {
+            Authorization: `Bearer ${apiKey}`, // 🔹 Bearer token fix
+          },
+        }
+      )
+      // .get("data.json")
       .then((response) => {
         const data = response.data;
 
@@ -69,7 +96,7 @@ function DataContext({ children }) {
       .catch(console.log)
       .finally(() => setLoading(false)); // 🔹 spinner stop
   }, []);
-  console.log(StartDate);
+  // console.log(StartDate);
 
   return (
     <GetDataContext.Provider value={{ cndata, setcndata, loading }}>

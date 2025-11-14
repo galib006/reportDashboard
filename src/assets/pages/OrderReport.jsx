@@ -78,6 +78,7 @@ function OrderReport() {
               <th></th>
               <th>SL.</th>
               <th>Order No.</th>
+              <th>Order Date</th>
               <th>Customer</th>
               <th>Order Qty</th>
               <th>Delivery Qty</th>

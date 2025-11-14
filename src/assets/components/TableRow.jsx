@@ -2,6 +2,8 @@ import React, { useState } from "react";
 import SingleOrderContent from "../OrderReport/SingleOrderContent";
 import { useContext } from "react";
 function TableRow({ data, idx }) {
+  console.log(data);
+
   const orderQty = Number(data.BreakDownQTY).toFixed(2);
   const challanQty = Number(data.challanqty).toFixed(2);
   const deliveryPercent = ((challanQty / orderQty) * 100).toFixed(0);
@@ -22,6 +24,7 @@ function TableRow({ data, idx }) {
             </div>
           </div>
         </td>
+        <td>{data.OrderReceiveDate}</td>
         <td>
           {data.CustomerName}
           <br />
