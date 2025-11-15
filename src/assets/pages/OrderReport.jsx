@@ -44,13 +44,13 @@ function OrderReport() {
     ? ((grpDelivery / grpDataTotal) * 100).toFixed(0)
     : 0;
 
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center h-screen">
-        <FourSquare color="#32cd32" size="large" />
-      </div>
-    );
-  }
+  // if (loading) {
+  //   return (
+  //     <div className="flex justify-center items-center h-screen">
+  //       <FourSquare color="#32cd32" size="large" />
+  //     </div>
+  //   );
+  // }
 
   return (
     <>
@@ -70,57 +70,61 @@ function OrderReport() {
         />
       </div>
 
-      {/* Table */}
-      <div className="overflow-x-auto">
-        <table className="table">
-          <thead>
-            <tr>
-              <th></th>
-              <th>SL.</th>
-              <th>Order No.</th>
-              <th>Order Date</th>
-              <th>Customer</th>
-              <th>Order Qty</th>
-              <th>Delivery Qty</th>
-              <th>Delivery Complete</th>
-            </tr>
-          </thead>
-
-          <tbody>
-            {currentItems.length > 0 ? (
-              currentItems.map((data, idx) => (
-                <TableRow
-                  key={idx}
-                  data={data}
-                  idx={idx + itemOffset} // correct serial number
-                />
-              ))
-            ) : (
+      {loading ? (
+        <div className="flex justify-center items-center h-screen">
+          <FourSquare color="#32cd32" size="large" />
+        </div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="table">
+            <thead>
               <tr>
-                <td
-                  colSpan="8"
-                  className="text-center text-red-500 text-2xl font-bold"
-                >
-                  No data found
-                </td>
+                <th></th>
+                <th>SL.</th>
+                <th>Order No.</th>
+                <th>Order Date</th>
+                <th>Customer</th>
+                <th>Order Qty</th>
+                <th>Delivery Qty</th>
+                <th>Delivery Complete</th>
               </tr>
-            )}
-          </tbody>
+            </thead>
 
-          <tfoot>
-            <tr>
-              <th></th>
-              <th></th>
-              <th></th>
-              <th>Grand Total</th>
-              <th>{grpDataTotal.toLocaleString()}</th>
-              <th>{grpDelivery.toLocaleString()}</th>
-              <th>{deliveryPercent}%</th>
-            </tr>
-          </tfoot>
-        </table>
-      </div>
+            <tbody>
+              {currentItems.length > 0 ? (
+                currentItems.map((data, idx) => (
+                  <TableRow
+                    key={idx}
+                    data={data}
+                    idx={idx + itemOffset} // correct serial number
+                  />
+                ))
+              ) : (
+                <tr>
+                  <td
+                    colSpan="8"
+                    className="text-center text-red-500 text-2xl font-bold"
+                  >
+                    No data found
+                  </td>
+                </tr>
+              )}
+            </tbody>
 
+            <tfoot>
+              <tr>
+                <th></th>
+                <th></th>
+                <th></th>
+                <th>Grand Total</th>
+                <th>{grpDataTotal.toLocaleString()}</th>
+                <th>{grpDelivery.toLocaleString()}</th>
+                <th>{deliveryPercent}%</th>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      )}
       {/* Pagination */}
       <div className="my-5 flex justify-center mt-15">
         <ReactPaginate
