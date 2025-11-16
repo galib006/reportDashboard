@@ -32,10 +32,11 @@ function TableRow({ data, idx }) {
             Buyer: <span className="text-blue-500">{data.Buyer}</span>
           </span>
         </td>
-        <td>{orderQty}</td>
-        <td>{challanQty}</td>
+        <td>{data.CustomerPINo ? data.CustomerPINo : "-"}</td>
+        <td className="text-right">{orderQty}</td>
+        <td className="text-right">{challanQty}</td>
         <td
-          className={`${
+          className={`text-center ${
             deliveryPercent == 100 ? "text-green-700" : "text-red-600"
           } `}
         >

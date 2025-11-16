@@ -84,9 +84,10 @@ function OrderReport() {
                 <th>Order No.</th>
                 <th>Order Date</th>
                 <th>Customer</th>
-                <th>Order Qty</th>
-                <th>Delivery Qty</th>
-                <th>Delivery Complete</th>
+                <th>PI No.</th>
+                <th className="text-right">Order Qty</th>
+                <th className="text-right">Delivery Qty</th>
+                <th className="text-center">Delivery Complete</th>
               </tr>
             </thead>
 
@@ -116,10 +117,12 @@ function OrderReport() {
                 <th></th>
                 <th></th>
                 <th></th>
+                <th></th>
+                <th></th>
                 <th>Grand Total</th>
-                <th>{grpDataTotal.toLocaleString()}</th>
-                <th>{grpDelivery.toLocaleString()}</th>
-                <th>{deliveryPercent}%</th>
+                <th className="text-right">{grpDataTotal.toLocaleString()}</th>
+                <th className="text-right">{grpDelivery.toLocaleString()}</th>
+                <th className="text-center">{deliveryPercent}%</th>
               </tr>
             </tfoot>
           </table>
