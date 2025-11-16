@@ -8,6 +8,7 @@ import Home from "./assets/pages/Home.jsx";
 import Root from "./assets/layout/Root.jsx";
 import OrderReport from "./assets/pages/OrderReport.jsx";
 import DataContext from "./assets/components/DataContext.jsx";
+import Inventory from "./assets/pages/Inventory.jsx";
 const router = createBrowserRouter([
   {
     path: "/",
@@ -16,7 +17,11 @@ const router = createBrowserRouter([
       {
       path: "OrderReport",
       Component:OrderReport
-    }],
+    },
+  {path: "Inventory",
+    Component:Inventory
+  }
+],
   },
 ]);
 

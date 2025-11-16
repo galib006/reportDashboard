@@ -38,11 +38,34 @@ function OrderForm() {
             },
           }
         ),
+        axios.get(
+          `
+https://tpl-api.ebs365.info/api/InventoryBI/SCM_GET_MaterialIssueDetail?CompanyID=1&ParentCategoryID=6&CategoryID=0&SubCategoryID=0&MainMaterialID=0&StartDate=2025-10-30T09:35:15.222Z&EndDate=2025-11-16T09:35:15.222Z&CommandID=2`,
+          {
+            headers: {
+              Authorization: `${apiKey}`,
+            },
+          }
+        ),
       ])
       .then(
-        axios.spread((response, res2) => {
+        axios.spread((response, res2, res3) => {
           const data = response.data;
-          console.log(response);
+          const data2 = res2.data
+          const data3 = res3.data
+          // console.log(data2);
+          // console.log(data3[0].MaterialName);
+          //Purchase & Issue
+          const groupPRandIssue = data2.filter((resp)=>(
+              resp.MaterialName
+            ))
+            console.log(groupPRandIssue);
+            
+          
+          // console.log(groupPRandIssue);
+          
+
+          // console.log(response);
 
           const groupedData = Object.values(
             data.reduce((acc, item) => {

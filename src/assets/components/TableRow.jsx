@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import SingleOrderContent from "../OrderReport/SingleOrderContent";
 import { useContext } from "react";
 function TableRow({ data, idx }) {
-  console.log(data);
+  // console.log(data);
 
   const orderQty = Number(data.BreakDownQTY).toFixed(2);
   const challanQty = Number(data.challanqty).toFixed(2);

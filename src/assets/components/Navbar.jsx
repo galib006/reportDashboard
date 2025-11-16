@@ -62,7 +62,7 @@ function Navbar() {
             </li>
 
             <li>
-              <NavLink to={""}>Item 3</NavLink>
+              <NavLink to={"Inventory"}>Inventory Status</NavLink>
             </li>
           </ul>
         </div>
