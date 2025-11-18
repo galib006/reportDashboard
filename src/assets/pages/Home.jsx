@@ -87,6 +87,13 @@ function Home() {
               bgStyle={"bg-blue"}
               Icons={<RiMoneyDollarCircleFill />}
             />
+             <Gtotal
+              title={"Delivery Complete"}
+              Value={((grandTotal.TotalChallanQty / grandTotal.TotalDOrderQTY) * 100).toFixed(0) + "%"}
+              fontStyle={"text-white"}
+              bgStyle={"bg-blue"}
+              Icons={<FaCartFlatbed />}
+            />
           </div>
         </div>
       </div>

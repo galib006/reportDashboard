@@ -9,6 +9,10 @@ import Root from "./assets/layout/Root.jsx";
 import OrderReport from "./assets/pages/OrderReport.jsx";
 import DataContext from "./assets/components/DataContext.jsx";
 import Inventory from "./assets/pages/Inventory.jsx";
+import "react-toastify/dist/ReactToastify.css";
+
+
+
 const router = createBrowserRouter([
   {
     path: "/",
