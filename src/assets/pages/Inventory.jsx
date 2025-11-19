@@ -7,7 +7,9 @@ import { toast } from "react-toastify";
 function Inventory() {
   const { cndata, setcndata, setLoading } = useContext(GetDataContext);
   const apiKey = localStorage.getItem("apiKey");
-  const [mtName, setmtName] = useState([]);
+  const [materialDB, setmaterialDB] = useState();
+  const [materialInfo, setmaterialInfo] = useState([]);
+  const [materialTotalreceive, setmaterialTotalreceive] = useState(0);
 
   const dateSubmit = async (e) => {
     e.preventDefault();
@@ -48,9 +50,11 @@ function Inventory() {
       const r1 = res1.data;
       const r2 = res2.data;
       const r3 = res3.data;
-      const itemName = r3.map((item,idx)=>item.MaterialName,item.BalanceQTY);
-      // const itemName = r3.map((item,idx)=>item);
-      // const itemBalance = r3.map((item,idx)=>{item.BalanceQTY});
+      const item = r3.map((item, idx) => ({
+        itemName: item.MaterialName,
+        Balance: item.BalanceQTY,
+      }));
+      // console.log(item);
 
       // const matched = r1.filter((data) =>
       //   r2.some((r) => r.MaterialName === data.MaterialName)
@@ -61,22 +65,34 @@ function Inventory() {
       // const grpData = [...matched, ...unmatched];
       // // console.log(grpData);
       // const itemName = [...new Set(grpData.map((data) => data.MaterialName))];
-      setmtName(itemName);
-      console.log(itemName);
-      
+      setmaterialDB(item);
+      console.log(materialDB);
+      const data = 0;
+      const mtl = Object.values(item).map((item, idx) => {
+        const Receive = r1.filter((dd) => dd.MaterialName === item.itemName);
+        const Issue = r2.filter((dd) => dd.MaterialName === item.itemName);
+        const itemWiseTotalrcv = Receive.map((i) => i.ActualReceiveQTY).reduce(
+          (acc, value) => acc + value,
+          0
+        );
+        const itemRcvQtyTotal = Number(itemWiseTotalrcv).toFixed(2);
+        const itemissueQty = Issue.map((i) => i.IssueQTY).reduce(
+          (acc, sum) => acc + sum,
+          0
+        );
+        const issueItemTotal = Number(itemissueQty).toFixed(2);
+        return {
+          itemName: item.itemName,
+          Balance: item.Balance,
+          Receive,
+          Issue,
+          itemRcvQtyTotal,
+          issueItemTotal,
+        };
+      });
 
-      
-     const dddd = Object.values(itemName).map((name,idx)=>({
-      name,
-      Blance: itemBalance,
-      Receive: r1.filter((dd) => dd.MaterialName === name),
-      Issue: r2.filter((dd)=> dd.MaterialName === name)
-
-    } ))
-    //  console.log(dddd);
-     
-      
-
+      setmaterialInfo(mtl);
+      console.log(mtl);
       // const mergeData = {
       //   Matched: fldata,
       //   Issue: r2,
@@ -107,30 +123,124 @@ function Inventory() {
         <input type="submit" value="Submit" className="btn btn-info" />
       </form>
       <div className="overflow-x-auto">
-  <table className="table table-zebra">
-    {/* head */}
-    <thead>
-      <tr>
- 
-        <th>SL.</th>
-        <th>Item Name</th>
-      </tr>
-    </thead>
-    <tbody>
-      {/* {mtName.map((item, idx) => (
-          <tr key={idx} className="border border-amber-950 hover:bg-base-300">
-            <td className="border border-amber-950 text-center">{idx + 1}</td>
-            <td className="border border-amber-950">{item}</td>
-          </tr>
-        ))} */}
-    </tbody>
-  </table>
-</div>
+        <table className="table table-zebra" border="1">
+          {/* head */}
+          <thead>
+            <tr>
+              <th>SL.</th>
+              <th>Item Name</th>
+              <th>Balance</th>
+              <th>Gap</th>
+              <th>Receive</th>
+              <th>Issue</th>
+            </tr>
+          </thead>
+          <tbody>
+            {materialInfo.map((item, idx) => (
+              <tr
+                key={idx}
+                className="border border-amber-950 hover:bg-base-300"
+              >
+                <td className="border border-amber-950 text-center">
+                  {idx + 1}
+                </td>
+                <td className="border border-amber-950">{item.itemName}</td>
+                <td className="border border-amber-950">{item.Balance}</td>
 
+                <td
+                  className={`border border-amber-950 ${
+                    Number(item.itemRcvQtyTotal - item.issueItemTotal) >= 0
+                      ? ""
+                      : "text-red-600 text-2xl font-bold"
+                  }`}
+                >
+                  {Number(item.itemRcvQtyTotal - item.issueItemTotal)}
+                </td>
+                <td className=" m-0 p-0 gap-0">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th className="text-center border border-amber-950 hover:bg-base-300">
+                          SL.
+                        </th>
+                        <th className="text-center border border-amber-950 hover:bg-base-300">
+                          QTY
+                        </th>
+                        <th className="text-center border border-amber-950 hover:bg-base-300">
+                          Date
+                        </th>
+                      </tr>
+                    </thead>
 
+                    <tbody>
+                      {item.Receive.map((item, idx) => (
+                        <tr key={idx}>
+                          <td className="border border-amber-950 hover:bg-base-300">
+                            {idx + 1}
+                          </td>
+                          <td className="border border-amber-950 hover:bg-base-300">
+                            {item.ActualReceiveQTY}
+                          </td>
+                          <td className="border border-amber-950 hover:bg-base-300">
+                            {item.GRNDate}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot>
+                      <tr>
+                        <td>Total:</td>
+                        <td>{item.itemRcvQtyTotal}</td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </td>
+
+                <td>
+                  <table>
+                    <thead>
+                      <tr>
+                        <th className="border border-amber-950 hover:bg-base-300 text-center">
+                          SL.
+                        </th>
+                        <th className="border border-amber-950 hover:bg-base-300 text-center">
+                          QTY
+                        </th>
+                        <th className="border border-amber-950 hover:bg-base-300 text-center">
+                          Date
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {item.Issue.map((item, idx) => (
+                        <tr key={idx}>
+                          <td className="border border-amber-950 hover:bg-base-300">
+                            {idx + 1}
+                          </td>
+                          <td className="border border-amber-950 hover:bg-base-300">
+                            {item.IssueQTY}
+                          </td>
+                          <td className="border border-amber-950 hover:bg-base-300">
+                            {item.IssueDate}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot>
+                      <tr>
+                        <td>Total:</td>
+                        <td>{item.issueItemTotal}</td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </>
   );
 }
 
 export default Inventory;
-
