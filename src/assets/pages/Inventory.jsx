@@ -23,7 +23,7 @@ function Inventory() {
     const edDate = cndata.endDate.toISOString().split("T")[0];
 
     try {
-      const [res1, res2] = await axios.all([
+      const [res1, res2, res3] = await axios.all([
         axios.get(
           `https://tpl-api.ebs365.info/api/InventoryBI/SCM_GetMaterialReceiveDetail?CompanyID=1&ParentCategoryID=6&CategoryID=0&SubCategoryID=0&MainMaterialID=0&StartDate=${stDate}&EndDate=${edDate}&CommandID=0`,
           {
@@ -37,22 +37,45 @@ function Inventory() {
             headers: { Authorization: `${apiKey}` },
           }
         ),
+        axios.get(
+          `https://tpl-api.ebs365.info/api/InventoryBI/BI_SCM_GETInventoryStatement?CompanyID=1&ParentCategoryID=6&CategoryID=0&SubCategoryID=0&MaterialID=0&StartDate=${stDate}&EndDate=${edDate}&CommandID=2&EmpID=0`,
+          {
+            headers: { Authorization: `${apiKey}` },
+          }
+        ),
       ]);
 
       const r1 = res1.data;
       const r2 = res2.data;
+      const r3 = res3.data;
+      const itemName = r3.map((item,idx)=>item.MaterialName,item.BalanceQTY);
+      // const itemName = r3.map((item,idx)=>item);
+      // const itemBalance = r3.map((item,idx)=>{item.BalanceQTY});
 
-      const matched = r1.filter((data) =>
-        r2.some((r) => r.MaterialName === data.MaterialName)
-      );
-      const unmatched = r1.filter(
-        (data) => !r2.some((r) => r.MaterialName === data.MaterialName)
-      );
-      const grpData = [...matched, ...unmatched];
-      // console.log(grpData);
-      const itemName = [...new Set(grpData.map((data) => data.MaterialName))];
-
+      // const matched = r1.filter((data) =>
+      //   r2.some((r) => r.MaterialName === data.MaterialName)
+      // );
+      // const unmatched = r1.filter(
+      //   (data) => !r2.some((r) => r.MaterialName === data.MaterialName)
+      // );
+      // const grpData = [...matched, ...unmatched];
+      // // console.log(grpData);
+      // const itemName = [...new Set(grpData.map((data) => data.MaterialName))];
       setmtName(itemName);
+      console.log(itemName);
+      
+
+      
+     const dddd = Object.values(itemName).map((name,idx)=>({
+      name,
+      Blance: itemBalance,
+      Receive: r1.filter((dd) => dd.MaterialName === name),
+      Issue: r2.filter((dd)=> dd.MaterialName === name)
+
+    } ))
+    //  console.log(dddd);
+     
+      
 
       // const mergeData = {
       //   Matched: fldata,
@@ -83,17 +106,31 @@ function Inventory() {
         <DateRangePicker />
         <input type="submit" value="Submit" className="btn btn-info" />
       </form>
-      <table>
-        {mtName.map((item, idx) => (
-          <tr key={idx} className="border border-amber-950">
-            <td className="border border-amber-950">{idx + 1}</td>
+      <div className="overflow-x-auto">
+  <table className="table table-zebra">
+    {/* head */}
+    <thead>
+      <tr>
+ 
+        <th>SL.</th>
+        <th>Item Name</th>
+      </tr>
+    </thead>
+    <tbody>
+      {/* {mtName.map((item, idx) => (
+          <tr key={idx} className="border border-amber-950 hover:bg-base-300">
+            <td className="border border-amber-950 text-center">{idx + 1}</td>
             <td className="border border-amber-950">{item}</td>
           </tr>
-        ))}
-        <tr></tr>
-      </table>
+        ))} */}
+    </tbody>
+  </table>
+</div>
+
+
     </>
   );
 }
 
 export default Inventory;
+
