@@ -39,12 +39,18 @@ function Inventory() {
   const [openRows, setOpenRows] = useState({});
   const [loading, setLocalLoading] = useState(false);
 
-  const fmtDate = (d) => {
-    if (!d) return "";
-    const dt = new Date(d);
-    if (isNaN(dt)) return d;
-    return dt.toISOString().split("T")[0];
-  };
+const fmtDate = (d) => {
+  if (!d) return "";
+  const dt = new Date(d);
+  if (isNaN(dt)) return d;
+
+  const day = String(dt.getDate()).padStart(2, "0");
+  const month = String(dt.getMonth() + 1).padStart(2, "0"); // months are 0-based
+  const year = dt.getFullYear();
+
+  return `${day}-${month}-${year}`;
+};
+
 
   const dateSubmit = async (e) => {
     e?.preventDefault?.();
@@ -169,11 +175,19 @@ function Inventory() {
         rows.push({
           Type: ev.type,
           Item: it.itemName,
-          Date: fmtDate(ev.GRNDate||ev.IssueDate),
+          // <td>{ev.type==="Issue"?:""}</td>
+          //       <td>{ev.runningBalance}</td>
+          //       <td>{ev.IssueNo}</td>
+          //       <td>{ev.RequisitionNo}</td>
+          TotalReceive: ev.ActualReceiveQTY,
           Qty: ev.type==="Receive"?ev.ActualReceiveQTY:ev.IssueQTY,
-          DocNo: ev.GRNNo || ev.IssueNo || ev.RequisitionNo || ev.OrderNo,
-          Remarks: ev.VendorName || ev.IssuedBy || ev.ChallanNo || ev.JobCardNo || "",
+          TotalIssue: ev.IssueQTY,
           RunningBalance: ev.runningBalance,
+          Date: fmtDate(ev.GRNDate||ev.IssueDate),
+          DocNo: ev.GRNNo || ev.IssueNo || ev.RequisitionNo || ev.OrderNo,
+          RequistionNo : ev.RequisitionNo,
+          IssueNo: ev.IssueNo,
+          Remarks: ev.VendorName || ev.IssuedBy || ev.ChallanNo || ev.JobCardNo || "",
         });
       });
     });
@@ -188,6 +202,8 @@ function Inventory() {
     setFilters(f=>({...f, company:"all", category:"all", subcategory:"all", material:"all", search:"", negativeGap:false}));
   };
 
+  console.log(pagedList);
+  
   return (
     <div className="p-4">
       {/* Loading */}
@@ -274,7 +290,7 @@ function Inventory() {
                     <td>{it.timeline.length} events</td>
                   </tr>
                   {openRows[it.itemName] && (
-  <tr className="bg-base-100">
+  <tr className="bg-base-10">
     <td colSpan="7" className="p-2">
       <div className="overflow-x-auto max-h-80">
         <table className="table table-compact w-full">
@@ -282,10 +298,12 @@ function Inventory() {
             <tr>
               <th>SL</th>
               <th>Date</th>
+              <th>DocNo</th>
               <th>Receive</th>
               <th>Issue</th>
-              <th>DocNo</th>
               <th>Running Balance</th>
+              <th>Issue No</th>
+              <th>Req No</th>
               <th>Remarks</th>
             </tr>
           </thead>
@@ -294,10 +312,12 @@ function Inventory() {
               <tr key={i} className={ev.runningBalance < 0 ? "text-red-800" : ""}>
                 <td>{i+1}</td>
                 <td>{fmtDate(ev.GRNDate||ev.IssueDate)}</td>
+                <td>{ev.GRNNo||ev.IssueNo||ev.RequisitionNo||ev.OrderNo}</td>
                 <td>{ev.type==="Receive"?ev.ActualReceiveQTY:""}</td>
                 <td>{ev.type==="Issue"?ev.IssueQTY:""}</td>
-                <td>{ev.GRNNo||ev.IssueNo||ev.RequisitionNo||ev.OrderNo}</td>
                 <td>{ev.runningBalance}</td>
+                <td>{ev.IssueNo}</td>
+                <td>{ev.RequisitionNo}</td>
                 <td>{ev.VendorName||ev.IssuedBy||ev.ChallanNo||ev.JobCardNo||""}</td>
               </tr>
             ))}
