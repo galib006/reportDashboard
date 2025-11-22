@@ -166,9 +166,10 @@ const fmtDate = (d) => {
       rows.push({
         Type:"Summary",
         Item: it.itemName,
+        Balance: it.Balance,
         TotalReceive: it.totalReceive,
         TotalIssue: it.totalIssue,
-        Balance: it.Balance,
+        RunningBalance:'',
         Gap: it.totalReceive - it.totalIssue,
       });
       it.timeline.forEach(ev=>{
@@ -180,7 +181,7 @@ const fmtDate = (d) => {
           //       <td>{ev.IssueNo}</td>
           //       <td>{ev.RequisitionNo}</td>
           TotalReceive: ev.ActualReceiveQTY,
-          Qty: ev.type==="Receive"?ev.ActualReceiveQTY:ev.IssueQTY,
+          // Qty: ev.type==="Receive"?ev.ActualReceiveQTY:ev.IssueQTY,
           TotalIssue: ev.IssueQTY,
           RunningBalance: ev.runningBalance,
           Date: fmtDate(ev.GRNDate||ev.IssueDate),
