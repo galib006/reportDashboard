@@ -183,7 +183,7 @@ const fmtDate = (d) => {
           TotalReceive: ev.ActualReceiveQTY,
           // Qty: ev.type==="Receive"?ev.ActualReceiveQTY:ev.IssueQTY,
           TotalIssue: ev.IssueQTY,
-          RunningBalance: ev.runningBalance,
+          RunningBalance: Number(ev.runningBalance).toFixed(2),
           Date: fmtDate(ev.GRNDate||ev.IssueDate),
           DocNo: ev.GRNNo || ev.IssueNo || ev.RequisitionNo || ev.OrderNo,
           RequistionNo : ev.RequisitionNo,
