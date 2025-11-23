@@ -3,7 +3,7 @@ import SingleOrderData from "./SingleOrderData";
 
 function SingleOrderContent({ Wrk, data }) {
   const modalID = `modal_${Wrk}`;
-  // console.log(data);
+  console.log(data);
 
   return (
     <>
@@ -16,7 +16,7 @@ function SingleOrderContent({ Wrk, data }) {
       </button>
       <dialog id={modalID} className="modal">
         <div className="modal-box max-w-full">
-          <div className="text-center text-4xl font-bold underline">{Wrk}</div>
+          <div className="text-center text-4xl font-bold underline">{Wrk} <br/> <sapn className="text-2xl dec"> {data.JobBag}</sapn></div>
           <div className="flex justify-between my-8 py-8 px-4 bg-indigo-100 text-xl">
             <div>Customer: {data.CustomerName}</div>
             <div>Buyer: {data.Buyer}</div>

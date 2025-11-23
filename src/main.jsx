@@ -10,6 +10,7 @@ import OrderReport from "./assets/pages/OrderReport.jsx";
 import DataContext from "./assets/components/DataContext.jsx";
 import Inventory from "./assets/pages/Inventory.jsx";
 import "react-toastify/dist/ReactToastify.css";
+import InventoryIssue from "./assets/pages/InventoryIssue.jsx";
 
 
 
@@ -24,6 +25,10 @@ const router = createBrowserRouter([
     },
   {path: "Inventory",
     Component:Inventory
+  },
+  {
+    path: "InventoryIssue",
+    Component: InventoryIssue
   }
 ],
   },

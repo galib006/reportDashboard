@@ -31,3 +31,9 @@ ul.pagination li.disabled{
   cursor: text;
   color: rgba(128, 128, 128, 0.418);
 } */
+
+.navbar .navbar-center ul li a.active{
+  background-color: rgb(79, 149, 177);
+  color: #fff;
+  font-weight: bold;
+}

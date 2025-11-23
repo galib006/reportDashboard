@@ -7,6 +7,8 @@ function TableRow({ data, idx }) {
   const orderQty = Number(data.BreakDownQTY).toFixed(2);
   const challanQty = Number(data.challanqty).toFixed(2);
   const deliveryPercent = ((challanQty / orderQty) * 100).toFixed(0);
+  console.log(data);
+  
   return (
     <>
       <tr>
@@ -20,11 +22,12 @@ function TableRow({ data, idx }) {
           <div className="flex items-center gap-3">
             <div>
               <div className="font-bold">{data.WorkOrderNo}</div>
-              <div className="text-sm opacity-50">{data.Category}</div>
+              <div className="text-sm opacity-50">{data.JobBag}</div>
             </div>
           </div>
         </td>
         <td>{data.OrderReceiveDate}</td>
+        <td><div className="font-bold">{data.Category}</div></td>
         <td>
           {data.CustomerName}
           <br />

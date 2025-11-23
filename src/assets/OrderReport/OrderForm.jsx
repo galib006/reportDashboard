@@ -55,6 +55,7 @@ function OrderForm() {
           if (!acc[key]) {
             acc[key] = {
               WorkOrderNo: item.WorkOrderNo,
+              JobBag: item.JobCardNo,
               Buyer: item.BuyerName,
               Category: item.ProductCategoryName,
               challanqty: 0,

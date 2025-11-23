@@ -7,6 +7,8 @@ import { toast } from "react-toastify";
 import { saveAs } from "file-saver";
 import * as XLSX from "xlsx";
 import _ from "lodash";
+import { FourSquare } from "react-loading-indicators";
+import { HashLoader } from "react-spinners";
 
 function Inventory() {
   const { cndata, setcndata, setLoading } = useContext(GetDataContext);
@@ -208,7 +210,7 @@ const fmtDate = (d) => {
   return (
     <div className="p-4">
       {/* Loading */}
-      {loading || setLoading ? <div className="text-center font-bold py-2">Loading...</div>:null}
+      {loading  ? <div className="text-center font-bold py-2">Loading...</div>:""}
 
       {/* Controls */}
       <form onSubmit={dateSubmit} className="flex flex-wrap gap-3 items-end mb-4">
@@ -255,8 +257,13 @@ const fmtDate = (d) => {
           <label><input type="checkbox" checked={filters.pageOff} onChange={e=>setFilters(f=>({...f,pageOff:e.target.checked}))}/> Show All (No Pagination)</label>
         </div>
       </form>
-
-      {/* Table */}
+    {loading ? (
+        <div className="flex justify-center items-center h-screen">
+          <HashLoader color="#51a340"/>
+          {/* <FourSquareuare color="#32cd32" size="large" /> */}
+        </div>
+      ) : 
+      (
       <div className="overflow-x-auto">
         <table className="table w-full table-zebra border">
           <thead>
@@ -285,9 +292,9 @@ const fmtDate = (d) => {
                       </div>
                     </td>
                     <td>{it.totalReceive}</td>
-                    <td>{it.totalIssue}</td>
+                    <td>{Number(it.totalIssue).toFixed(2)}</td>
                     <td>{it.Balance}</td>
-                    <td className={gap<0?"text-red-600 font-bold":""}>{gap}</td>
+                    <td className={gap<0?"text-red-600 font-bold":""}>{Number(gap).toFixed(2)}</td>
                     <td>{it.timeline.length} events</td>
                   </tr>
                   {openRows[it.itemName] && (
@@ -329,14 +336,14 @@ const fmtDate = (d) => {
   </tr>
 )}
 
+
                 </React.Fragment>
               );
             })}
           </tbody>
         </table>
       </div>
-
-      {/* Pagination */}
+      )}
       {!filters.pageOff && (
         <div className="flex items-center justify-between mt-2">
           <div className="flex gap-2">
@@ -352,6 +359,7 @@ const fmtDate = (d) => {
       )}
     </div>
   );
+
 }
 
 export default Inventory;

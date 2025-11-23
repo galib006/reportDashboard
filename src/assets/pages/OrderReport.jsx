@@ -14,6 +14,7 @@ function OrderReport() {
 
   const grpData = cndata[0]?.groupedData || [];
 
+
   // Global Search
   const filteredData = grpData.filter((item) =>
     Object.values(item).some((value) =>
@@ -83,6 +84,7 @@ function OrderReport() {
                 <th>SL.</th>
                 <th>Order No.</th>
                 <th>Order Date</th>
+                <th>Category</th>
                 <th>Customer</th>
                 <th>PI No.</th>
                 <th className="text-right">Order Qty</th>
@@ -114,6 +116,7 @@ function OrderReport() {
 
             <tfoot>
               <tr>
+                <th></th>
                 <th></th>
                 <th></th>
                 <th></th>
