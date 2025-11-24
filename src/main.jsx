@@ -1,4 +1,4 @@
-import { StrictMode } from "react";
+import { Component, StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import "./index.css";
 import App from "./App.jsx";
@@ -11,6 +11,7 @@ import DataContext from "./assets/components/DataContext.jsx";
 import Inventory from "./assets/pages/Inventory.jsx";
 import "react-toastify/dist/ReactToastify.css";
 import InventoryIssue from "./assets/pages/InventoryIssue.jsx";
+import Delivery from "./assets/pages/Delivery.jsx";
 
 
 
@@ -29,6 +30,10 @@ const router = createBrowserRouter([
   {
     path: "InventoryIssue",
     Component: InventoryIssue
+  },
+  {
+    path: "Delivery",
+    Component: Delivery
   }
 ],
   },

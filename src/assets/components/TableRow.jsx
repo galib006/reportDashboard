@@ -7,7 +7,7 @@ function TableRow({ data, idx }) {
   const orderQty = Number(data.BreakDownQTY).toFixed(2);
   const challanQty = Number(data.challanqty).toFixed(2);
   const deliveryPercent = ((challanQty / orderQty) * 100).toFixed(0);
-  console.log(data);
+  // console.log(data);
   
   return (
     <>

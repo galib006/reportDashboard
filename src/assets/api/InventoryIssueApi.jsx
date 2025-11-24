@@ -1,6 +1,9 @@
-import React, { createContext } from 'react'
-const inbentoryIssue = createContext()
+import { useContext } from "react"
+import { GetDataContext } from "../components/DataContext"
+
 const InventoryIssueApi = () => {
+  const {cndata, setcndata, setLoading} = useContext(GetDataContext)
+
   return (
     <div>
       <h1>Inventory issue api</h1>

@@ -68,6 +68,9 @@ function Navbar() {
             <li>
               <NavLink to={"InventoryIssue"}>Issue Report</NavLink>
             </li>
+             <li>
+              <NavLink to={"Delivery"}>Delivery</NavLink>
+            </li>
           </ul>
         </div>
         <div className="navbar-end">
