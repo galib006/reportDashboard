@@ -2,7 +2,7 @@ import React, { useContext, useState } from "react";
 import TableRow from "../components/TableRow";
 import { GetDataContext } from "../components/DataContext";
 import { FourSquare } from "react-loading-indicators";
-import OrderForm from "../OrderReport/orderForm";
+import OrderForm from "../OrderReport/OrderForm";
 import ReactPaginate from "react-paginate";
 
 function OrderReport() {
