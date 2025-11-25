@@ -71,6 +71,9 @@ function Navbar() {
              <li>
               <NavLink to={"Delivery"}>Delivery</NavLink>
             </li>
+            <li>
+              <NavLink to={"Employee-LIst"}>Employee</NavLink>
+            </li>
           </ul>
         </div>
         <div className="navbar-end">
