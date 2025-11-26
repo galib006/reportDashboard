@@ -3,6 +3,7 @@ import TableRow from "../components/TableRow";
 import { GetDataContext } from "../components/DataContext";
 import { FourSquare } from "react-loading-indicators";
 import OrderForm from "../OrderReport/OrderForm";
+import * as XLSX from "xlsx";
 import ReactPaginate from "react-paginate";
 
 function OrderReport() {
@@ -52,13 +53,41 @@ function OrderReport() {
   //     </div>
   //   );
   // }
+  const exportToExcel = (currentItems) => {
+  if (!currentItems || currentItems.length === 0) {
+    alert("No data available to export!");
+    return;
+  }
+
+  // শিরোনাম সুন্দরভাবে সাজানো
+  const exportData = currentItems.map((item, index) => ({
+    SL: index + 1,
+    "Order No": item.WorkOrderNo,
+    "Order Date": item.OrderReceiveDate,
+    Customer: item.CustomerName,
+    Category: item.Category,
+    "Sub Category": item.Category,
+    "PI No": item.PINO,
+    "Order Qty": item.BreakDownQTY,
+    "Delivery Qty": item.challanqty,
+    "Delivery Complete": deliveryPercent + "%",
+  }));
+
+  const worksheet = XLSX.utils.json_to_sheet(exportData);
+  const workbook = XLSX.utils.book_new();
+
+  XLSX.utils.book_append_sheet(workbook, worksheet, "Order Report");
+
+  XLSX.writeFile(workbook, "Order_Report.xlsx");
+};
+console.log(deliveryPercent);
 
   return (
     <>
       <OrderForm />
 
       {/* Search Box */}
-      <div className="my-5 px-9">
+      <div className="flex justify-between my-5 px-9">
         <input
           type="text"
           className="input"
@@ -69,6 +98,12 @@ function OrderReport() {
             setItemOffset(0); // search দিলে pagination reset হবে
           }}
         />
+        <button
+    onClick={() => exportToExcel(filteredData)}
+    className="btn btn-success px-4 py-2 text-white font-semibold rounded"
+  >
+    Export Excel
+  </button>
       </div>
 
       {loading ? (

@@ -3,7 +3,8 @@ import React, { useContext, useState } from "react";
 import { GetDataContext } from "../components/DataContext";
 import DateRangePicker from "../components/DatePickerData";
 import { FourSquare } from "react-loading-indicators";
-import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
+import { saveAs } from "file-saver";
 
 function EmployeeListSingleSheet() {
   const { cndata, loading, setLoading } = useContext(GetDataContext);
@@ -12,7 +13,7 @@ function EmployeeListSingleSheet() {
   const DateFormat = (e) => {
     if (!e) return "";
     const dateObj = new Date(e);
-    return dateObj.toLocaleDateString("en-GB"); // DD/MM/YYYY
+    return dateObj.toLocaleDateString("en-GB");
   };
 
   const apiKey = localStorage.getItem("apiKey");
@@ -25,6 +26,7 @@ function EmployeeListSingleSheet() {
         `https://tpl-api.ebs365.info/api/HRMBI/HRM_GET_EmployeeInformation_ReportExcel?CompanyID=1&DepartmentID=2&SectionID=0&LineID=0&FloorID=0&EmpTypeID=4&CommandID=1&MM=November&YYYY=2025`,
         { headers: { Authorization: `${apiKey}` } }
       );
+
       setApiData(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
       console.error("Error fetching employee data:", err);
@@ -33,88 +35,133 @@ function EmployeeListSingleSheet() {
     }
   };
 
-  // Group data by section
+  // Group by Section
   const uniqueSection = [...new Set(apiData.map((item) => item.SectionName))];
   const grpData = uniqueSection.map((section) => ({
     Section: section,
     Employee: apiData.filter((data) => data.SectionName === section),
   }));
 
-  const ExportExcelWithAllSheet = (grpData) => {
+  // ExcelJS Export
+  const ExportExcelWithAllSheet = async (grpData) => {
     if (!grpData || grpData.length === 0) return;
 
-    const wb = XLSX.utils.book_new();
+    const wb = new ExcelJS.Workbook();
 
-    // --- Individual section sheets ---
+    // Common header row
+    const headerRow = [
+      "SL",
+      "Employee ID",
+      "Employee Name",
+      "Joining Date",
+      "Designation",
+      "Remarks",
+    ];
+
+    // STYLE BLOCK
+    const headerStyle = {
+      font: { bold: true },
+      alignment: { horizontal: "center", vertical: "middle" },
+      border: {
+        top: { style: "thin" },
+        left: { style: "thin" },
+        bottom: { style: "thin" },
+        right: { style: "thin" },
+      },
+      fill: {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "FFE2E2E2" },
+      },
+    };
+
+    const sectionStyle = {
+      font: { bold: true, size: 14 },
+      alignment: { horizontal: "center", vertical: "middle" },
+      fill: {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "FFCCE5FF" },
+      },
+    };
+
+    const cellBorder = {
+      top: { style: "thin" },
+      left: { style: "thin" },
+      bottom: { style: "thin" },
+      right: { style: "thin" },
+    };
+
+    // Create individual sheets
     grpData.forEach((section) => {
-      const ws_data = [];
-      ws_data.push([section.Section]);
-      ws_data.push([
-        "SL",
-        "Employee ID",
-        "Employee Name",
-        "Joining Date",
-        "Section",
-        "Designation",
-      ]);
+      const ws = wb.addWorksheet(section.Section);
+
+      // Merge & Style Section Name Row
+      ws.mergeCells("A1:F1");
+      ws.getCell("A1").value = section.Section;
+      ws.getCell("A1").style = sectionStyle;
+
+      // Add header
+      const header = ws.addRow(headerRow);
+      header.eachCell((cell) => (cell.style = headerStyle));
+
+      // Add employee rows
       section.Employee.forEach((emp, idx) => {
-        ws_data.push([
+        const row = ws.addRow([
           idx + 1,
           emp.EmpIDNo,
           emp.EmpName,
-          emp.DateOfJoining ? new Date(emp.DateOfJoining) : "",
-          emp.SectionName,
+          DateFormat(emp.DateOfJoining),
           emp.Designation,
+          "",
         ]);
+
+        row.eachCell((cell) => {
+          cell.border = cellBorder;
+        });
       });
 
-      const ws = XLSX.utils.aoa_to_sheet(ws_data);
-      ws["!merges"] = ws["!merges"] || [];
-      ws["!merges"].push({ s: { r: 0, c: 0 }, e: { r: 0, c: 5 } });
-
-      XLSX.utils.book_append_sheet(wb, ws, section.Section);
+      // Auto width
+      ws.columns.forEach((col) => {
+        col.width = 20;
+      });
     });
 
-    // --- Combined sheet for all sections ---
-    const combined_data = [];
+    // Combined Sheet
+    const combined = wb.addWorksheet("All Employees");
+
     grpData.forEach((section) => {
-      combined_data.push([section.Section]); // Section row
-      combined_data.push([
-        "SL",
-        "Employee ID",
-        "Employee Name",
-        "Joining Date",
-        "Section",
-        "Designation",
-      ]);
+      // Section Row
+      const startRow = combined.lastRow ? combined.lastRow.number + 1 : 1;
+      combined.mergeCells(`A${startRow}:F${startRow}`);
+      const sCell = combined.getCell(`A${startRow}`);
+      sCell.value = section.Section;
+      sCell.style = sectionStyle;
+
+      // Header Row
+      const header = combined.addRow(headerRow);
+      header.eachCell((cell) => (cell.style = headerStyle));
+
+      // Employees
       section.Employee.forEach((emp, idx) => {
-        combined_data.push([
+        const row = combined.addRow([
           idx + 1,
           emp.EmpIDNo,
           emp.EmpName,
-          emp.DateOfJoining ? new Date(emp.DateOfJoining) : "",
-          emp.SectionName,
+          DateFormat(emp.DateOfJoining),
           emp.Designation,
+          "",
         ]);
+
+        row.eachCell((cell) => (cell.border = cellBorder));
       });
     });
 
-    const combined_ws = XLSX.utils.aoa_to_sheet(combined_data);
+    combined.columns.forEach((col) => (col.width = 20));
 
-    // Merge section rows in combined sheet
-    let rowIndex = 0;
-    grpData.forEach((section) => {
-      combined_ws["!merges"] = combined_ws["!merges"] || [];
-      combined_ws["!merges"].push({
-        s: { r: rowIndex, c: 0 },
-        e: { r: rowIndex, c: 5 },
-      });
-      rowIndex += 2 + section.Employee.length;
-    });
-
-    XLSX.utils.book_append_sheet(wb, combined_ws, "All Employees");
-
-    XLSX.writeFile(wb, "EmployeeData_AllTabs.xlsx");
+    // Save File
+    const buffer = await wb.xlsx.writeBuffer();
+    saveAs(new Blob([buffer]), "EmployeeData_AllTabs.xlsx");
   };
 
   return (
@@ -149,6 +196,7 @@ function EmployeeListSingleSheet() {
             <th>Designation</th>
           </tr>
         </thead>
+
         <tbody>
           {grpData.map((emp, idx) => (
             <React.Fragment key={idx}>

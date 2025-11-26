@@ -69,6 +69,7 @@ function OrderForm() {
           }
 
           acc[key].CustomerName = item.CName;
+          acc[key].PINO = item.CustomerPINo;
           acc[key].challanqty += Number(item.ChallanQTY);
           acc[key].BreakDownQTY += Number(item.BreakDownQTY || 0);
           acc[key].TotalOrderValue += Number(item.TotalOrderValue || 0);
