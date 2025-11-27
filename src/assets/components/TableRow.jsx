@@ -35,7 +35,7 @@ function TableRow({ data, idx }) {
             Buyer: <span className="text-blue-500">{data.Buyer}</span>
           </span>
         </td>
-        <td>{data.CustomerPINo ? data.CustomerPINo : "-"}</td>
+        <td>{data.PINO ? data.PINO : "-"}</td>
         <td className="text-right">{orderQty}</td>
         <td className="text-right">{challanQty}</td>
         <td
