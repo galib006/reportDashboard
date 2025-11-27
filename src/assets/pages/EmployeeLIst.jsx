@@ -37,13 +37,43 @@ function EmployeeListSingleSheet() {
       setLoading(false);
     }
   };
+const designationPriority = {
+  "Supervisor": 1,
+  "Incharge": 2,
+  "Sr. Operator": 3,
+  "Operator": 4,
+  "Helper": 5,
+  "Operator (Washing)": 6,
+  "Helper (Washing)": 7,
+  "Quality Controller (Finishing)": 8,
+  "Helper ( Finishing)": 9,
+  "Operator (Warping)": 10,
+  "Technician (Rubber Covering)": 11,
+  "Helper (Warping)": 12,
+  "Q.C (Finishing)": 13,
+};
 
-  // Group by Section
-  const uniqueSection = [...new Set(apiData.map((item) => item.SectionName))];
-  const grpData = uniqueSection.map((section) => ({
+// Group by section
+const uniqueSection = [...new Set(apiData.map((item) => item.SectionName))];
+
+const grpData = uniqueSection.map((section) => {
+  // Step 1: এই section এর employee ফিল্টার করা
+  const employees = apiData.filter((item) => item.SectionName === section);
+
+  // Step 2: designation priority অনুযায়ী sort করা
+  const sortedEmployees = employees.sort((a, b) => {
+    const rankA = designationPriority[a.Designation] || 999;
+    const rankB = designationPriority[b.Designation] || 999;
+    return rankA - rankB;
+  });
+
+  return {
     Section: section,
-    Employee: apiData.filter((data) => data.SectionName === section),
-  }));
+    Employee: sortedEmployees,
+  };
+});
+
+console.log(grpData);
 
   // ExcelJS Export
   const ExportExcelWithAllSheet = async (grpData) => {
