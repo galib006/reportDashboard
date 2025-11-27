@@ -1,14 +1,17 @@
 import axios from "axios";
-import React, { useContext, useState } from "react";
+import React, { useContext, useEffect, useState } from "react";
 import { GetDataContext } from "../components/DataContext";
 import DateRangePicker from "../components/DatePickerData";
 import { FourSquare } from "react-loading-indicators";
 import ExcelJS from "exceljs";
 import { saveAs } from "file-saver";
+import { DatePicker, LocalizationProvider } from "@mui/x-date-pickers";
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 
 function EmployeeListSingleSheet() {
   const { cndata, loading, setLoading } = useContext(GetDataContext);
   const [apiData, setApiData] = useState([]);
+  const [month,setMonth] = useState('')
 
   const DateFormat = (e) => {
     if (!e) return "";
@@ -23,7 +26,7 @@ function EmployeeListSingleSheet() {
     setLoading(true);
     try {
       const res = await axios.get(
-        `https://tpl-api.ebs365.info/api/HRMBI/HRM_GET_EmployeeInformation_ReportExcel?CompanyID=1&DepartmentID=2&SectionID=0&LineID=0&FloorID=0&EmpTypeID=4&CommandID=1&MM=November&YYYY=2025`,
+        `https://tpl-api.ebs365.info/api/HRMBI/HRM_GET_EmployeeInformation_ReportExcel?CompanyID=1&DepartmentID=2&SectionID=0&LineID=0&FloorID=0&EmpTypeID=4&CommandID=1&MM=November&YYYY=${year}`,
         { headers: { Authorization: `${apiKey}` } }
       );
 
@@ -164,17 +167,33 @@ function EmployeeListSingleSheet() {
     saveAs(new Blob([buffer]), "EmployeeData_AllTabs.xlsx");
   };
 
+console.log(month);
+
+    const year = month.year;
+    const mnt = month.month;
+
+
   return (
     <div className="p-4">
       <form onSubmit={fetchEmployees}>
         <div className="flex justify-center items-center gap-4 mb-4">
-          <DateRangePicker />
-          <input type="submit" value="Submit" className="btn btn-success" />
+          {/* <DateRangePicker /> */}
+          <LocalizationProvider dateAdapter={AdapterDayjs}>
+          <DatePicker label={'Month'} views={['month', 'year']} onChange={(value) => {
+  const month = value?.month() + 1; // 0-based index
+  const year = value?.year();
+  
+  setMonth({ month, year });
+}}  />
+          </LocalizationProvider>
+
+          <input type="submit" value="Submit" className={`btn btn-success`} disabled={!month}/>
           <input
             type="button"
             value="Export Excel"
-            className="btn btn-success"
+            className={`btn btn-success`}
             onClick={() => ExportExcelWithAllSheet(grpData)}
+            disabled={grpData ==""}
           />
         </div>
       </form>
