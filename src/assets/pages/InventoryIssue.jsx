@@ -54,8 +54,30 @@ const edDate = cndata?.endDate
       setLoading(false)
     }
   }
-  const data = cndata.inventory
+  const data = cndata.inventory || [];
   console.log(data);
+  const ddd = data.map((data,idx)=>data.CostCenterName) || 0;
+  const costCenter = [...new Set(data.map((data)=>data.CostCenterName))] || 0;
+  // console.log(costCenter);
+  const FilterData = costCenter.map((aaa)=>{
+    // return uniqueReq
+    return{
+    CostCenter: aaa,
+    Item: data.filter((dd)=>(
+        aaa == dd.CostCenterName
+    ))}
+  })
+  // const uniqueReq = [...new Set(FilterData.RequisitionNo)]
+  // console.log(uniqueReq);
+  const ReqNO =  FilterData.map((data)=>data.Item.map(dd));
+  console.log(ReqNO);
+  
+  
+  
+
+  // const uniqueItem =[...new Set(FilterData.map(data=>data.Item))] || [];
+  // const 
+  // console.log(uniqueItem);
   
   return (
     <>
@@ -86,8 +108,14 @@ const edDate = cndata?.endDate
             </thead>
             <tbody>
               {
-              data && data.map((dd,idx)=>(
-                <tr key={idx}>
+              FilterData && FilterData.map((dd,idx)=>(
+                <>
+                <tr className='text-2xl bg-blue-300 font-bold' key={idx}>
+                  <td colspan="100%">{dd.CostCenter}</td>
+                </tr>
+                {
+                  dd.Item.map((dd,idx)=>(
+                  <tr key={idx}>
                   <td>
                     {idx+1}
                   </td>
@@ -95,7 +123,9 @@ const edDate = cndata?.endDate
                   <td>{dd.RequisitionNo}</td>
                   <td>{DateFormat(dd.RequisitionDate)}</td>
                 </tr>
-                
+                ))
+                }
+                </>
               ))}
             </tbody>
           </table>
