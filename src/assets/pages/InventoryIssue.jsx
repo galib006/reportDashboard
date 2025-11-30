@@ -55,22 +55,34 @@ const edDate = cndata?.endDate
     }
   }
   const data = cndata.inventory || [];
-  console.log(data);
+  // console.log(data);
   const ddd = data.map((data,idx)=>data.CostCenterName) || 0;
-  const costCenter = [...new Set(data.map((data)=>data.CostCenterName))] || 0;
+  const mtn = data.map((data,idx)=>data.MaterialName) || 0;
+  const uniqueMaterilaName = [...new Set(mtn.map((data)=>data))]
+  console.log(uniqueMaterilaName);
+  const costCenter = [...new Set(ddd.map((data)=>data))] || 0;
+  
   // console.log(costCenter);
   const FilterData = costCenter.map((aaa)=>{
     // return uniqueReq
-    return{
-    CostCenter: aaa,
-    Item: data.filter((dd)=>(
-        aaa == dd.CostCenterName
-    ))}
+    // return{
+    // CostCenter: aaa,
+    // Item: uniqueMaterilaName.map((mtt)=>{
+    //     return{
+    //         Material: mtt,
+    //         Mttt: data.filter((e)=>{
+    //           return e.CostCenterName == aaa && e.MaterialName == mtt
+    //         })
+
+    //       }
+    // })  
+    // }
   })
+  console.log(FilterData)
   // const uniqueReq = [...new Set(FilterData.RequisitionNo)]
   // console.log(uniqueReq);
-  const ReqNO =  FilterData.map((data)=>data.Item.map(dd));
-  console.log(ReqNO);
+  // const ReqNO =  FilterData.map((data)=>data.Item.map(dd));
+  // console.log(ReqNO);
   
   
   
