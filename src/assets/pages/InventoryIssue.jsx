@@ -65,18 +65,18 @@ const edDate = cndata?.endDate
   // console.log(costCenter);
   const FilterData = costCenter.map((aaa)=>{
     // return uniqueReq
-    // return{
-    // CostCenter: aaa,
-    // Item: uniqueMaterilaName.map((mtt)=>{
-    //     return{
-    //         Material: mtt,
-    //         Mttt: data.filter((e)=>{
-    //           return e.CostCenterName == aaa && e.MaterialName == mtt
-    //         })
+    return{
+    CostCenter: aaa,
+    Item: uniqueMaterilaName.map((mtt)=>{
+        return{
+            Material: mtt,
+            Mttt: data.filter((e)=>{
+              return e.CostCenterName == aaa && e.MaterialName == mtt
+            })
 
-    //       }
-    // })  
-    // }
+          }
+    })  
+    }
   })
   console.log(FilterData)
   // const uniqueReq = [...new Set(FilterData.RequisitionNo)]
