@@ -58,12 +58,13 @@ const edDate = cndata?.endDate
   // console.log(data);
   const ddd = data.map((data,idx)=>data.CostCenterName) || 0;
   const mtn = data.map((data,idx)=>data.MaterialName) || 0;
-  const uniqueMaterilaName = [...new Set(mtn.map((data)=>data))]
-  console.log(uniqueMaterilaName);
   const costCenter = [...new Set(ddd.map((data)=>data))] || 0;
   
   // console.log(costCenter);
   const FilterData = costCenter.map((aaa)=>{
+    const uniqueMaterilaName = [...new Set(data.filter((dd)=>aaa == dd.CostCenterName).map(((aa)=>aa.MaterialName)))]
+    console.log(uniqueMaterilaName);
+    
     // return uniqueReq
     return{
     CostCenter: aaa,
@@ -127,14 +128,18 @@ const edDate = cndata?.endDate
                 </tr>
                 {
                   dd.Item.map((dd,idx)=>(
-                  <tr key={idx}>
-                  <td>
-                    {idx+1}
-                  </td>
-                  <td>{dd.CostCenterName}</td>
-                  <td>{dd.RequisitionNo}</td>
-                  <td>{DateFormat(dd.RequisitionDate)}</td>
-                </tr>
+                    {
+                      dd.Mttt.map((dd,idx)=>(
+                  
+                      <tr key={idx}>
+                    <td>{dd.CostCenterName}</td>
+                    <td>{dd.RequisitionNo}</td>
+                    <td>{DateFormat(dd.RequisitionDate)}</td>
+                    </tr>
+         
+                    ))
+                  }
+                  
                 ))
                 }
                 </>
