@@ -56,10 +56,6 @@ function InventoryIssue() {
   const ddd = data.map((data, idx) => data.CostCenterName) || 0;
   const mtn = data.map((data, idx) => data.MaterialName) || 0;
   const costCenter = [...new Set(ddd.map((data) => data))] || 0;
-  const allReqNo = data.map((data) => data.RequisitionNo);
-  // const allReqNo = data.map((data) => data.RequisitionNo);
-  const UniqueReqNo = [...new Set(allReqNo)];
-  console.log(UniqueReqNo);
 
   // console.log(costCenter);
   const FilterData = costCenter.map((aaa) => {
@@ -70,24 +66,17 @@ function InventoryIssue() {
           .map((aa) => aa.MaterialName)
       ),
     ];
+    console.log(uniqueMaterilaName);
 
+    // return uniqueReq
     return {
       CostCenter: aaa,
       Item: uniqueMaterilaName.map((mtt) => {
-        const MaterialName = data.filter((e) => {
-          return e.CostCenterName == aaa && e.MaterialName == mtt;
-        });
-        const UniqueMaterialName = MaterialName.filter(
-          (e) => e.RequisitionNo == UniqueReqNo
-        );
         return {
           Material: mtt,
-          mtt: UniqueMaterialName,
-          // .map((data) => {
-          //   return {
-          //     reqNO: data.filter((dd) => dd.RequisitionNo == allReqNo),
-          //   };
-          // }),
+          Mttt: data.filter((e) => {
+            return e.CostCenterName == aaa && e.MaterialName == mtt;
+          }),
         };
       }),
     };
@@ -128,26 +117,28 @@ function InventoryIssue() {
               </tr>
             </thead>
             <tbody>
-              {/* {FilterData &&
-                FilterData.map((dd, idx) => ( */}
-              <>
-                {/* <tr className="text-2xl bg-blue-300 font-bold" key={idx}>
+              {FilterData &&
+                FilterData.map((dd, idx) => (
+                  <>
+                    <tr className="text-2xl bg-blue-300 font-bold" key={idx}>
                       <td colspan="100%">{dd.CostCenter}</td>
-                    </tr> */}
-                {/* {dd.Item.map((dd, idx) => ( */}
-                {/* <> */}
-                {/* {dd.Mttt.map((dd, idx) => (
+                    </tr>
+                    {dd.Item.map((dd, idx) => (
+                      <>
+                        {/* <td>{idx + 1}</td> */}
+                        {dd.Mttt.map((dd, idx) => (
                           <tr key={idx}>
                             <td>{idx + 1}</td>
+                            {/* <td>{dd.CostCenterName}</td> */}
                             <td>{dd.MaterialName}</td>
                             <td>{dd.RequisitionNo}</td>
                             <td>{DateFormat(dd.RequisitionDate)}</td>
                           </tr>
-                        ))} */}
-              </>
-              {/* // ))}
+                        ))}
+                      </>
+                    ))}
                   </>
-                ))} */}
+                ))}
             </tbody>
           </table>
         )}
