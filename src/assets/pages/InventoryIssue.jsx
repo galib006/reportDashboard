@@ -59,7 +59,7 @@ function InventoryIssue() {
   const allReqNo = data.map((data) => data.RequisitionNo);
   // const allReqNo = data.map((data) => data.RequisitionNo);
   const UniqueReqNo = [...new Set(allReqNo)];
-  console.log(UniqueReqNo);
+  // console.log(UniqueReqNo);
 
   // console.log(costCenter);
   const FilterData = costCenter.map((aaa) => {
@@ -77,12 +77,31 @@ function InventoryIssue() {
         const MaterialName = data.filter((e) => {
           return e.CostCenterName == aaa && e.MaterialName == mtt;
         });
-        const UniqueMaterialName = MaterialName.filter(
-          (e) => e.RequisitionNo == UniqueReqNo
+        const UnReqNO = data.filter(
+          (e) => e.CostCenterName == aaa && e.MaterialName == mtt && UniqueReqNo.includes(e.RequisitionNo)
         );
+        
+        
+        
         return {
           Material: mtt,
-          mtt: UniqueMaterialName,
+          RequistionNO: UnReqNO.map(ee=>{
+            // const unReq = ee.includes((e.UnReqNO))
+            console.log(ee.RequisitionNo);
+            
+            // const unqReqq = [...new Set(Rqqno.map((e)=>e))]
+            // console.log(unqReqq);
+            
+
+            return ee.RequisitionNo
+
+          }),
+          mtt: UnReqNO.map((dta)=>{
+            return(
+             data.RequistionNO
+              
+            )
+          }),
           // .map((data) => {
           //   return {
           //     reqNO: data.filter((dd) => dd.RequisitionNo == allReqNo),
