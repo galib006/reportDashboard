@@ -11,6 +11,7 @@ function InventoryIssue() {
   const { cndata, setcndata, loading, setLoading } = useContext(GetDataContext);
   const [costCenter,setCostcenter] = useState([]);
   const [itemName,setitemName] = useState([]);
+  const [reqDaatee,setreqDaatee] = useState('');
   // console.log(cndata);
   const DateFormat = (e) => {
     const Ndate = Date(e).toString(enGB);
@@ -79,8 +80,12 @@ function InventoryIssue() {
       // Group by RequisitionNo
       const requisitions = [...new Set(filteredItems.map(item => item.RequisitionNo))].map(reqNo => {
         const reqData = filteredItems.filter(item => item.RequisitionNo === reqNo); // all data for this requisition
+        const reqDate = filteredItems.find(item => item.RequisitionNo === reqNo); // all data for this requisition
+        // setreqDaatee(reqDate.RequisitionDate);
+        
         return {
           RequisitionNo: reqNo,
+          RequistionDate: reqDate.RequisitionDate,
           Data: reqData
         };
       });
