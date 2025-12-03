@@ -26,7 +26,7 @@ function EmployeeListSingleSheet() {
     setLoading(true);
     try {
       const res = await axios.get(
-        `https://tpl-api.ebs365.info/api/HRMBI/HRM_GET_EmployeeInformation_ReportExcel?CompanyID=1&DepartmentID=2&SectionID=0&LineID=0&FloorID=0&EmpTypeID=4&CommandID=1&MM=November&YYYY=${year}`,
+        `https://tpl-api.ebs365.info/api/HRMBI/HRM_GET_EmployeeInformation_ReportExcel?CompanyID=1&DepartmentID=0&SectionID=0&LineID=0&FloorID=0&EmpTypeID=4&CommandID=1&MM=[December]&YYYY=${year}`,
         { headers: { Authorization: `${apiKey}` } }
       );
 

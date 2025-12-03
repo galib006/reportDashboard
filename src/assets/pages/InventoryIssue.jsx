@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useMemo } from "react";
+import React, { useContext, useEffect, useMemo, useState } from "react";
 import DateRangePicker from "../components/DatePickerData";
 import { GetDataContext } from "../components/DataContext";
 import axios from "axios";
@@ -9,6 +9,8 @@ import { enGB } from "date-fns/locale";
 
 function InventoryIssue() {
   const { cndata, setcndata, loading, setLoading } = useContext(GetDataContext);
+  const [costCenter,setCostcenter] = useState([]);
+  const [itemName,setitemName] = useState([]);
   // console.log(cndata);
   const DateFormat = (e) => {
     const Ndate = Date(e).toString(enGB);
@@ -57,6 +59,7 @@ function InventoryIssue() {
   const data = cndata.inventory || [];
 
   const costCenters = [...new Set(data.map(item => item.CostCenterName))];
+  setCostcenter(costCenters.sort());
 
   const filteredData = costCenters.map(cc => {
     // Materials in this cost center
@@ -64,6 +67,10 @@ function InventoryIssue() {
       data.filter(item => item.CostCenterName === cc)
           .map(item => item.MaterialName)
     )];
+    const UniqueMaterial = [...new Set(data.map((data)=>data.MaterialName))]
+    // console.log(data.MaterialName);
+    
+    setitemName(UniqueMaterial.sort())
 
     const items = materials.map(mat => {
       // Items for this cost center + material
@@ -72,7 +79,6 @@ function InventoryIssue() {
       // Group by RequisitionNo
       const requisitions = [...new Set(filteredItems.map(item => item.RequisitionNo))].map(reqNo => {
         const reqData = filteredItems.filter(item => item.RequisitionNo === reqNo); // all data for this requisition
-
         return {
           RequisitionNo: reqNo,
           Data: reqData
@@ -90,11 +96,9 @@ function InventoryIssue() {
       Item: items
     };
   });
-
+  console.log(filteredData)
   return filteredData;
-}, [cndata.inventory]);
-
-console.log(UseData);
+}, [cndata.inventory, setCostcenter,setitemName]);
 
 
   // console.log(FilterData);
@@ -121,41 +125,114 @@ console.log(UseData);
             <FourSquare color="#32cd32" size="large" />
           </div>
         ) : (
-          <table className="table">
-            <thead>
-              <tr>
-                <th>SL.</th>
-                <th>Section</th>
-                <th>Req No</th>
-                <th>Req Date</th>
-                <th>Issue No.</th>
-                <th>Issue Date</th>
-              </tr>
-            </thead>
-            <tbody>
-              {UseData &&
-                UseData.map((dd, idx) => (
-              <>
-                <tr className="text-2xl bg-blue-300 font-bold" key={idx}>
-                      <td colspan="100%">{dd.CostCenter}</td>
-                    </tr>
-                {dd.Item.map((dd, idx) => (
-              <> 
-                
-                          <tr key={idx}>
-                            <td>{idx + 1}</td>
-                            <td>{dd.Material}</td>
-                            <td>{dd.Requisitions.map((data)=><tr><td>{data.RequisitionNo}</td></tr>)}</td>
-                            <td>{dd.Requisitions.map((data)=><tr><td>{data.Data.map((dd)=>dd.RequiredQTY)}</td></tr>)}</td>
-                            {/* <td>{DateFormat(dd.RequisitionDate)}</td> */}
-                          </tr>
-                       
-              </>
-               ))}
-                  </>
+          <>
+      <div className="flex gap-5">
+        { costCenter == '' ?  
+        ""
+      : 
+      <>      <select defaultValue="Pick a text editor" className="select select-primary">
+        <option disabled={false}>-- Select Section --</option>
+        {
+          costCenter && costCenter.map((data,idx)=>(
+            <option key={idx}>{data}</option>
+          ))
+        }
+      </select>
+      <select defaultValue="Pick a text editor" className="select select-primary">
+        <option disabled={false}>-- Select Item --</option>
+        {
+          itemName && itemName.map((data,idx)=>(
+            <option key={idx}>{data}</option>
+          ))
+        }
+      </select>
+      </>
+      }
+      </div>
+         <table className="table">
+  <thead></thead>
+  <tbody>
+    {UseData &&
+      UseData.map((dd, idx) => (
+        <React.Fragment key={idx}>
+          {/* CostCenter Header Row */}
+          <tr className="text-2xl bg-blue-300 font-bold">
+            <td colSpan="100%">{dd.CostCenter}</td>
+          </tr>
+
+          {/* Table Column Header */}
+          <tr>
+            <th>SL.</th>
+            <th>Section</th>
+            <th>Req No</th>
+            <th>Req Date</th>
+            <th>Req QTY</th>
+            <th>Issue No.</th>
+            <th>Issue Date</th>
+          </tr>
+
+          {/* Item Rows */}
+          {dd.Item.map((item, idx2) => (
+            <tr key={idx2}>
+              <td>{idx2 + 1}</td>
+
+              {/* Section / Material */}
+              <td>{item.Material}</td>
+
+              {/* Req No – show list using <div> */}
+              <td>
+                {item.Requisitions.map((r, i) => (
+                  <div key={i}>{r.RequisitionNo}</div>
                 ))}
-            </tbody>
-          </table>
+              </td>
+
+              {/* Req Date */}
+              <td>
+                
+                {item.Requisitions.map((r, i) => (
+                 <div>
+                
+                  { r.Data.map((data,i)=>{
+                    return <div key={i}>{data.RequisitionDate ? new Date(data.RequisitionDate).toLocaleString(enGB).split(",", 1) : ""}  </div>
+                  })}
+                 </div>
+                ))}
+              </td>
+
+              {/* Req QTY */}
+              <td>
+                {item.Requisitions.map((r, i) => (
+                  <div key={i}>
+                    {r.Data?.reduce((sum, d) => sum + (d.RequiredQTY || 0), 0)}
+                  </div>
+                ))}
+              </td>
+
+              {/* Issue No */}
+              <td>
+                {item.Requisitions.map((r, i) => (
+                  <div key={i}>{r.IssueNo}</div>
+                ))}
+              </td>
+
+              {/* Issue Date */}
+              <td>
+                {item.Requisitions.map((r, i) => (
+                  <div key={i}>
+                    {r.IssueDate
+                      ? new Date(r.IssueDate).toLocaleDateString()
+                      : ""}
+                  </div>
+                ))}
+              </td>
+            </tr>
+          ))}
+        </React.Fragment>
+      ))}
+  </tbody>
+</table>
+
+          </>
         )}
       </>
     </>
