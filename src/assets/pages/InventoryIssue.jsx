@@ -1,4 +1,4 @@
-import React, { useContext, useEffect } from "react";
+import React, { useContext, useEffect, useMemo } from "react";
 import DateRangePicker from "../components/DatePickerData";
 import { GetDataContext } from "../components/DataContext";
 import axios from "axios";
@@ -22,8 +22,8 @@ function InventoryIssue() {
     : "";
 
   const apiKey = localStorage.getItem("apiKey");
-  const InvIssue = async (e) => {
-    e.preventDefault();
+
+    const InvIssue = async (e) => {
     if (!cndata.startDate || !cndata.endDate) {
       toast.error("Please Select Start & End Date");
       return;
@@ -51,67 +51,53 @@ function InventoryIssue() {
       setLoading(false);
     }
   };
-  const data = cndata.inventory || [];
-  // console.log(data);
-  const ddd = data.map((data, idx) => data.CostCenterName) || 0;
-  const mtn = data.map((data, idx) => data.MaterialName) || 0;
-  const costCenter = [...new Set(ddd.map((data) => data))] || 0;
-  const allReqNo = data.map((data) => data.RequisitionNo);
-  // const allReqNo = data.map((data) => data.RequisitionNo);
-  const UniqueReqNo = [...new Set(allReqNo)];
-  // console.log(UniqueReqNo);
 
-  // console.log(costCenter);
-  const FilterData = costCenter.map((aaa) => {
-    const uniqueMaterilaName = [
-      ...new Set(
-        data
-          .filter((dd) => aaa == dd.CostCenterName)
-          .map((aa) => aa.MaterialName)
-      ),
-    ];
+  
+  const UseData = useMemo(() => {
+  const data = cndata.inventory || [];
+
+  const costCenters = [...new Set(data.map(item => item.CostCenterName))];
+
+  const filteredData = costCenters.map(cc => {
+    // Materials in this cost center
+    const materials = [...new Set(
+      data.filter(item => item.CostCenterName === cc)
+          .map(item => item.MaterialName)
+    )];
+
+    const items = materials.map(mat => {
+      // Items for this cost center + material
+      const filteredItems = data.filter(item => item.CostCenterName === cc && item.MaterialName === mat);
+
+      // Group by RequisitionNo
+      const requisitions = [...new Set(filteredItems.map(item => item.RequisitionNo))].map(reqNo => {
+        const reqData = filteredItems.filter(item => item.RequisitionNo === reqNo); // all data for this requisition
+
+        return {
+          RequisitionNo: reqNo,
+          Data: reqData
+        };
+      });
+
+      return {
+        Material: mat,
+        Requisitions: requisitions
+      };
+    });
 
     return {
-      CostCenter: aaa,
-      Item: uniqueMaterilaName.map((mtt) => {
-        const MaterialName = data.filter((e) => {
-          return e.CostCenterName == aaa && e.MaterialName == mtt;
-        });
-        const UnReqNO = data.filter(
-          (e) => e.CostCenterName == aaa && e.MaterialName == mtt && UniqueReqNo.includes(e.RequisitionNo)
-        );
-        
-        
-        
-        return {
-          Material: mtt,
-          RequistionNO: UnReqNO.map(ee=>{
-            // const unReq = ee.includes((e.UnReqNO))
-            console.log(ee.RequisitionNo);
-            
-            // const unqReqq = [...new Set(Rqqno.map((e)=>e))]
-            // console.log(unqReqq);
-            
-
-            return ee.RequisitionNo
-
-          }),
-          mtt: UnReqNO.map((dta)=>{
-            return(
-             data.RequistionNO
-              
-            )
-          }),
-          // .map((data) => {
-          //   return {
-          //     reqNO: data.filter((dd) => dd.RequisitionNo == allReqNo),
-          //   };
-          // }),
-        };
-      }),
+      CostCenter: cc,
+      Item: items
     };
   });
-  console.log(FilterData);
+
+  return filteredData;
+}, [cndata.inventory]);
+
+console.log(UseData);
+
+
+  // console.log(FilterData);
   // const uniqueReq = [...new Set(FilterData.RequisitionNo)]
   // console.log(uniqueReq);
   // const ReqNO =  FilterData.map((data)=>data.Item.map(dd));
@@ -123,7 +109,7 @@ function InventoryIssue() {
 
   return (
     <>
-      <form action="" onSubmit={(e) => InvIssue(e)}>
+      <form action="" onSubmit={(e) =>{ e.preventDefault(); InvIssue(e);}}>
         <div className="flex justify-center items-center gap-4">
           <DateRangePicker />
           <input type="submit" value="Submit" className="btn btn-success" />
@@ -147,26 +133,27 @@ function InventoryIssue() {
               </tr>
             </thead>
             <tbody>
-              {/* {FilterData &&
-                FilterData.map((dd, idx) => ( */}
+              {UseData &&
+                UseData.map((dd, idx) => (
               <>
-                {/* <tr className="text-2xl bg-blue-300 font-bold" key={idx}>
+                <tr className="text-2xl bg-blue-300 font-bold" key={idx}>
                       <td colspan="100%">{dd.CostCenter}</td>
-                    </tr> */}
-                {/* {dd.Item.map((dd, idx) => ( */}
-                {/* <> */}
-                {/* {dd.Mttt.map((dd, idx) => (
+                    </tr>
+                {dd.Item.map((dd, idx) => (
+              <> 
+                
                           <tr key={idx}>
                             <td>{idx + 1}</td>
-                            <td>{dd.MaterialName}</td>
-                            <td>{dd.RequisitionNo}</td>
-                            <td>{DateFormat(dd.RequisitionDate)}</td>
+                            <td>{dd.Material}</td>
+                            <td>{dd.Requisitions.map((data)=><tr><td>{data.RequisitionNo}</td></tr>)}</td>
+                            <td>{dd.Requisitions.map((data)=><tr><td>{data.Data.map((dd)=>dd.RequiredQTY)}</td></tr>)}</td>
+                            {/* <td>{DateFormat(dd.RequisitionDate)}</td> */}
                           </tr>
-                        ))} */}
+                       
               </>
-              {/* // ))}
+               ))}
                   </>
-                ))} */}
+                ))}
             </tbody>
           </table>
         )}
