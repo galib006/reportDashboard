@@ -12,6 +12,7 @@ function InventoryIssue() {
   const [costCenter,setCostcenter] = useState([]);
   const [itemName,setitemName] = useState([]);
   const [reqDaatee,setreqDaatee] = useState('');
+  const [TotalreqQty,setTotalreqQty] = useState('');
   // console.log(cndata);
   const DateFormat = (e) => {
     const Ndate = Date(e).toString(enGB);
@@ -81,18 +82,19 @@ function InventoryIssue() {
       const requisitions = [...new Set(filteredItems.map(item => item.RequisitionNo))].map(reqNo => {
         const reqData = filteredItems.filter(item => item.RequisitionNo === reqNo); // all data for this requisition
         const reqDate = filteredItems.find(item => item.RequisitionNo === reqNo); // all data for this requisition
-        // setreqDaatee(reqDate.RequisitionDate);
+        const reqQty = filteredItems.find(item => item.RequiredQTY === reqNo); // requistion qty
         
         return {
           RequisitionNo: reqNo,
           RequistionDate: reqDate.RequisitionDate,
+          RequistionQty: reqDate.RequiredQTY,
           Data: reqData
         };
       });
 
       return {
         Material: mat,
-        Requisitions: requisitions
+        Requisitions: requisitions,
       };
     });
 
@@ -195,12 +197,7 @@ function InventoryIssue() {
               <td>
                 
                 {item.Requisitions.map((r, i) => (
-                 <div>
-                
-                  { r.Data.map((data,i)=>{
-                    return <div key={i}>{data.RequisitionDate ? new Date(data.RequisitionDate).toLocaleString(enGB).split(",", 1) : ""}  </div>
-                  })}
-                 </div>
+               <div key={i}>{r.RequistionDate ? new Date(r.RequistionDate).toLocaleString(enGB).split(",", 1) : ""}  </div>
                 ))}
               </td>
 
@@ -232,6 +229,10 @@ function InventoryIssue() {
               </td>
             </tr>
           ))}
+          <tr>
+           <td>Total</td>
+           <td>{}</td>
+          </tr>
         </React.Fragment>
       ))}
   </tbody>
