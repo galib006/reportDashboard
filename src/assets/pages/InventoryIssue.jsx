@@ -1,19 +1,27 @@
-import React, { useContext, useEffect, useMemo, useState } from "react";
+// AdvancedInventoryIssue.jsx
+
+import React, { useContext, useMemo, useState } from "react";
 import DateRangePicker from "../components/DatePickerData";
 import { GetDataContext } from "../components/DataContext";
 import axios from "axios";
 import { toast } from "react-toastify";
 import { FourSquare } from "react-loading-indicators";
 import * as XLSX from "xlsx";
+
 import { Pie } from "react-chartjs-2";
-import { Chart as ChartJS, ArcElement, Tooltip, Legend } from "chart.js";
+import {
+  Chart as ChartJS,
+  ArcElement,
+  Tooltip,
+  Legend
+} from "chart.js";
+import ChartDataLabels from "chartjs-plugin-datalabels";
 
-ChartJS.register(ArcElement, Tooltip, Legend);
+ChartJS.register(ArcElement, Tooltip, Legend, ChartDataLabels);
 
-function CompactInventoryReport() {
+function AdvancedInventoryIssue() {
   const { cndata, setcndata, loading, setLoading } = useContext(GetDataContext);
   const [searchText, setSearchText] = useState("");
-  const [expandedItems, setExpandedItems] = useState({}); // Expand/Collapse
 
   const stDate = cndata?.startDate ? cndata.startDate.toISOString().split("T")[0] : "";
   const edDate = cndata?.endDate ? cndata.endDate.toISOString().split("T")[0] : "";
@@ -53,78 +61,75 @@ function CompactInventoryReport() {
 
     return costCenters.map((cc) => {
       const materials = [...new Set(filteredData.filter((i) => i.CostCenterName === cc).map((i) => i.MaterialName))];
+
       const items = materials.map((mat) => {
         const filteredItems = filteredData.filter((i) => i.CostCenterName === cc && i.MaterialName === mat);
 
-        // Aggregate by IssueNo
-        const issuesMap = {};
-        filteredItems.forEach((d) => {
-          const qty = Number(d.IssueQTY) || 0;
-          if (!issuesMap[d.IssueNo]) {
-            issuesMap[d.IssueNo] = {
-              IssueNo: d.IssueNo,
-              IssueQty: qty,
-              IssueDate: d.IssueDate,
-              RequisitionNo: d.RequisitionNo,
-              Unit: d.Unit || ""
-            };
-          } else {
-            issuesMap[d.IssueNo].IssueQty += qty;
-          }
+        const requisitions = [...new Set(filteredItems.map((i) => i.RequisitionNo))].map((reqNo) => {
+          const reqData = filteredItems.filter((i) => i.RequisitionNo === reqNo);
+          const issuesMap = {};
+
+          reqData.forEach((d) => {
+            const qty = d.IssueQTY ? parseFloat(d.IssueQTY) : 0;
+            if (!issuesMap[d.IssueNo]) {
+              issuesMap[d.IssueNo] = { IssueNo: d.IssueNo, IssueQty: qty, IssueDate: d.IssueDate };
+            } else {
+              issuesMap[d.IssueNo].IssueQty += qty;
+            }
+          });
+
+          const requiredQty = reqData.reduce((s, d) => s + (Number(d.RequiredQTY) || 0), 0);
+          const totalIssue = Object.values(issuesMap).reduce((s, i) => s + i.IssueQty, 0);
+          const pendingQty = Math.max(requiredQty - totalIssue, 0);
+
+          return {
+            RequisitionNo: reqNo,
+            RequisitionDate: reqData[0]?.RequisitionDate,
+            RequiredQty: requiredQty,
+            PendingQty: pendingQty,
+            Issues: Object.values(issuesMap),
+            Unit: reqData[0]?.Unit || ""
+          };
         });
 
-        const totalRequired = filteredItems.reduce((s, d) => s + (Number(d.RequiredQTY) || 0), 0);
-        const totalIssued = Object.values(issuesMap).reduce((s, i) => s + i.IssueQty, 0);
-        const pending = totalRequired - totalIssued;
-
-        return {
-          Material: mat,
-          TotalRequired: totalRequired,
-          TotalIssued: totalIssued,
-          Pending: pending,
-          Issues: Object.values(issuesMap)
-        };
+        return { Material: mat, Requisitions: requisitions };
       });
 
       return { CostCenter: cc, Items: items };
     });
   }, [cndata.inventory, searchText]);
 
-  const exportExcelAdvanced = (structuredData) => {
+  const exportExcel = (structuredData) => {
     const wb = XLSX.utils.book_new();
     structuredData.forEach((sec) => {
       const sheetData = [];
       sec.Items.forEach((item) => {
-        item.Issues?.forEach((iss) => {
-          sheetData.push({
-            Section: sec.CostCenter,
-            Material: item.Material,
-            Unit: iss.Unit,
-            RequisitionNo: iss.RequisitionNo,
-            IssueNo: iss.IssueNo,
-            IssueQty: iss.IssueQty,
-            IssueDate: iss.IssueDate ? new Date(iss.IssueDate).toLocaleDateString("en-GB") : "",
+        item.Requisitions.forEach((req) => {
+          req.Issues.forEach((iss) => {
+            sheetData.push({
+              Section: sec.CostCenter,
+              Material: item.Material,
+              Unit: req.Unit,
+              RequisitionNo: req.RequisitionNo,
+              RequisitionDate: req.RequisitionDate ? new Date(req.RequisitionDate).toLocaleDateString("en-GB") : "",
+              RequiredQty: req.RequiredQty,
+              PendingQty: req.PendingQty,
+              IssueNo: iss.IssueNo,
+              IssueQty: iss.IssueQty,
+              IssueDate: iss.IssueDate ? new Date(iss.IssueDate).toLocaleDateString("en-GB") : "",
+            });
           });
         });
       });
       const ws = XLSX.utils.json_to_sheet(sheetData);
       XLSX.utils.book_append_sheet(wb, ws, sec.CostCenter.substring(0, 31));
     });
-    XLSX.writeFile(wb, "Compact_Inventory_Report.xlsx");
-  };
-
-  const toggleItem = (material) => {
-    setExpandedItems((prev) => ({ ...prev, [material]: !prev[material] }));
+    XLSX.writeFile(wb, "Advanced_Inventory_Report.xlsx");
   };
 
   return (
     <>
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          InvIssue();
-        }}
-      >
+      <form onSubmit={(e) => { e.preventDefault(); InvIssue(); }}>
         <div className="flex justify-center items-center gap-4">
           <DateRangePicker />
           <input type="submit" value="Submit" className="btn btn-success" />
@@ -139,9 +144,7 @@ function CompactInventoryReport() {
           value={searchText}
           onChange={(e) => setSearchText(e.target.value)}
         />
-        <button className="btn btn-primary" onClick={() => exportExcelAdvanced(UseData)}>
-          Export Excel
-        </button>
+        <button className="btn btn-primary" onClick={() => exportExcel(UseData)}>Export Excel</button>
       </div>
 
       {loading ? (
@@ -149,104 +152,108 @@ function CompactInventoryReport() {
           <FourSquare color="#32cd32" size="large" />
         </div>
       ) : (
-        <div className="mt-5 space-y-4">
+        <div className="mt-5">
           {UseData.map((cc, ccIdx) => (
-            <div key={ccIdx} className="border rounded p-3 shadow-sm">
-              <h2 className="font-bold text-xl mb-2 bg-blue-500 text-white p-2 rounded">{cc.CostCenter}</h2>
-              {cc.Items.map((item) => {
-                const isExpanded = expandedItems[item.Material] ?? true;
-                const pieData = {
-                  labels: [...item.Issues.map((i) => `Issue ${i.IssueNo}`), "Pending"],
-                  datasets: [
-                    {
-                      data: [...item.Issues.map((i) => i.IssueQty), item.Pending],
-                      backgroundColor: [
-                        ...item.Issues.map((i) => i.IssueQty >= item.TotalRequired ? "#2ecc71" : "#3498db"),
-                        "#e5e5e5", // Pending
-                      ],
-                      hoverOffset: 6,
-                    },
-                  ],
-                };
+            <div key={ccIdx} className="mb-6 border rounded p-2">
+              <h2 className="font-bold text-xl mb-2 bg-blue-500 text-white p-2">{cc.CostCenter}</h2>
+              {cc.Items.map((item, idx) => {
+                // Aggregate all requisitions for this item into a single pie chart
+                const pieLabels = [];
+                const pieData = [];
+                const pieColors = [];
+                const issuesTooltip = [];
+
+                item.Requisitions.forEach((req) => {
+                  // Pending
+                  if (req.PendingQty > 0) {
+                    pieLabels.push("Pending");
+                    pieData.push(req.PendingQty);
+                    pieColors.push("red");
+                    issuesTooltip.push(`Pending Qty: ${req.PendingQty}`);
+                  }
+
+                  // Issues
+                  req.Issues.forEach((iss) => {
+                    pieLabels.push(`Issue ${iss.IssueNo}`);
+                    pieData.push(iss.IssueQty);
+                    pieColors.push(iss.IssueQty >= req.RequiredQty ? "green" : "#007bff");
+                    issuesTooltip.push(`Issue ${iss.IssueNo} | Qty: ${iss.IssueQty} | Date: ${iss.IssueDate}`);
+                  });
+                });
 
                 return (
-                  <div key={item.Material} className="mb-4 border rounded p-2 bg-gray-50">
-                    <div className="flex justify-between items-center cursor-pointer" onClick={() => toggleItem(item.Material)}>
-                      <h3 className="font-semibold mb-2 text-lg">{item.Material}</h3>
-                      <button className="btn btn-sm">{isExpanded ? "Collapse" : "Expand"}</button>
+                  <div key={idx} className="mb-4 border p-2 rounded">
+                    <h3 className="font-semibold mb-2">{item.Material}</h3>
+
+                    {/* Single Pie Chart per Item */}
+                    <div className="w-full max-w-sm mx-auto mb-4">
+                      <Pie
+                        data={{ labels: pieLabels, datasets: [{ data: pieData, backgroundColor: pieColors }] }}
+                        options={{
+                          responsive: true,
+                          plugins: {
+                            legend: { position: "bottom" },
+                            tooltip: {
+                              callbacks: {
+                                label: function (context) {
+                                  const val = context.raw;
+                                  const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                  const perc = ((val / total) * 100).toFixed(2);
+                                  return `${context.label}: ${val} (${perc}%)`;
+                                },
+                              },
+                            },
+                            datalabels: {
+                              display: true,
+                              formatter: (value, context) => {
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                return ((value / total) * 100).toFixed(1) + "%";
+                              },
+                              color: "#fff",
+                              font: { weight: "bold", size: 12 },
+                            },
+                          },
+                        }}
+                      />
                     </div>
 
-                    {isExpanded && (
-                      <div className="md:flex md:gap-4">
-                        <div className="md:w-1/3">
-                          <Pie
-                            data={pieData}
-                            options={{
-                              responsive: true,
-                              plugins: {
-                                tooltip: {
-                                  callbacks: {
-                                    label: function (context) {
-                                      const idx = context.dataIndex;
-                                      if (idx < item.Issues.length) {
-                                        const issue = item.Issues[idx];
-                                        const percent = ((issue.IssueQty / item.TotalRequired) * 100).toFixed(1);
-                                        return `IssueNo: ${issue.IssueNo}, Qty: ${issue.IssueQty}, Date: ${new Date(issue.IssueDate).toLocaleDateString()}, ${percent}%`;
-                                      } else {
-                                        const percent = ((item.Pending / item.TotalRequired) * 100).toFixed(1);
-                                        return `Pending: ${item.Pending} (${percent}%)`;
-                                      }
-                                    },
-                                  },
-                                },
-                                legend: { position: "bottom" },
-                              },
-                            }}
-                            height={150}
-                          />
-                        </div>
-                        <div className="md:w-2/3 mt-2 md:mt-0">
-                          <div className="overflow-x-auto border rounded bg-white">
-                            <table className="min-w-full text-sm">
-                              <thead className="bg-gray-100">
-                                <tr>
-                                  <th className="p-1 border">Req No</th>
-                                  <th className="p-1 border">Req Qty</th>
-                                  <th className="p-1 border">Req Date</th>
-                                  <th className="p-1 border">Issue No</th>
-                                  <th className="p-1 border">Issue Qty</th>
-                                  <th className="p-1 border">Issue Date</th>
-                                  <th className="p-1 border">Unit</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {item.Issues.map((iss) => (
-                                  <tr key={iss.IssueNo} className="border-b hover:bg-gray-50">
-                                    <td className="p-1 border">{iss.RequisitionNo}</td>
-                                    <td className="p-1 border">{iss.IssueQty}</td>
-                                    <td className="p-1 border">{new Date(iss.IssueDate).toLocaleDateString()}</td>
-                                    <td className="p-1 border">{iss.IssueNo}</td>
-                                    <td className="p-1 border">{iss.IssueQty}</td>
-                                    <td className="p-1 border">{new Date(iss.IssueDate).toLocaleDateString()}</td>
-                                    <td className="p-1 border">{iss.Unit}</td>
-                                  </tr>
-                                ))}
-                                {item.Pending > 0 && (
-                                  <tr className="bg-yellow-50">
-                                    <td className="p-1 border" colSpan={2}><b>Pending</b></td>
-                                    <td className="p-1 border">-</td>
-                                    <td className="p-1 border">-</td>
-                                    <td className="p-1 border">{item.Pending}</td>
-                                    <td className="p-1 border">-</td>
-                                    <td className="p-1 border">-</td>
-                                  </tr>
+                    {/* Table */}
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full border border-gray-300">
+                        <thead className="bg-gray-100 text-gray-700 text-sm">
+                          <tr>
+                            <th className="p-2 border">Req No</th>
+                            <th className="p-2 border">Req Date</th>
+                            <th className="p-2 border">Req Qty</th>
+                            <th className="p-2 border">Pending Qty</th>
+                            <th className="p-2 border">Unit</th>
+                            <th className="p-2 border">Issue No</th>
+                            <th className="p-2 border">Issue Date</th>
+                            <th className="p-2 border">Issue Qty</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {item.Requisitions.map((req) =>
+                            req.Issues.map((iss, iIdx) => (
+                              <tr key={`${req.RequisitionNo}-${iss.IssueNo}`} className="odd:bg-white even:bg-gray-50">
+                                {iIdx === 0 && (
+                                  <>
+                                    <td className="p-2 border" rowSpan={req.Issues.length}>{req.RequisitionNo}</td>
+                                    <td className="p-2 border" rowSpan={req.Issues.length}>{req.RequisitionDate ? new Date(req.RequisitionDate).toLocaleDateString("en-GB") : ""}</td>
+                                    <td className="p-2 border" rowSpan={req.Issues.length}>{req.RequiredQty}</td>
+                                    <td className="p-2 border" rowSpan={req.Issues.length}>{req.PendingQty}</td>
+                                    <td className="p-2 border" rowSpan={req.Issues.length}>{req.Unit}</td>
+                                  </>
                                 )}
-                              </tbody>
-                            </table>
-                          </div>
-                        </div>
-                      </div>
-                    )}
+                                <td className="p-2 border">{iss.IssueNo}</td>
+                                <td className="p-2 border">{iss.IssueDate ? new Date(iss.IssueDate).toLocaleDateString("en-GB") : ""}</td>
+                                <td className="p-2 border">{iss.IssueQty}</td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 );
               })}
@@ -258,4 +265,4 @@ function CompactInventoryReport() {
   );
 }
 
-export default CompactInventoryReport;
+export default AdvancedInventoryIssue;
