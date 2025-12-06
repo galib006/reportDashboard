@@ -1,317 +1,215 @@
-import React, { useContext, useEffect, useMemo, useState } from "react";
+// AdvancedInventoryIssueFull.jsx
+import React, { useContext, useMemo, useState, useEffect } from "react";
 import DateRangePicker from "../components/DatePickerData";
 import { GetDataContext } from "../components/DataContext";
 import axios from "axios";
 import { toast } from "react-toastify";
 import { FourSquare } from "react-loading-indicators";
-import Table from "@mui/material/Table";
-import { enGB } from "date-fns/locale";
+import * as XLSX from "xlsx";
 
-function InventoryIssue() {
+// Reusable ProgressBar Component
+const ProgressBar = ({ issued, required }) => {
+  const percent = required > 0 ? Math.min((issued / required) * 100, 100) : 0;
+  let color = "bg-red-500";
+  if (percent === 100) color = "bg-green-500";
+  else if (percent > 0) color = "bg-yellow-500";
+  return (
+    <div className="w-full h-4 bg-gray-200 rounded overflow-hidden">
+      <div className={`${color} h-4`} style={{ width: `${percent}%` }}></div>
+    </div>
+  );
+};
+
+// Requisition Block
+const RequisitionBlock = ({ req, expandAll }) => {
+  const [showIssues, setShowIssues] = useState(expandAll);
+  useEffect(() => setShowIssues(expandAll), [expandAll]);
+  return (
+    <div className="border-b mb-2 pb-2">
+      <div
+        className="cursor-pointer font-semibold flex justify-between"
+        onClick={() => setShowIssues(!showIssues)}
+      >
+        <p>
+          Req No: {req.RequisitionNo} | Req Qty: {req.RequiredQty}
+        </p>
+        <p>{showIssues ? "▲" : "▼"}</p>
+      </div>
+      {showIssues &&
+        req.Issues.map((iss, idx) => (
+          <div key={idx} className="flex items-center gap-2 my-1">
+            <p className="w-32 text-sm">Issue No: {iss.IssueNo}</p>
+            <p className="w-20 text-sm">Qty: {iss.IssueQty}</p>
+            <ProgressBar issued={iss.IssueQty} required={req.RequiredQty} />
+          </div>
+        ))}
+    </div>
+  );
+};
+
+// Material Block
+const MaterialBlock = ({ item, expandAll }) => {
+  const [showReqs, setShowReqs] = useState(expandAll);
+  useEffect(() => setShowReqs(expandAll), [expandAll]);
+  return (
+    <div className="mb-4 border rounded p-2">
+      <div
+        className="font-semibold cursor-pointer"
+        onClick={() => setShowReqs(!showReqs)}
+      >
+        {item.Material} {showReqs ? "▲" : "▼"}
+      </div>
+      {showReqs &&
+        item.Requisitions.map((req, idx) => (
+          <RequisitionBlock key={idx} req={req} expandAll={expandAll} />
+        ))}
+    </div>
+  );
+};
+
+// Inventory Section
+const InventorySection = ({ cc, expandAll }) => {
+  return (
+    <div className="mb-6 border rounded p-2">
+      <h2 className="font-bold text-xl mb-2 bg-blue-500 text-white p-2">{cc.CostCenter}</h2>
+      {cc.Items.map((item, idx) => (
+        <MaterialBlock key={idx} item={item} expandAll={expandAll} />
+      ))}
+    </div>
+  );
+};
+
+// Main Component
+function AdvancedInventoryIssue() {
   const { cndata, setcndata, loading, setLoading } = useContext(GetDataContext);
-  const [costCenter, setCostcenter] = useState([]);
-  const [itemName, setitemName] = useState([]);
-  const [reqDaatee, setreqDaatee] = useState("");
-  const [TotalreqQty, setTotalreqQty] = useState("");
-  // console.log(cndata);
-  const DateFormat = (e) => {
-    const Ndate = Date(e).toString(enGB);
-    return new Date(e).toISOString().split("T")[0];
-  };
-  const stDate = cndata?.startDate
-    ? cndata.startDate.toISOString().split("T")[0]
-    : "";
-  const edDate = cndata?.endDate
-    ? cndata.endDate.toISOString().split("T")[0]
-    : "";
+  const [searchText, setSearchText] = useState("");
+  const [expandAll, setExpandAll] = useState(true);
 
+  const stDate = cndata?.startDate ? cndata.startDate.toISOString().split("T")[0] : "";
+  const edDate = cndata?.endDate ? cndata.endDate.toISOString().split("T")[0] : "";
   const apiKey = localStorage.getItem("apiKey");
 
-  const InvIssue = async (e) => {
+  // Fetch Data
+  const InvIssue = async () => {
     if (!cndata.startDate || !cndata.endDate) {
-      toast.error("Please Select Start & End Date");
+      toast.error("Please select start & end date");
       return;
     }
     setLoading(true);
-
     try {
       const res = await axios.get(
         `https://tpl-api.ebs365.info/api/InventoryBI/SCM_GET_MaterialIssueDetail?CompanyID=1&ParentCategoryID=6&CategoryID=0&SubCategoryID=0&MainMaterialID=0&StartDate=${stDate}&EndDate=${edDate}&CommandID=2`,
         { headers: { Authorization: `${apiKey}` } }
       );
-      setcndata((prev) => ({
-        ...prev,
-        inventory: res.data,
-      }));
+      setcndata(prev => ({ ...prev, inventory: res.data }));
     } catch (err) {
-      console.log("API ERROR:", err);
-
-      if (err.response?.status === 401) {
-        toast.error("Unauthorized! Your session has expired.");
-      } else {
-        toast.error(err.response?.data?.message || "Something went wrong!");
-      }
+      console.error("API ERROR:", err);
+      toast.error(err.response?.data?.message || "Something went wrong!");
     } finally {
       setLoading(false);
     }
   };
 
+  // Process Data
   const UseData = useMemo(() => {
     const data = cndata.inventory || [];
+    const filteredData = searchText
+      ? data.filter(d =>
+          d.CostCenterName.toLowerCase().includes(searchText.toLowerCase()) ||
+          d.MaterialName.toLowerCase().includes(searchText.toLowerCase())
+        )
+      : data;
 
-    const costCenters = [...new Set(data.map((item) => item.CostCenterName))];
-    setCostcenter(costCenters.sort());
-
-    const filteredData = costCenters.map((cc) => {
-      // Materials in this cost center
-      const materials = [
-        ...new Set(
-          data
-            .filter((item) => item.CostCenterName === cc)
-            .map((item) => item.MaterialName)
-        ),
-      ];
-      const UniqueMaterial = [
-        ...new Set(data.map((data) => data.MaterialName)),
-      ];
-      const UniqueIssueNO = [...new Set(data.map((data)=> data.IssueNo))]
-      // console.log(UniqueIssueNO);
-      
-      
-      
-      
-      
-      setitemName(UniqueMaterial.sort());
-      
-      const items = materials.map((mat) => {
-        // Items for this cost center + material
-        const filteredItems = data.filter(
-          (item) => item.CostCenterName === cc && item.MaterialName === mat
-        );
-
-        // Group by RequisitionNo
-        const requisitions = [
-          ...new Set(filteredItems.map((item) => item.RequisitionNo)),
-        ].map((reqNo) => {
-          const reqData = filteredItems.filter(
-            (item) => item.RequisitionNo === reqNo
-          ); // all data for this requisition
-          const reqDate = filteredItems.find(
-            (item) => item.RequisitionNo === reqNo
-          ); // all data for this requisition
-          const reqQty = filteredItems.find(
-            (item) => item.RequiredQTY === reqNo
-          ); // requistion qty
-          const UnqIssueNO = filteredItems.find((item)=> item.IssueNo)
-          console.log(UnqIssueNO);
-          
-
+    const costCenters = [...new Set(filteredData.map(i => i.CostCenterName))].sort();
+    return costCenters.map(cc => {
+      const materials = [...new Set(filteredData.filter(i => i.CostCenterName === cc).map(i => i.MaterialName))];
+      const items = materials.map(mat => {
+        const filteredItems = filteredData.filter(i => i.CostCenterName === cc && i.MaterialName === mat);
+        const requisitions = [...new Set(filteredItems.map(i => i.RequisitionNo))].map(reqNo => {
+          const reqData = filteredItems.filter(i => i.RequisitionNo === reqNo);
+          const issuesMap = {};
+          reqData.forEach(d => {
+            const qty = d.IssueQTY ? parseFloat(d.IssueQTY) : 0;
+            if (!issuesMap[d.IssueNo]) {
+              issuesMap[d.IssueNo] = { IssueNo: d.IssueNo, IssueQty: qty, IssueDate: d.IssueDate };
+            } else {
+              issuesMap[d.IssueNo].IssueQty += qty;
+            }
+          });
           return {
             RequisitionNo: reqNo,
-            RequistionDate: reqDate.RequisitionDate,
-            RequistionQty: reqDate.RequiredQTY,
-            IssuedNo: UnqIssueNO,
-            Data: reqData,
+            RequisitionDate: reqData[0]?.RequisitionDate,
+            RequiredQty: reqData.reduce((s,d)=>s + (Number(d.RequiredQTY)||0), 0),
+            Issues: Object.values(issuesMap)
           };
         });
-
-        return {
-          Material: mat,
-          Requisitions: requisitions,
-        };
+        return { Material: mat, Requisitions: requisitions };
       });
-
-      return {
-        CostCenter: cc,
-        Item: items,
-      };
+      return { CostCenter: cc, Items: items };
     });
-    console.log(filteredData);
-    return filteredData;
-  }, [cndata.inventory, setCostcenter, setitemName]);
+  }, [cndata.inventory, searchText]);
 
-  // console.log(FilterData);
-  // const uniqueReq = [...new Set(FilterData.RequisitionNo)]
-  // console.log(uniqueReq);
-  // const ReqNO =  FilterData.map((data)=>data.Item.map(dd));
-  // console.log(ReqNO);
-
-  // const uniqueItem =[...new Set(FilterData.map(data=>data.Item))] || [];
-  // const
-  // console.log(uniqueItem);
+  // Excel Export
+  const exportExcelAdvanced = (structuredData) => {
+    const wb = XLSX.utils.book_new();
+    structuredData.forEach(sec => {
+      const sheetData = [];
+      sec.Items.forEach(item => {
+        item.Requisitions.forEach(req => {
+          req.Issues.forEach(iss => {
+            sheetData.push({
+              Section: sec.CostCenter,
+              Material: item.Material,
+              RequisitionNo: req.RequisitionNo,
+              RequisitionDate: req.RequisitionDate ? new Date(req.RequisitionDate).toLocaleDateString('en-GB') : '',
+              RequiredQty: req.RequiredQty,
+              IssueNo: iss.IssueNo,
+              IssueQty: iss.IssueQty,
+              IssueDate: iss.IssueDate ? new Date(iss.IssueDate).toLocaleDateString('en-GB') : ''
+            });
+          });
+        });
+      });
+      const ws = XLSX.utils.json_to_sheet(sheetData);
+      XLSX.utils.book_append_sheet(wb, ws, sec.CostCenter.substring(0,31));
+    });
+    XLSX.writeFile(wb, 'Advanced_Inventory_Report.xlsx');
+  };
 
   return (
     <>
-      <form
-        action=""
-        onSubmit={(e) => {
-          e.preventDefault();
-          InvIssue(e);
-        }}
-      >
+      <form onSubmit={e => { e.preventDefault(); InvIssue(); }}>
         <div className="flex justify-center items-center gap-4">
           <DateRangePicker />
           <input type="submit" value="Submit" className="btn btn-success" />
         </div>
       </form>
-      <>
-        {loading ? (
-          <div className="flex justify-center items-center h-screen">
-            <FourSquare color="#32cd32" size="large" />
-          </div>
-        ) : (
-          <>
-            <div className="flex gap-5">
-              {costCenter == "" ? (
-                ""
-              ) : (
-                <>
-                  {" "}
-                  <select
-                    defaultValue="Pick a text editor"
-                    className="select select-primary"
-                  >
-                    <option disabled={false}>-- Select Section --</option>
-                    {costCenter &&
-                      costCenter.map((data, idx) => (
-                        <option key={idx}>{data}</option>
-                      ))}
-                  </select>
-                  <select
-                    defaultValue="Pick a text editor"
-                    className="select select-primary"
-                  >
-                    <option disabled={false}>-- Select Item --</option>
-                    {itemName &&
-                      itemName.map((data, idx) => (
-                        <option key={idx}>{data}</option>
-                      ))}
-                  </select>
-                </>
-              )}
-            </div>
-            <table className="min-w-full border border-gray-300 shadow-lg rounded-lg overflow-hidden">
-              <thead className="bg-gray-100 text-gray-700 text-sm uppercase">
-                <tr>
-                  <th className="p-2 text-left">SL.</th>
-                  <th className="p-2 text-left">Section</th>
-                  <th className="p-2 text-left">Req No</th>
-                  <th className="p-2 text-left">Req Date</th>
-                  <th className="p-2 text-left">Req QTY</th>
-                  <th className="p-2 text-left">Issue No</th>
-                  <th className="p-2 text-left">Issue QTY</th>
-                  <th className="p-2 text-left">Issue Date</th>
-                </tr>
-              </thead>
 
-              <tbody>
-                {UseData &&
-                  UseData.map((dd, idx) => (
-                    <React.Fragment key={idx}>
-                      {/* CostCenter Header Row */}
-                      <tr className="bg-blue-500 text-white font-bold text-xl">
-                        <td colSpan="100%" className="p-3">
-                          {dd.CostCenter}
-                        </td>
-                      </tr>
+      <div className="mt-5 flex gap-2 mb-4">
+        <input
+          type="text"
+          placeholder="Search Section / Material"
+          className="input input-bordered"
+          value={searchText}
+          onChange={e => setSearchText(e.target.value)}
+        />
+        <button className="btn btn-sm btn-info" onClick={() => setExpandAll(!expandAll)}>
+          {expandAll ? "Collapse All" : "Expand All"}
+        </button>
+        <button className="btn btn-primary" onClick={() => exportExcelAdvanced(UseData)}>Export Excel</button>
+      </div>
 
-                      {/* Item Rows */}
-                      {dd.Item.map((item, idx2) => (
-                        <tr
-                          key={idx2}
-                          className="odd:bg-white even:bg-gray-50 hover:bg-blue-50 transition"
-                        >
-                          <td className="p-2 border">{idx2 + 1}</td>
-                          <td className="p-2 border font-medium">
-                            {item.Material}
-                          </td>
-
-                          {/* Req No */}
-                          <td className="p-2 border">
-                            {item.Requisitions.map((r, i) => (
-                              <div key={i}>{r.RequisitionNo}</div>
-                            ))}
-                          </td>
-
-                          {/* Req Date */}
-                          <td className="p-2 border">
-                            {item.Requisitions.map((r, i) => (
-                              <div key={i}>
-                                {r.RequistionDate
-                                  ? new Date(
-                                      r.RequistionDate
-                                    ).toLocaleDateString("en-GB")
-                                  : ""}
-                              </div>
-                            ))}
-                          </td>
-
-                          {/* Req QTY */}
-                          <td className="p-2 border">
-                            {item.Requisitions.map((r, i) => (
-                              <div key={i}>
-                                {r.Data?.reduce(
-                                  (sum, d) => sum + (d.RequiredQTY || 0),
-                                  0
-                                )}
-                              </div>
-                            ))}
-                          </td>
-
-                          {/* Issue No */}
-                          <td className="p-2 border">
-                            {item.Requisitions.map((r, i) =>
-                              (
-                                r.IssuedNo.IssueNo
-                              )
-                              // r.IssueNo.map((d, j) => (
-                              //   <div key={j}>{d.IssueNo}</div>
-                              // ))
-                            )}
-                          </td>
-                          {/* Issue QTY */}
-                          <td className="p-2 border">
-                            {item.Requisitions.map((r, i) =>
-                              r.Data.map((d, j) => (
-                                <div key={j}>{d.IssueQTY}</div>
-                              ))
-                            )}
-                          </td>
-
-                          {/* Issue Date */}
-                            <td className="p-2 border">
-                            {item.Requisitions.map((r, i) =>
-                              r.Data.map((d, j) => (
-                                <div key={j}>{new Date(d.IssueDate).toLocaleString(enGB).split(',', 1)}</div>
-                              ))
-                            )}
-                          </td>
-                          {/* <td className="p-2 border">
-                            {item.Requisitions.map((r, i) => (
-                              <div key={i}>
-                                {r.IssueDate
-                                  ? new Date(r.IssueDate).toLocaleDateString()
-                                  : ""}
-                              </div>
-                            ))}
-                          </td> */}
-                        </tr>
-                      ))}
-
-                      {/* Total Row */}
-                      <tr className="bg-gray-200 font-bold">
-                        <td className="p-2 border">Total</td>
-                        <td className="p-2 border"></td>
-                      </tr>
-                    </React.Fragment>
-                  ))}
-              </tbody>
-            </table>
-          </>
-        )}
-      </>
+      {loading ? (
+        <div className="flex justify-center items-center h-screen">
+          <FourSquare color="#32cd32" size="large" />
+        </div>
+      ) : (
+        <div className="mt-5">
+          {UseData.map((cc, idx) => <InventorySection key={idx} cc={cc} expandAll={expandAll} />)}
+        </div>
+      )}
     </>
   );
 }
 
-export default InventoryIssue;
+export default AdvancedInventoryIssue;
