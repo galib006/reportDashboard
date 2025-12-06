@@ -74,10 +74,15 @@ function InventoryIssue() {
       const UniqueMaterial = [
         ...new Set(data.map((data) => data.MaterialName)),
       ];
-      // console.log(data.MaterialName);
-
+      const UniqueIssueNO = [...new Set(data.map((data)=> data.IssueNo))]
+      // console.log(UniqueIssueNO);
+      
+      
+      
+      
+      
       setitemName(UniqueMaterial.sort());
-
+      
       const items = materials.map((mat) => {
         // Items for this cost center + material
         const filteredItems = data.filter(
@@ -97,11 +102,15 @@ function InventoryIssue() {
           const reqQty = filteredItems.find(
             (item) => item.RequiredQTY === reqNo
           ); // requistion qty
+          const UnqIssueNO = filteredItems.find((item)=> item.IssueNo)
+          console.log(UnqIssueNO);
+          
 
           return {
             RequisitionNo: reqNo,
             RequistionDate: reqDate.RequisitionDate,
             RequistionQty: reqDate.RequiredQTY,
+            IssuedNo: UnqIssueNO,
             Data: reqData,
           };
         });
@@ -181,102 +190,123 @@ function InventoryIssue() {
                 </>
               )}
             </div>
-           <table className="min-w-full border border-gray-300 shadow-lg rounded-lg overflow-hidden">
-  <thead className="bg-gray-100 text-gray-700 text-sm uppercase">
-    <tr>
-      <th className="p-2 text-left">SL.</th>
-      <th className="p-2 text-left">Section</th>
-      <th className="p-2 text-left">Req No</th>
-      <th className="p-2 text-left">Req Date</th>
-      <th className="p-2 text-left">Req QTY</th>
-      <th className="p-2 text-left">Issue No</th>
-      <th className="p-2 text-left">Issue QTY</th>
-      <th className="p-2 text-left">Issue Date</th>
-    </tr>
-  </thead>
+            <table className="min-w-full border border-gray-300 shadow-lg rounded-lg overflow-hidden">
+              <thead className="bg-gray-100 text-gray-700 text-sm uppercase">
+                <tr>
+                  <th className="p-2 text-left">SL.</th>
+                  <th className="p-2 text-left">Section</th>
+                  <th className="p-2 text-left">Req No</th>
+                  <th className="p-2 text-left">Req Date</th>
+                  <th className="p-2 text-left">Req QTY</th>
+                  <th className="p-2 text-left">Issue No</th>
+                  <th className="p-2 text-left">Issue QTY</th>
+                  <th className="p-2 text-left">Issue Date</th>
+                </tr>
+              </thead>
 
-  <tbody>
-    {UseData &&
-      UseData.map((dd, idx) => (
-        <React.Fragment key={idx}>
+              <tbody>
+                {UseData &&
+                  UseData.map((dd, idx) => (
+                    <React.Fragment key={idx}>
+                      {/* CostCenter Header Row */}
+                      <tr className="bg-blue-500 text-white font-bold text-xl">
+                        <td colSpan="100%" className="p-3">
+                          {dd.CostCenter}
+                        </td>
+                      </tr>
 
-          {/* CostCenter Header Row */}
-          <tr className="bg-blue-500 text-white font-bold text-xl">
-            <td colSpan="100%" className="p-3">{dd.CostCenter}</td>
-          </tr>
+                      {/* Item Rows */}
+                      {dd.Item.map((item, idx2) => (
+                        <tr
+                          key={idx2}
+                          className="odd:bg-white even:bg-gray-50 hover:bg-blue-50 transition"
+                        >
+                          <td className="p-2 border">{idx2 + 1}</td>
+                          <td className="p-2 border font-medium">
+                            {item.Material}
+                          </td>
 
-          {/* Item Rows */}
-          {dd.Item.map((item, idx2) => (
-            <tr
-              key={idx2}
-              className="odd:bg-white even:bg-gray-50 hover:bg-blue-50 transition"
-            >
-              <td className="p-2 border">{idx2 + 1}</td>
-              <td className="p-2 border font-medium">{item.Material}</td>
+                          {/* Req No */}
+                          <td className="p-2 border">
+                            {item.Requisitions.map((r, i) => (
+                              <div key={i}>{r.RequisitionNo}</div>
+                            ))}
+                          </td>
 
-              {/* Req No */}
-              <td className="p-2 border">
-                {item.Requisitions.map((r, i) => (
-                  <div key={i}>{r.RequisitionNo}</div>
-                ))}
-              </td>
+                          {/* Req Date */}
+                          <td className="p-2 border">
+                            {item.Requisitions.map((r, i) => (
+                              <div key={i}>
+                                {r.RequistionDate
+                                  ? new Date(
+                                      r.RequistionDate
+                                    ).toLocaleDateString("en-GB")
+                                  : ""}
+                              </div>
+                            ))}
+                          </td>
 
-              {/* Req Date */}
-              <td className="p-2 border">
-                {item.Requisitions.map((r, i) => (
-                  <div key={i}>
-                    {r.RequistionDate
-                      ? new Date(r.RequistionDate)
-                          .toLocaleDateString("en-GB")
-                      : ""}
-                  </div>
-                ))}
-              </td>
+                          {/* Req QTY */}
+                          <td className="p-2 border">
+                            {item.Requisitions.map((r, i) => (
+                              <div key={i}>
+                                {r.Data?.reduce(
+                                  (sum, d) => sum + (d.RequiredQTY || 0),
+                                  0
+                                )}
+                              </div>
+                            ))}
+                          </td>
 
-              {/* Req QTY */}
-              <td className="p-2 border">
-                {item.Requisitions.map((r, i) => (
-                  <div key={i}>
-                    {r.Data?.reduce(
-                      (sum, d) => sum + (d.RequiredQTY || 0),
-                      0
-                    )}
-                  </div>
-                ))}
-              </td>
+                          {/* Issue No */}
+                          <td className="p-2 border">
+                            {item.Requisitions.map((r, i) =>
+                              (
+                                r.IssuedNo.IssueNo
+                              )
+                              // r.IssueNo.map((d, j) => (
+                              //   <div key={j}>{d.IssueNo}</div>
+                              // ))
+                            )}
+                          </td>
+                          {/* Issue QTY */}
+                          <td className="p-2 border">
+                            {item.Requisitions.map((r, i) =>
+                              r.Data.map((d, j) => (
+                                <div key={j}>{d.IssueQTY}</div>
+                              ))
+                            )}
+                          </td>
 
-              {/* Issue No */}
-              <td className="p-2 border">
-                {item.Requisitions.map((r, i) =>
-                  r.Data.map((d, j) => (
-                    <div key={j}>{d.IssueNo}</div>
-                  ))
-                )}
-              </td>
+                          {/* Issue Date */}
+                            <td className="p-2 border">
+                            {item.Requisitions.map((r, i) =>
+                              r.Data.map((d, j) => (
+                                <div key={j}>{new Date(d.IssueDate).toLocaleString(enGB).split(',', 1)}</div>
+                              ))
+                            )}
+                          </td>
+                          {/* <td className="p-2 border">
+                            {item.Requisitions.map((r, i) => (
+                              <div key={i}>
+                                {r.IssueDate
+                                  ? new Date(r.IssueDate).toLocaleDateString()
+                                  : ""}
+                              </div>
+                            ))}
+                          </td> */}
+                        </tr>
+                      ))}
 
-              {/* Issue Date */}
-              <td className="p-2 border">
-                {item.Requisitions.map((r, i) => (
-                  <div key={i}>
-                    {r.IssueDate
-                      ? new Date(r.IssueDate).toLocaleDateString()
-                      : ""}
-                  </div>
-                ))}
-              </td>
-            </tr>
-          ))}
-
-          {/* Total Row */}
-          <tr className="bg-gray-200 font-bold">
-            <td className="p-2 border">Total</td>
-            <td className="p-2 border"></td>
-          </tr>
-        </React.Fragment>
-      ))}
-  </tbody>
-</table>
-
+                      {/* Total Row */}
+                      <tr className="bg-gray-200 font-bold">
+                        <td className="p-2 border">Total</td>
+                        <td className="p-2 border"></td>
+                      </tr>
+                    </React.Fragment>
+                  ))}
+              </tbody>
+            </table>
           </>
         )}
       </>
