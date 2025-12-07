@@ -103,9 +103,8 @@ function FullAdvancedInventoryIssue_CompleteGreen() {
 
 const exportExcel = (structuredData, startDateObj, endDateObj) => {
   const wb = XLSX.utils.book_new();
-  let masterRows = [];
+  const masterRows = []; // Master summary rows
 
-  // Date formatting
   const formatDate = (d) => {
     if (!d) return "";
     const date = new Date(d);
@@ -122,7 +121,7 @@ const exportExcel = (structuredData, startDateObj, endDateObj) => {
     const sheetData = [];
     const itemSummaryList = [];
 
-    // SECTION CALCULATION
+    // Section-wise data calculation
     sec.Items.forEach((item) => {
       let reqTotal = 0,
         issueTotal = 0,
@@ -139,7 +138,6 @@ const exportExcel = (structuredData, startDateObj, endDateObj) => {
         req.Issues.forEach((iss) => {
           issueTotal += iss.IssueQty || 0;
           sheetData.push({
-            Section: sec.CostCenter,
             Material: item.Material,
             Unit: req.Unit,
             RequisitionNo: req.RequisitionNo,
@@ -163,6 +161,7 @@ const exportExcel = (structuredData, startDateObj, endDateObj) => {
         PendingPercent: avgPending + "%",
       });
 
+      // Add to master summary rows
       masterRows.push({
         Section: sec.CostCenter,
         Material: item.Material,
@@ -173,7 +172,7 @@ const exportExcel = (structuredData, startDateObj, endDateObj) => {
       });
     });
 
-    // CREATE SHEET
+    // Create section sheet
     const ws = XLSX.utils.json_to_sheet(sheetData, { origin: "A4" });
     const colCount = Object.keys(sheetData[0] || {}).length;
 
@@ -181,21 +180,16 @@ const exportExcel = (structuredData, startDateObj, endDateObj) => {
     ws["A1"] = {
       v: `SECTION: ${sec.CostCenter}`,
       t: "s",
-      s: {
-        font: { bold: true, sz: 16, color: { rgb: "FFFFFF" } },
-        fill: { fgColor: { rgb: "4F81BD" } },
-        alignment: { horizontal: "center" },
-      },
+      s: { font: { bold: true, sz: 18, color: { rgb: "FFFFFF" } }, fill: { fgColor: { rgb: "4F81BD" } }, alignment: { horizontal: "center" } },
     };
 
     // DATE ROW
     ws["A2"] = {
       v: `Start: ${startDate} | End: ${endDate}`,
       t: "s",
-      s: { font: { italic: true, sz: 11 }, alignment: { horizontal: "center" } },
+      s: { font: { italic: true, sz: 14 }, alignment: { horizontal: "center" } },
     };
 
-    // MERGE TITLE AND DATE ROW
     ws["!merges"] = [
       { s: { r: 0, c: 0 }, e: { r: 0, c: colCount - 1 } },
       { s: { r: 1, c: 0 }, e: { r: 1, c: colCount - 1 } },
@@ -204,116 +198,64 @@ const exportExcel = (structuredData, startDateObj, endDateObj) => {
     // HEADER ROW
     const headers = Object.keys(sheetData[0] || {});
     XLSX.utils.sheet_add_aoa(ws, [headers], { origin: 3 });
+    for (let c = 0; c < colCount; c++) {
+      const cell = XLSX.utils.encode_cell({ r: 3, c });
+      if (ws[cell])
+        ws[cell].s = { font: { bold: true, sz: 18 }, alignment: { horizontal: "center" } };
+    }
 
-    // BORDER FOR DATA
+    // DATA STYLE
     const range = XLSX.utils.decode_range(ws["!ref"]);
-    for (let r = 3; r <= range.e.r; r++) {
+    for (let r = 4; r <= range.e.r; r++) {
       for (let c = 0; c < colCount; c++) {
         const cell = XLSX.utils.encode_cell({ r, c });
-        if (ws[cell])
-          ws[cell].s = {
-            border: {
-              top: { style: "thin", color: { rgb: "000000" } },
-              bottom: { style: "thin", color: { rgb: "000000" } },
-              left: { style: "thin", color: { rgb: "000000" } },
-              right: { style: "thin", color: { rgb: "000000" } },
-            },
-            alignment: { horizontal: "center" },
-          };
+        if (ws[cell]) ws[cell].s = { font: { sz: 17 }, alignment: { horizontal: "center" } };
       }
     }
 
-    // ITEM SUMMARY RIGHT SIDE
-    const summaryStartCol = colCount + 2; // 2 columns gap
-
-    // SUMMARY Title
-    XLSX.utils.sheet_add_aoa(ws, [["SUMMARY"]], { origin: { r: 2, c: summaryStartCol } });
-    ws[XLSX.utils.encode_cell({ r: 2, c: summaryStartCol })].s = {
-      font: { bold: true, sz: 16, color: { rgb: "FFFFFF" } },
+    // ===================== SUMMARY BELOW TABLE =====================
+    const summaryStartRow = range.e.r + 2;
+    XLSX.utils.sheet_add_aoa(ws, [["SUMMARY"]], { origin: { r: summaryStartRow, c: 0 } });
+    ws[XLSX.utils.encode_cell({ r: summaryStartRow, c: 0 })].s = {
+      font: { bold: true, sz: 18, color: { rgb: "FFFFFF" } },
       fill: { fgColor: { rgb: "4F81BD" } },
       alignment: { horizontal: "center" },
     };
+    ws["!merges"].push({ s: { r: summaryStartRow, c: 0 }, e: { r: summaryStartRow, c: 4 } });
 
-    // Merge title across summary columns
-    ws["!merges"].push({ s: { r: 2, c: summaryStartCol }, e: { r: 2, c: summaryStartCol + 4 } });
-
-    // Header row for summary
-    XLSX.utils.sheet_add_aoa(ws, [["Material", "Req Qty", "Issue Qty", "Pending", "Pending %"]], { origin: { r: 3, c: summaryStartCol } });
-
-    // Add summary data
-    itemSummaryList.forEach((sum, i) => {
-      XLSX.utils.sheet_add_aoa(ws, [[sum.Material, sum.Req, sum.Issue, sum.Pending, sum.PendingPercent]], { origin: { r: 4 + i, c: summaryStartCol } });
-    });
-
-    // BORDER FOR SUMMARY
-    for (let r = 3; r < 4 + itemSummaryList.length; r++) {
-      for (let c = summaryStartCol; c < summaryStartCol + 5; c++) {
-        const cell = XLSX.utils.encode_cell({ r, c });
-        if (ws[cell])
-          ws[cell].s = {
-            border: {
-              top: { style: "thin", color: { rgb: "000000" } },
-              bottom: { style: "thin", color: { rgb: "000000" } },
-              left: { style: "thin", color: { rgb: "000000" } },
-              right: { style: "thin", color: { rgb: "000000" } },
-            },
-            alignment: { horizontal: "center" },
-            fill: { fgColor: { rgb: r === 3 ? "FFD966" : "FFF2CC" } },
-            font: { bold: r === 3 || r === 2 },
-          };
-      }
+    XLSX.utils.sheet_add_aoa(ws, [["Material", "Req Qty", "Issue Qty", "Pending", "Pending %"]], { origin: { r: summaryStartRow + 1, c: 0 } });
+    for (let c = 0; c < 5; c++) {
+      const cell = XLSX.utils.encode_cell({ r: summaryStartRow + 1, c });
+      ws[cell].s = { font: { bold: true, sz: 18 }, alignment: { horizontal: "center" } };
     }
+
+    itemSummaryList.forEach((sum, i) => {
+      XLSX.utils.sheet_add_aoa(ws, [[sum.Material, sum.Req, sum.Issue, sum.Pending, sum.PendingPercent]], { origin: { r: summaryStartRow + 2 + i, c: 0 } });
+      for (let c = 0; c < 5; c++) {
+        const cell = XLSX.utils.encode_cell({ r: summaryStartRow + 2 + i, c });
+        ws[cell].s = { font: { sz: 17 }, alignment: { horizontal: "center" } };
+      }
+    });
 
     wb.SheetNames.push(sec.CostCenter.substring(0, 31));
     wb.Sheets[sec.CostCenter.substring(0, 31)] = ws;
   });
 
-  // MASTER SUMMARY
-  let masterWS = XLSX.utils.aoa_to_sheet([]);
-  let rowPos = 0;
-  const masterHeaders = ["Section", "Material", "Req", "Issue", "Pending", "Pending %"];
-
+  // ===================== MASTER SUMMARY SHEET =====================
+  const masterWS = XLSX.utils.aoa_to_sheet([]);
+  XLSX.utils.sheet_add_aoa(masterWS, [["MASTER SUMMARY"]], { origin: 0 });
+  masterWS["A1"].s = { font: { bold: true, sz: 18, color: { rgb: "FFFFFF" } }, fill: { fgColor: { rgb: "4F81BD" } }, alignment: { horizontal: "center" } };
+  XLSX.utils.sheet_add_aoa(masterWS, [["Section", "Material", "Req Qty", "Issue Qty", "Pending", "Pending %"]], { origin: 2 });
+  for (let c = 0; c < 6; c++) {
+    const cell = XLSX.utils.encode_cell({ r: 2, c });
+    masterWS[cell].s = { font: { bold: true, sz: 18 }, alignment: { horizontal: "center" } };
+  }
   masterRows.forEach((row, idx) => {
-    const isNewSection = idx === 0 || row.Section !== masterRows[idx - 1].Section;
-
-    if (isNewSection) {
-      XLSX.utils.sheet_add_aoa(masterWS, [[`${row.Section} SUMMARY`]], { origin: { r: rowPos, c: 0 } });
-      masterWS[XLSX.utils.encode_cell({ r: rowPos, c: 0 })].s = { font: { bold: true, sz: 14 }, fill: { fgColor: { rgb: "D9E1F2" } } };
-      rowPos += 2;
-      XLSX.utils.sheet_add_aoa(masterWS, [masterHeaders], { origin: { r: rowPos, c: 0 } });
-
-      for (let c = 0; c < masterHeaders.length; c++) {
-        const cell = XLSX.utils.encode_cell({ r: rowPos, c });
-        masterWS[cell].s = {
-          font: { bold: true, color: { rgb: "FFFFFF" } },
-          fill: { fgColor: { rgb: "305496" } },
-          border: {
-            top: { style: "thin", color: { rgb: "000000" } },
-            bottom: { style: "thin", color: { rgb: "000000" } },
-            left: { style: "thin", color: { rgb: "000000" } },
-            right: { style: "thin", color: { rgb: "000000" } },
-          },
-        };
-      }
-      rowPos++;
+    XLSX.utils.sheet_add_aoa(masterWS, [[row.Section, row.Material, row.Req, row.Issue, row.Pending, row.PendingPercent]], { origin: { r: 3 + idx, c: 0 } });
+    for (let c = 0; c < 6; c++) {
+      const cell = XLSX.utils.encode_cell({ r: 3 + idx, c });
+      masterWS[cell].s = { font: { sz: 17 }, alignment: { horizontal: "center" } };
     }
-
-    XLSX.utils.sheet_add_aoa(masterWS, [[row.Section, row.Material, row.Req, row.Issue, row.Pending, row.PendingPercent]], { origin: { r: rowPos, c: 0 } });
-    for (let c = 0; c < masterHeaders.length; c++) {
-      const cell = XLSX.utils.encode_cell({ r: rowPos, c });
-      masterWS[cell].s = {
-        border: {
-          top: { style: "thin", color: { rgb: "000000" } },
-          bottom: { style: "thin", color: { rgb: "000000" } },
-          left: { style: "thin", color: { rgb: "000000" } },
-          right: { style: "thin", color: { rgb: "000000" } },
-        },
-        alignment: { horizontal: "center" },
-      };
-    }
-    rowPos += 1;
-
-    if (idx + 1 === masterRows.length || masterRows[idx + 1].Section !== row.Section) rowPos += 3;
   });
 
   wb.SheetNames.push("Master Summary");
@@ -321,6 +263,8 @@ const exportExcel = (structuredData, startDateObj, endDateObj) => {
 
   XLSX.writeFile(wb, "Inventory_Report_Final.xlsx");
 };
+
+
 
 
 
