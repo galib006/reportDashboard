@@ -6,7 +6,7 @@ import { GetDataContext } from "../components/DataContext";
 import axios from "axios";
 import { toast } from "react-toastify";
 import { FourSquare } from "react-loading-indicators";
-import * as XLSX from "xlsx";
+import * as XLSX from "xlsx-js-style";
 
 import { Pie } from "react-chartjs-2";
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from "chart.js";
@@ -68,7 +68,7 @@ function FullAdvancedInventoryIssue_CompleteGreen() {
           const reqData = filteredItems.filter((i) => i.RequisitionNo === reqNo);
           const issuesMap = {};
 
-          reqData.forEach((d) => {
+         const reqqqq =  reqData.forEach((d) => {
             const qty = d.IssueQTY ? parseFloat(d.IssueQTY) : 0;
             if (!issuesMap[d.IssueNo]) {
               issuesMap[d.IssueNo] = { IssueNo: d.IssueNo, IssueQty: qty, IssueDate: d.IssueDate };
@@ -76,7 +76,8 @@ function FullAdvancedInventoryIssue_CompleteGreen() {
               issuesMap[d.IssueNo].IssueQty += qty;
             }
           });
-
+         
+    
           const requiredQty = reqData.reduce((s, d) => s + (Number(d.RequiredQTY) || 0), 0);
           const totalIssue = Object.values(issuesMap).reduce((s, i) => s + i.IssueQty, 0);
           const pendingQty = Math.max(requiredQty - totalIssue, 0);
@@ -88,7 +89,7 @@ function FullAdvancedInventoryIssue_CompleteGreen() {
             PendingQty: pendingQty,
             PendingPercent: ((pendingQty / requiredQty) * 100).toFixed(2),
             Issues: Object.values(issuesMap),
-            Unit: reqData[0]?.Unit || "",
+            Unit: reqData[0]?.UnitName || "",
           };
         });
 
@@ -99,34 +100,239 @@ function FullAdvancedInventoryIssue_CompleteGreen() {
     });
   }, [cndata.inventory, searchText, filterSection, filterItem]);
 
-  const exportExcel = (structuredData) => {
-    const wb = XLSX.utils.book_new();
-    structuredData.forEach((sec) => {
-      const sheetData = [];
-      sec.Items.forEach((item) => {
-        item.Requisitions.forEach((req) => {
-          req.Issues.forEach((iss) => {
-            sheetData.push({
-              Section: sec.CostCenter,
-              Material: item.Material,
-              Unit: req.Unit,
-              RequisitionNo: req.RequisitionNo,
-              RequisitionDate: req.RequisitionDate ? new Date(req.RequisitionDate).toLocaleDateString("en-GB") : "",
-              RequiredQty: req.RequiredQty,
-              PendingQty: req.PendingQty,
-              PendingPercent: req.PendingPercent,
-              IssueNo: iss.IssueNo,
-              IssueQty: iss.IssueQty,
-              IssueDate: iss.IssueDate ? new Date(iss.IssueDate).toLocaleDateString("en-GB") : "",
-            });
+
+const exportExcel = (structuredData, startDateObj, endDateObj) => {
+  const wb = XLSX.utils.book_new();
+  let masterRows = [];
+
+  // Date formatting
+  const formatDate = (d) => {
+    if (!d) return "";
+    const date = new Date(d);
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
+
+  const startDate = formatDate(startDateObj);
+  const endDate = formatDate(endDateObj);
+
+  structuredData.forEach((sec) => {
+    const sheetData = [];
+    const itemSummaryList = [];
+
+    // SECTION CALCULATION
+    sec.Items.forEach((item) => {
+      let reqTotal = 0,
+        issueTotal = 0,
+        pendingTotal = 0,
+        pendingPercentTotal = 0,
+        reqCount = 0;
+
+      item.Requisitions.forEach((req) => {
+        reqTotal += req.RequiredQty || 0;
+        pendingTotal += req.PendingQty || 0;
+        pendingPercentTotal += Number(req.PendingPercent) || 0;
+        reqCount++;
+
+        req.Issues.forEach((iss) => {
+          issueTotal += iss.IssueQty || 0;
+          sheetData.push({
+            Section: sec.CostCenter,
+            Material: item.Material,
+            Unit: req.Unit,
+            RequisitionNo: req.RequisitionNo,
+            RequisitionDate: req.RequisitionDate ? formatDate(req.RequisitionDate) : "",
+            RequiredQty: req.RequiredQty,
+            PendingQty: req.PendingQty,
+            PendingPercent: req.PendingPercent ? req.PendingPercent + "%" : "0%",
+            IssueNo: iss.IssueNo,
+            IssueQty: iss.IssueQty,
+            IssueDate: iss.IssueDate ? formatDate(iss.IssueDate) : "",
           });
         });
       });
-      const ws = XLSX.utils.json_to_sheet(sheetData);
-      XLSX.utils.book_append_sheet(wb, ws, sec.CostCenter.substring(0, 31));
+
+      const avgPending = reqCount === 0 ? 0 : (pendingPercentTotal / reqCount).toFixed(2);
+      itemSummaryList.push({
+        Material: item.Material,
+        Req: reqTotal,
+        Issue: issueTotal,
+        Pending: pendingTotal,
+        PendingPercent: avgPending + "%",
+      });
+
+      masterRows.push({
+        Section: sec.CostCenter,
+        Material: item.Material,
+        Req: reqTotal,
+        Issue: issueTotal,
+        Pending: pendingTotal,
+        PendingPercent: avgPending + "%",
+      });
     });
-    XLSX.writeFile(wb, "Advanced_Inventory_Report.xlsx");
-  };
+
+    // CREATE SHEET
+    const ws = XLSX.utils.json_to_sheet(sheetData, { origin: "A4" });
+    const colCount = Object.keys(sheetData[0] || {}).length;
+
+    // SECTION TITLE
+    ws["A1"] = {
+      v: `SECTION: ${sec.CostCenter}`,
+      t: "s",
+      s: {
+        font: { bold: true, sz: 16, color: { rgb: "FFFFFF" } },
+        fill: { fgColor: { rgb: "4F81BD" } },
+        alignment: { horizontal: "center" },
+      },
+    };
+
+    // DATE ROW
+    ws["A2"] = {
+      v: `Start: ${startDate} | End: ${endDate}`,
+      t: "s",
+      s: { font: { italic: true, sz: 11 }, alignment: { horizontal: "center" } },
+    };
+
+    // MERGE TITLE AND DATE ROW
+    ws["!merges"] = [
+      { s: { r: 0, c: 0 }, e: { r: 0, c: colCount - 1 } },
+      { s: { r: 1, c: 0 }, e: { r: 1, c: colCount - 1 } },
+    ];
+
+    // HEADER ROW
+    const headers = Object.keys(sheetData[0] || {});
+    XLSX.utils.sheet_add_aoa(ws, [headers], { origin: 3 });
+
+    // BORDER FOR DATA
+    const range = XLSX.utils.decode_range(ws["!ref"]);
+    for (let r = 3; r <= range.e.r; r++) {
+      for (let c = 0; c < colCount; c++) {
+        const cell = XLSX.utils.encode_cell({ r, c });
+        if (ws[cell])
+          ws[cell].s = {
+            border: {
+              top: { style: "thin", color: { rgb: "000000" } },
+              bottom: { style: "thin", color: { rgb: "000000" } },
+              left: { style: "thin", color: { rgb: "000000" } },
+              right: { style: "thin", color: { rgb: "000000" } },
+            },
+            alignment: { horizontal: "center" },
+          };
+      }
+    }
+
+    // ITEM SUMMARY RIGHT SIDE
+    const summaryStartCol = colCount + 2; // 2 columns gap
+
+    // SUMMARY Title
+    XLSX.utils.sheet_add_aoa(ws, [["SUMMARY"]], { origin: { r: 2, c: summaryStartCol } });
+    ws[XLSX.utils.encode_cell({ r: 2, c: summaryStartCol })].s = {
+      font: { bold: true, sz: 16, color: { rgb: "FFFFFF" } },
+      fill: { fgColor: { rgb: "4F81BD" } },
+      alignment: { horizontal: "center" },
+    };
+
+    // Merge title across summary columns
+    ws["!merges"].push({ s: { r: 2, c: summaryStartCol }, e: { r: 2, c: summaryStartCol + 4 } });
+
+    // Header row for summary
+    XLSX.utils.sheet_add_aoa(ws, [["Material", "Req Qty", "Issue Qty", "Pending", "Pending %"]], { origin: { r: 3, c: summaryStartCol } });
+
+    // Add summary data
+    itemSummaryList.forEach((sum, i) => {
+      XLSX.utils.sheet_add_aoa(ws, [[sum.Material, sum.Req, sum.Issue, sum.Pending, sum.PendingPercent]], { origin: { r: 4 + i, c: summaryStartCol } });
+    });
+
+    // BORDER FOR SUMMARY
+    for (let r = 3; r < 4 + itemSummaryList.length; r++) {
+      for (let c = summaryStartCol; c < summaryStartCol + 5; c++) {
+        const cell = XLSX.utils.encode_cell({ r, c });
+        if (ws[cell])
+          ws[cell].s = {
+            border: {
+              top: { style: "thin", color: { rgb: "000000" } },
+              bottom: { style: "thin", color: { rgb: "000000" } },
+              left: { style: "thin", color: { rgb: "000000" } },
+              right: { style: "thin", color: { rgb: "000000" } },
+            },
+            alignment: { horizontal: "center" },
+            fill: { fgColor: { rgb: r === 3 ? "FFD966" : "FFF2CC" } },
+            font: { bold: r === 3 || r === 2 },
+          };
+      }
+    }
+
+    wb.SheetNames.push(sec.CostCenter.substring(0, 31));
+    wb.Sheets[sec.CostCenter.substring(0, 31)] = ws;
+  });
+
+  // MASTER SUMMARY
+  let masterWS = XLSX.utils.aoa_to_sheet([]);
+  let rowPos = 0;
+  const masterHeaders = ["Section", "Material", "Req", "Issue", "Pending", "Pending %"];
+
+  masterRows.forEach((row, idx) => {
+    const isNewSection = idx === 0 || row.Section !== masterRows[idx - 1].Section;
+
+    if (isNewSection) {
+      XLSX.utils.sheet_add_aoa(masterWS, [[`${row.Section} SUMMARY`]], { origin: { r: rowPos, c: 0 } });
+      masterWS[XLSX.utils.encode_cell({ r: rowPos, c: 0 })].s = { font: { bold: true, sz: 14 }, fill: { fgColor: { rgb: "D9E1F2" } } };
+      rowPos += 2;
+      XLSX.utils.sheet_add_aoa(masterWS, [masterHeaders], { origin: { r: rowPos, c: 0 } });
+
+      for (let c = 0; c < masterHeaders.length; c++) {
+        const cell = XLSX.utils.encode_cell({ r: rowPos, c });
+        masterWS[cell].s = {
+          font: { bold: true, color: { rgb: "FFFFFF" } },
+          fill: { fgColor: { rgb: "305496" } },
+          border: {
+            top: { style: "thin", color: { rgb: "000000" } },
+            bottom: { style: "thin", color: { rgb: "000000" } },
+            left: { style: "thin", color: { rgb: "000000" } },
+            right: { style: "thin", color: { rgb: "000000" } },
+          },
+        };
+      }
+      rowPos++;
+    }
+
+    XLSX.utils.sheet_add_aoa(masterWS, [[row.Section, row.Material, row.Req, row.Issue, row.Pending, row.PendingPercent]], { origin: { r: rowPos, c: 0 } });
+    for (let c = 0; c < masterHeaders.length; c++) {
+      const cell = XLSX.utils.encode_cell({ r: rowPos, c });
+      masterWS[cell].s = {
+        border: {
+          top: { style: "thin", color: { rgb: "000000" } },
+          bottom: { style: "thin", color: { rgb: "000000" } },
+          left: { style: "thin", color: { rgb: "000000" } },
+          right: { style: "thin", color: { rgb: "000000" } },
+        },
+        alignment: { horizontal: "center" },
+      };
+    }
+    rowPos += 1;
+
+    if (idx + 1 === masterRows.length || masterRows[idx + 1].Section !== row.Section) rowPos += 3;
+  });
+
+  wb.SheetNames.push("Master Summary");
+  wb.Sheets["Master Summary"] = masterWS;
+
+  XLSX.writeFile(wb, "Inventory_Report_Final.xlsx");
+};
+
+
+
+
+
+
+
+
+
+
+
+
 
   const getItemPieData = (reqs) => {
     let totalPending = 0;
@@ -189,7 +395,10 @@ function FullAdvancedInventoryIssue_CompleteGreen() {
           ))}
         </select>
 
-        <button className="btn btn-primary" onClick={() => exportExcel(UseData)}>Export Excel</button>
+        <button className="btn btn-primary" onClick={() => exportExcel(UseData, cndata.startDate, cndata.endDate)}>
+  Export Excel
+</button>
+
       </div>
 
       {loading ? (
