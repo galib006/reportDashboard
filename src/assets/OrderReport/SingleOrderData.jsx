@@ -38,6 +38,7 @@ function SingleOrderData({ data }) {
               <th>Style</th>
               <th>Color</th>
               <th>PO</th>
+              <th>Key 7</th>
               <th>Description</th>
               <th className="text-right">Order Qty</th>
               <th className="text-right">Delivery Qty</th>
@@ -61,6 +62,7 @@ function SingleOrderData({ data }) {
                 <td>{item.KeyEntry1Value || "-"}</td>
                 <td>{item.KeyEntry2Value || "-"}</td>
                 <td>{item.KeyEntry3Value || "-"}</td>
+                <td>{item.KeyEntry7Value || "-"}</td>
                 <td>{item.KeyEntry9Value || "-"}</td>
                 <td className="text-right">{item.BreakDownQTY}</td>
                 <td className="text-right">{item.ChallanQTY}</td>

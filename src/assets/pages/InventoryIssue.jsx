@@ -21,8 +21,12 @@ function FullAdvancedInventoryIssue_CompleteGreen() {
   const [filterItem, setFilterItem] = useState("all");
   const [expandedPie, setExpandedPie] = useState({});
 
-  const stDate = cndata?.startDate ? cndata.startDate.toISOString().split("T")[0] : "";
-  const edDate = cndata?.endDate ? cndata.endDate.toISOString().split("T")[0] : "";
+  const stDate = cndata?.startDate
+    ? cndata.startDate.toISOString().split("T")[0]
+    : "";
+  const edDate = cndata?.endDate
+    ? cndata.endDate.toISOString().split("T")[0]
+    : "";
   const apiKey = localStorage.getItem("apiKey");
 
   const InvIssue = async () => {
@@ -48,7 +52,8 @@ function FullAdvancedInventoryIssue_CompleteGreen() {
   const UseData = useMemo(() => {
     const data = cndata.inventory || [];
     const filteredData = data.filter((d) => {
-      const sectionMatch = filterSection === "all" || d.CostCenterName === filterSection;
+      const sectionMatch =
+        filterSection === "all" || d.CostCenterName === filterSection;
       const itemMatch = filterItem === "all" || d.MaterialName === filterItem;
       const searchMatch =
         d.CostCenterName.toLowerCase().includes(searchText.toLowerCase()) ||
@@ -56,30 +61,53 @@ function FullAdvancedInventoryIssue_CompleteGreen() {
       return sectionMatch && itemMatch && searchMatch;
     });
 
-    const costCenters = [...new Set(filteredData.map((i) => i.CostCenterName))].sort();
+    const costCenters = [
+      ...new Set(filteredData.map((i) => i.CostCenterName)),
+    ].sort();
 
     return costCenters.map((cc) => {
-      const materials = [...new Set(filteredData.filter((i) => i.CostCenterName === cc).map((i) => i.MaterialName))];
+      const materials = [
+        ...new Set(
+          filteredData
+            .filter((i) => i.CostCenterName === cc)
+            .map((i) => i.MaterialName)
+        ),
+      ];
 
       const items = materials.map((mat) => {
-        const filteredItems = filteredData.filter((i) => i.CostCenterName === cc && i.MaterialName === mat);
+        const filteredItems = filteredData.filter(
+          (i) => i.CostCenterName === cc && i.MaterialName === mat
+        );
 
-        const requisitions = [...new Set(filteredItems.map((i) => i.RequisitionNo))].map((reqNo) => {
-          const reqData = filteredItems.filter((i) => i.RequisitionNo === reqNo);
+        const requisitions = [
+          ...new Set(filteredItems.map((i) => i.RequisitionNo)),
+        ].map((reqNo) => {
+          const reqData = filteredItems.filter(
+            (i) => i.RequisitionNo === reqNo
+          );
           const issuesMap = {};
 
-         const reqqqq =  reqData.forEach((d) => {
+          const reqqqq = reqData.forEach((d) => {
             const qty = d.IssueQTY ? parseFloat(d.IssueQTY) : 0;
             if (!issuesMap[d.IssueNo]) {
-              issuesMap[d.IssueNo] = { IssueNo: d.IssueNo, IssueQty: qty, IssueDate: d.IssueDate };
+              issuesMap[d.IssueNo] = {
+                IssueNo: d.IssueNo,
+                IssueQty: qty,
+                IssueDate: d.IssueDate,
+              };
             } else {
               issuesMap[d.IssueNo].IssueQty += qty;
             }
           });
-         
-    
-          const requiredQty = reqData.reduce((s, d) => s + (Number(d.RequiredQTY) || 0), 0);
-          const totalIssue = Object.values(issuesMap).reduce((s, i) => s + i.IssueQty, 0);
+
+          const requiredQty = reqData.reduce(
+            (s, d) => s + (Number(d.RequiredQTY) || 0),
+            0
+          );
+          const totalIssue = Object.values(issuesMap).reduce(
+            (s, i) => s + i.IssueQty,
+            0
+          );
           const pendingQty = Math.max(requiredQty - totalIssue, 0);
 
           return {
@@ -100,183 +128,236 @@ function FullAdvancedInventoryIssue_CompleteGreen() {
     });
   }, [cndata.inventory, searchText, filterSection, filterItem]);
 
+  const exportExcel = (structuredData, startDateObj, endDateObj) => {
+    const wb = XLSX.utils.book_new();
+    const masterRows = []; // Master summary rows
 
-const exportExcel = (structuredData, startDateObj, endDateObj) => {
-  const wb = XLSX.utils.book_new();
-  const masterRows = []; // Master summary rows
+    const formatDate = (d) => {
+      if (!d) return "";
+      const date = new Date(d);
+      const day = String(date.getDate()).padStart(2, "0");
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const year = date.getFullYear();
+      return `${day}/${month}/${year}`;
+    };
 
-  const formatDate = (d) => {
-    if (!d) return "";
-    const date = new Date(d);
-    const day = String(date.getDate()).padStart(2, "0");
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const year = date.getFullYear();
-    return `${day}/${month}/${year}`;
-  };
+    const startDate = formatDate(startDateObj);
+    const endDate = formatDate(endDateObj);
 
-  const startDate = formatDate(startDateObj);
-  const endDate = formatDate(endDateObj);
+    structuredData.forEach((sec) => {
+      const sheetData = [];
+      const itemSummaryList = [];
 
-  structuredData.forEach((sec) => {
-    const sheetData = [];
-    const itemSummaryList = [];
+      // Section-wise data calculation
+      sec.Items.forEach((item) => {
+        let reqTotal = 0,
+          issueTotal = 0,
+          pendingTotal = 0,
+          pendingPercentTotal = 0,
+          reqCount = 0;
 
-    // Section-wise data calculation
-    sec.Items.forEach((item) => {
-      let reqTotal = 0,
-        issueTotal = 0,
-        pendingTotal = 0,
-        pendingPercentTotal = 0,
-        reqCount = 0;
+        item.Requisitions.forEach((req) => {
+          reqTotal += req.RequiredQty || 0;
+          pendingTotal += req.PendingQty || 0;
+          pendingPercentTotal += Number(req.PendingPercent) || 0;
+          reqCount++;
 
-      item.Requisitions.forEach((req) => {
-        reqTotal += req.RequiredQty || 0;
-        pendingTotal += req.PendingQty || 0;
-        pendingPercentTotal += Number(req.PendingPercent) || 0;
-        reqCount++;
-
-        req.Issues.forEach((iss) => {
-          issueTotal += iss.IssueQty || 0;
-          sheetData.push({
-            Material: item.Material,
-            Unit: req.Unit,
-            RequisitionNo: req.RequisitionNo,
-            RequisitionDate: req.RequisitionDate ? formatDate(req.RequisitionDate) : "",
-            RequiredQty: req.RequiredQty,
-            PendingQty: req.PendingQty,
-            PendingPercent: req.PendingPercent ? req.PendingPercent + "%" : "0%",
-            IssueNo: iss.IssueNo,
-            IssueQty: iss.IssueQty,
-            IssueDate: iss.IssueDate ? formatDate(iss.IssueDate) : "",
+          req.Issues.forEach((iss) => {
+            issueTotal += iss.IssueQty || 0;
+            sheetData.push({
+              Material: item.Material,
+              Unit: req.Unit,
+              RequisitionNo: req.RequisitionNo,
+              RequisitionDate: req.RequisitionDate
+                ? formatDate(req.RequisitionDate)
+                : "",
+              RequiredQty: req.RequiredQty,
+              PendingQty: req.PendingQty,
+              PendingPercent: req.PendingPercent
+                ? req.PendingPercent + "%"
+                : "0%",
+              IssueNo: iss.IssueNo,
+              IssueQty: iss.IssueQty,
+              IssueDate: iss.IssueDate ? formatDate(iss.IssueDate) : "",
+            });
           });
+        });
+
+        const avgPending =
+          reqCount === 0 ? 0 : (pendingPercentTotal / reqCount).toFixed(2);
+        itemSummaryList.push({
+          Material: item.Material,
+          Req: reqTotal,
+          Issue: issueTotal,
+          Pending: pendingTotal,
+          PendingPercent: avgPending + "%",
+        });
+
+        // Add to master summary rows
+        masterRows.push({
+          Section: sec.CostCenter,
+          Material: item.Material,
+          Req: reqTotal,
+          Issue: issueTotal,
+          Pending: pendingTotal,
+          PendingPercent: avgPending + "%",
         });
       });
 
-      const avgPending = reqCount === 0 ? 0 : (pendingPercentTotal / reqCount).toFixed(2);
-      itemSummaryList.push({
-        Material: item.Material,
-        Req: reqTotal,
-        Issue: issueTotal,
-        Pending: pendingTotal,
-        PendingPercent: avgPending + "%",
+      // Create section sheet
+      const ws = XLSX.utils.json_to_sheet(sheetData, { origin: "A4" });
+      const colCount = Object.keys(sheetData[0] || {}).length;
+
+      // SECTION TITLE
+      ws["A1"] = {
+        v: `SECTION: ${sec.CostCenter}`,
+        t: "s",
+        s: {
+          font: { bold: true, sz: 18, color: { rgb: "FFFFFF" } },
+          fill: { fgColor: { rgb: "4F81BD" } },
+          alignment: { horizontal: "center" },
+        },
+      };
+
+      // DATE ROW
+      ws["A2"] = {
+        v: `Start: ${startDate} | End: ${endDate}`,
+        t: "s",
+        s: {
+          font: { italic: true, sz: 14 },
+          alignment: { horizontal: "center" },
+        },
+      };
+
+      ws["!merges"] = [
+        { s: { r: 0, c: 0 }, e: { r: 0, c: colCount - 1 } },
+        { s: { r: 1, c: 0 }, e: { r: 1, c: colCount - 1 } },
+      ];
+
+      // HEADER ROW
+      const headers = Object.keys(sheetData[0] || {});
+      XLSX.utils.sheet_add_aoa(ws, [headers], { origin: 3 });
+      for (let c = 0; c < colCount; c++) {
+        const cell = XLSX.utils.encode_cell({ r: 3, c });
+        if (ws[cell])
+          ws[cell].s = {
+            font: { bold: true, sz: 18 },
+            alignment: { horizontal: "center" },
+          };
+      }
+
+      // DATA STYLE
+      const range = XLSX.utils.decode_range(ws["!ref"]);
+      for (let r = 4; r <= range.e.r; r++) {
+        for (let c = 0; c < colCount; c++) {
+          const cell = XLSX.utils.encode_cell({ r, c });
+          if (ws[cell])
+            ws[cell].s = {
+              font: { sz: 17 },
+              alignment: { horizontal: "center" },
+            };
+        }
+      }
+
+      // ===================== SUMMARY BELOW TABLE =====================
+      const summaryStartRow = range.e.r + 2;
+      XLSX.utils.sheet_add_aoa(ws, [["SUMMARY"]], {
+        origin: { r: summaryStartRow, c: 0 },
+      });
+      ws[XLSX.utils.encode_cell({ r: summaryStartRow, c: 0 })].s = {
+        font: { bold: true, sz: 18, color: { rgb: "FFFFFF" } },
+        fill: { fgColor: { rgb: "4F81BD" } },
+        alignment: { horizontal: "center" },
+      };
+      ws["!merges"].push({
+        s: { r: summaryStartRow, c: 0 },
+        e: { r: summaryStartRow, c: 4 },
       });
 
-      // Add to master summary rows
-      masterRows.push({
-        Section: sec.CostCenter,
-        Material: item.Material,
-        Req: reqTotal,
-        Issue: issueTotal,
-        Pending: pendingTotal,
-        PendingPercent: avgPending + "%",
+      XLSX.utils.sheet_add_aoa(
+        ws,
+        [["Material", "Req Qty", "Issue Qty", "Pending", "Pending %"]],
+        { origin: { r: summaryStartRow + 1, c: 0 } }
+      );
+      for (let c = 0; c < 5; c++) {
+        const cell = XLSX.utils.encode_cell({ r: summaryStartRow + 1, c });
+        ws[cell].s = {
+          font: { bold: true, sz: 18 },
+          alignment: { horizontal: "center" },
+        };
+      }
+
+      itemSummaryList.forEach((sum, i) => {
+        XLSX.utils.sheet_add_aoa(
+          ws,
+          [[sum.Material, sum.Req, sum.Issue, sum.Pending, sum.PendingPercent]],
+          { origin: { r: summaryStartRow + 2 + i, c: 0 } }
+        );
+        for (let c = 0; c < 5; c++) {
+          const cell = XLSX.utils.encode_cell({
+            r: summaryStartRow + 2 + i,
+            c,
+          });
+          ws[cell].s = {
+            font: { sz: 17 },
+            alignment: { horizontal: "center" },
+          };
+        }
       });
+
+      wb.SheetNames.push(sec.CostCenter.substring(0, 31));
+      wb.Sheets[sec.CostCenter.substring(0, 31)] = ws;
     });
 
-    // Create section sheet
-    const ws = XLSX.utils.json_to_sheet(sheetData, { origin: "A4" });
-    const colCount = Object.keys(sheetData[0] || {}).length;
-
-    // SECTION TITLE
-    ws["A1"] = {
-      v: `SECTION: ${sec.CostCenter}`,
-      t: "s",
-      s: { font: { bold: true, sz: 18, color: { rgb: "FFFFFF" } }, fill: { fgColor: { rgb: "4F81BD" } }, alignment: { horizontal: "center" } },
-    };
-
-    // DATE ROW
-    ws["A2"] = {
-      v: `Start: ${startDate} | End: ${endDate}`,
-      t: "s",
-      s: { font: { italic: true, sz: 14 }, alignment: { horizontal: "center" } },
-    };
-
-    ws["!merges"] = [
-      { s: { r: 0, c: 0 }, e: { r: 0, c: colCount - 1 } },
-      { s: { r: 1, c: 0 }, e: { r: 1, c: colCount - 1 } },
-    ];
-
-    // HEADER ROW
-    const headers = Object.keys(sheetData[0] || {});
-    XLSX.utils.sheet_add_aoa(ws, [headers], { origin: 3 });
-    for (let c = 0; c < colCount; c++) {
-      const cell = XLSX.utils.encode_cell({ r: 3, c });
-      if (ws[cell])
-        ws[cell].s = { font: { bold: true, sz: 18 }, alignment: { horizontal: "center" } };
-    }
-
-    // DATA STYLE
-    const range = XLSX.utils.decode_range(ws["!ref"]);
-    for (let r = 4; r <= range.e.r; r++) {
-      for (let c = 0; c < colCount; c++) {
-        const cell = XLSX.utils.encode_cell({ r, c });
-        if (ws[cell]) ws[cell].s = { font: { sz: 17 }, alignment: { horizontal: "center" } };
-      }
-    }
-
-    // ===================== SUMMARY BELOW TABLE =====================
-    const summaryStartRow = range.e.r + 2;
-    XLSX.utils.sheet_add_aoa(ws, [["SUMMARY"]], { origin: { r: summaryStartRow, c: 0 } });
-    ws[XLSX.utils.encode_cell({ r: summaryStartRow, c: 0 })].s = {
+    // ===================== MASTER SUMMARY SHEET =====================
+    const masterWS = XLSX.utils.aoa_to_sheet([]);
+    XLSX.utils.sheet_add_aoa(masterWS, [["MASTER SUMMARY"]], { origin: 0 });
+    masterWS["A1"].s = {
       font: { bold: true, sz: 18, color: { rgb: "FFFFFF" } },
       fill: { fgColor: { rgb: "4F81BD" } },
       alignment: { horizontal: "center" },
     };
-    ws["!merges"].push({ s: { r: summaryStartRow, c: 0 }, e: { r: summaryStartRow, c: 4 } });
-
-    XLSX.utils.sheet_add_aoa(ws, [["Material", "Req Qty", "Issue Qty", "Pending", "Pending %"]], { origin: { r: summaryStartRow + 1, c: 0 } });
-    for (let c = 0; c < 5; c++) {
-      const cell = XLSX.utils.encode_cell({ r: summaryStartRow + 1, c });
-      ws[cell].s = { font: { bold: true, sz: 18 }, alignment: { horizontal: "center" } };
+    XLSX.utils.sheet_add_aoa(
+      masterWS,
+      [["Section", "Material", "Req Qty", "Issue Qty", "Pending", "Pending %"]],
+      { origin: 2 }
+    );
+    for (let c = 0; c < 6; c++) {
+      const cell = XLSX.utils.encode_cell({ r: 2, c });
+      masterWS[cell].s = {
+        font: { bold: true, sz: 18 },
+        alignment: { horizontal: "center" },
+      };
     }
-
-    itemSummaryList.forEach((sum, i) => {
-      XLSX.utils.sheet_add_aoa(ws, [[sum.Material, sum.Req, sum.Issue, sum.Pending, sum.PendingPercent]], { origin: { r: summaryStartRow + 2 + i, c: 0 } });
-      for (let c = 0; c < 5; c++) {
-        const cell = XLSX.utils.encode_cell({ r: summaryStartRow + 2 + i, c });
-        ws[cell].s = { font: { sz: 17 }, alignment: { horizontal: "center" } };
+    masterRows.forEach((row, idx) => {
+      XLSX.utils.sheet_add_aoa(
+        masterWS,
+        [
+          [
+            row.Section,
+            row.Material,
+            row.Req,
+            row.Issue,
+            row.Pending,
+            row.PendingPercent,
+          ],
+        ],
+        { origin: { r: 3 + idx, c: 0 } }
+      );
+      for (let c = 0; c < 6; c++) {
+        const cell = XLSX.utils.encode_cell({ r: 3 + idx, c });
+        masterWS[cell].s = {
+          font: { sz: 17 },
+          alignment: { horizontal: "center" },
+        };
       }
     });
 
-    wb.SheetNames.push(sec.CostCenter.substring(0, 31));
-    wb.Sheets[sec.CostCenter.substring(0, 31)] = ws;
-  });
+    wb.SheetNames.push("Master Summary");
+    wb.Sheets["Master Summary"] = masterWS;
 
-  // ===================== MASTER SUMMARY SHEET =====================
-  const masterWS = XLSX.utils.aoa_to_sheet([]);
-  XLSX.utils.sheet_add_aoa(masterWS, [["MASTER SUMMARY"]], { origin: 0 });
-  masterWS["A1"].s = { font: { bold: true, sz: 18, color: { rgb: "FFFFFF" } }, fill: { fgColor: { rgb: "4F81BD" } }, alignment: { horizontal: "center" } };
-  XLSX.utils.sheet_add_aoa(masterWS, [["Section", "Material", "Req Qty", "Issue Qty", "Pending", "Pending %"]], { origin: 2 });
-  for (let c = 0; c < 6; c++) {
-    const cell = XLSX.utils.encode_cell({ r: 2, c });
-    masterWS[cell].s = { font: { bold: true, sz: 18 }, alignment: { horizontal: "center" } };
-  }
-  masterRows.forEach((row, idx) => {
-    XLSX.utils.sheet_add_aoa(masterWS, [[row.Section, row.Material, row.Req, row.Issue, row.Pending, row.PendingPercent]], { origin: { r: 3 + idx, c: 0 } });
-    for (let c = 0; c < 6; c++) {
-      const cell = XLSX.utils.encode_cell({ r: 3 + idx, c });
-      masterWS[cell].s = { font: { sz: 17 }, alignment: { horizontal: "center" } };
-    }
-  });
-
-  wb.SheetNames.push("Master Summary");
-  wb.Sheets["Master Summary"] = masterWS;
-
-  XLSX.writeFile(wb, "Inventory_Report_Final.xlsx");
-};
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    XLSX.writeFile(wb, "Inventory_Report_Final.xlsx");
+  };
 
   const getItemPieData = (reqs) => {
     let totalPending = 0;
@@ -296,7 +377,9 @@ const exportExcel = (structuredData, startDateObj, endDateObj) => {
 
     const colors = [
       totalIssued >= totalPending + totalIssued ? "green" : "red", // Pending
-      ...issues.map((i) => (i.qty / (totalIssued + totalPending) >= 1 ? "green" : "#007bff")),
+      ...issues.map((i) =>
+        i.qty / (totalIssued + totalPending) >= 1 ? "green" : "#007bff"
+      ),
     ];
 
     return { labels, datasets: [{ data, backgroundColor: colors }] };
@@ -325,24 +408,42 @@ const exportExcel = (structuredData, startDateObj, endDateObj) => {
           onChange={(e) => setSearchText(e.target.value)}
         />
 
-        <select className="select select-bordered" value={filterSection} onChange={(e) => setFilterSection(e.target.value)}>
+        <select
+          className="select select-bordered"
+          value={filterSection}
+          onChange={(e) => setFilterSection(e.target.value)}
+        >
           <option value="all">All Sections</option>
-          {[...new Set(cndata.inventory?.map((i) => i.CostCenterName) || [])].map((sec) => (
-            <option key={sec} value={sec}>{sec}</option>
+          {[
+            ...new Set(cndata.inventory?.map((i) => i.CostCenterName) || []),
+          ].map((sec) => (
+            <option key={sec} value={sec}>
+              {sec}
+            </option>
           ))}
         </select>
 
-        <select className="select select-bordered" value={filterItem} onChange={(e) => setFilterItem(e.target.value)}>
+        <select
+          className="select select-bordered"
+          value={filterItem}
+          onChange={(e) => setFilterItem(e.target.value)}
+        >
           <option value="all">All Items</option>
-          {[...new Set(cndata.inventory?.map((i) => i.MaterialName) || [])].map((item) => (
-            <option key={item} value={item}>{item}</option>
-          ))}
+          {[...new Set(cndata.inventory?.map((i) => i.MaterialName) || [])].map(
+            (item) => (
+              <option key={item} value={item}>
+                {item}
+              </option>
+            )
+          )}
         </select>
 
-        <button className="btn btn-primary" onClick={() => exportExcel(UseData, cndata.startDate, cndata.endDate)}>
-  Export Excel
-</button>
-
+        <button
+          className="btn btn-primary"
+          onClick={() => exportExcel(UseData, cndata.startDate, cndata.endDate)}
+        >
+          Export Excel
+        </button>
       </div>
 
       {loading ? (
@@ -353,13 +454,20 @@ const exportExcel = (structuredData, startDateObj, endDateObj) => {
         <div className="mt-5 space-y-6">
           {UseData.map((cc, ccIdx) => (
             <div key={ccIdx} className="border rounded p-2">
-              <h2 className="font-bold text-xl mb-2 bg-blue-500 text-white p-2">{cc.CostCenter}</h2>
+              <h2 className="font-bold text-xl mb-2 bg-blue-500 text-white p-2">
+                {cc.CostCenter}
+              </h2>
 
               {cc.Items.map((item, idx) => (
                 <div key={idx} className="border rounded p-2 mb-4">
                   <h3
                     className="font-semibold mb-2 cursor-pointer text-blue-700 hover:underline"
-                    onClick={() => setExpandedPie((prev) => ({ ...prev, [item.Material]: !prev[item.Material] }))}
+                    onClick={() =>
+                      setExpandedPie((prev) => ({
+                        ...prev,
+                        [item.Material]: !prev[item.Material],
+                      }))
+                    }
                   >
                     {item.Material} {expandedPie[item.Material] ? "▲" : "▼"}
                   </h3>
@@ -376,7 +484,10 @@ const exportExcel = (structuredData, startDateObj, endDateObj) => {
                               callbacks: {
                                 label: function (context) {
                                   const val = context.raw;
-                                  const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                  const total = context.dataset.data.reduce(
+                                    (a, b) => a + b,
+                                    0
+                                  );
                                   const perc = ((val / total) * 100).toFixed(2);
                                   return `${context.label}: ${val} (${perc}%)`;
                                 },
@@ -385,7 +496,10 @@ const exportExcel = (structuredData, startDateObj, endDateObj) => {
                             datalabels: {
                               display: true,
                               formatter: (value, context) => {
-                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const total = context.dataset.data.reduce(
+                                  (a, b) => a + b,
+                                  0
+                                );
                                 return ((value / total) * 100).toFixed(1) + "%";
                               },
                               color: "#fff",
@@ -414,25 +528,90 @@ const exportExcel = (structuredData, startDateObj, endDateObj) => {
                       </thead>
                       <tbody>
                         {item.Requisitions.map((req) =>
-                          req.Issues.map((iss, iIdx) => (
-                            <tr key={`${req.RequisitionNo}-${iss.IssueNo}`} className="odd:bg-white even:bg-gray-50">
-                              {iIdx === 0 && (
-                                <>
-                                  <td className="p-2 border" rowSpan={req.Issues.length}>{req.RequisitionNo}</td>
-                                  <td className="p-2 border" rowSpan={req.Issues.length}>{req.RequisitionDate ? new Date(req.RequisitionDate).toLocaleDateString("en-GB") : ""}</td>
-                                  <td className="p-2 border" rowSpan={req.Issues.length}>{req.RequiredQty}</td>
-                                  <td className="p-2 border" rowSpan={req.Issues.length}>{req.PendingQty}</td>
-                                  <td className="p-2 border" rowSpan={req.Issues.length}>{req.PendingPercent}%</td>
-                                  <td className="p-2 border" rowSpan={req.Issues.length}>{req.Unit}</td>
-                                </>
-                              )}
-                              <td className="p-2 border">{iss.IssueNo}</td>
-                              <td className="p-2 border">{iss.IssueDate ? new Date(iss.IssueDate).toLocaleDateString("en-GB") : ""}</td>
-                              <td className="p-2 border">{iss.IssueQty}</td>
-                            </tr>
-                          ))
+                          req.Issues.map((iss, iIdx) => {
+                            return (
+                              <tr
+                                key={`${req.RequisitionNo}-${iss.IssueNo}`}
+                                className="odd:bg-white even:bg-gray-50"
+                              >
+                                {iIdx === 0 && (
+                                  <>
+                                    <td
+                                      className="p-2 border"
+                                      rowSpan={req.Issues.length}
+                                    >
+                                      {req.RequisitionNo}
+                                    </td>
+                                    <td
+                                      className="p-2 border"
+                                      rowSpan={req.Issues.length}
+                                    >
+                                      {req.RequisitionDate
+                                        ? new Date(
+                                            req.RequisitionDate
+                                          ).toLocaleDateString("en-GB")
+                                        : ""}
+                                    </td>
+                                    <td
+                                      className="p-2 border"
+                                      rowSpan={req.Issues.length}
+                                    >
+                                      {req.RequiredQty}
+                                    </td>
+                                    <td
+                                      className="p-2 border"
+                                      rowSpan={req.Issues.length}
+                                    >
+                                      {req.PendingQty}
+                                    </td>
+                                    <td
+                                      className="p-2 border"
+                                      rowSpan={req.Issues.length}
+                                    >
+                                      {req.PendingPercent}%
+                                    </td>
+                                    <td
+                                      className="p-2 border"
+                                      rowSpan={req.Issues.length}
+                                    >
+                                      {req.Unit}
+                                    </td>
+                                  </>
+                                )}
+                                <td className="p-2 border">{iss.IssueNo}</td>
+                                <td className="p-2 border">
+                                  {iss.IssueDate
+                                    ? new Date(
+                                        iss.IssueDate
+                                      ).toLocaleDateString("en-GB")
+                                    : ""}
+                                </td>
+                                <td className="p-2 border">{iss.IssueQty}</td>
+                              </tr>
+                            );
+                          })
                         )}
                       </tbody>
+                      <tfoot className="bg-gray-100 font-semibold">
+                        <tr>
+                          <td colSpan={8} className="p-2 border text-right">
+                            Total Issue Qty
+                          </td>
+                          <td className="p-2 border">
+                            {cc.Items.map((item, idx) => {
+                              item.Requisitions.map((item,idx)=>{
+                                item.RequiredQty.reduce((sum,req)=> sum + req)
+                              })
+                              // const totalRequiredQty = item.Requisitions.reduce(
+                              //   (sum, req) => sum + Number(req.RequiredQty || 0),
+                              //   0
+                              // );
+
+                              return <div key={idx}>{totalRequiredQty}</div>;
+                            })}
+                          </td>
+                        </tr>
+                      </tfoot>
                     </table>
                   </div>
                 </div>
