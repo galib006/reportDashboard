@@ -98,6 +98,19 @@ console.log(deliveryPercent);
             setItemOffset(0); // search দিলে pagination reset হবে
           }}
         />
+        <div>
+
+<button className="btn" popoverTarget="popover-1" style={{ anchorName: "--anchor-1" } /* as React.CSSProperties */}>
+  Sort
+</button>
+
+<ul className="dropdown menu w-52 rounded-box bg-base-100 shadow-sm"
+  popover="auto" id="popover-1" style={{ positionAnchor: "--anchor-1" } /* as React.CSSProperties */ }>
+  <li><button onClick={()=>OrderInc()}>Sort BY Order Increase</button></li>
+  <li><button onClick={()=>OrderDec()}>Sort BY Order Decrease</button></li>
+
+</ul>
+        </div>
         <button
     onClick={() => exportToExcel(filteredData)}
     className="btn btn-success px-4 py-2 text-white font-semibold rounded"
