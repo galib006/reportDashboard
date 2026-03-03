@@ -44,7 +44,7 @@ function OrderForm() {
 
       // Purchase & Issue filtering example
       const groupPRandIssue = data2.filter((item) => item.MaterialName);
-      console.log("Purchase & Issue Data:", groupPRandIssue);
+      // console.log("Purchase & Issue Data:", groupPRandIssue);
 
       // Group Order Data
       const groupedData = Object.values(

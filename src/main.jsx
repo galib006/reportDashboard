@@ -13,6 +13,7 @@ import "react-toastify/dist/ReactToastify.css";
 import InventoryIssue from "./assets/pages/InventoryIssue.jsx";
 import Delivery from "./assets/pages/Delivery.jsx";
 import EmployeeLIst from "./assets/pages/EmployeeLIst.jsx";
+import OrderSummary from "./assets/pages/OrderSummary.jsx";
 
 
 
@@ -24,6 +25,10 @@ const router = createBrowserRouter([
       {
       path: "OrderReport",
       Component:OrderReport
+    },
+    {
+      path: "OrderSummary",
+      Component:OrderSummary
     },
   {path: "Inventory",
     Component:Inventory

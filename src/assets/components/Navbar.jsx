@@ -60,6 +60,9 @@ function Navbar() {
             <li>
               <NavLink to={"OrderReport"}>Order Report</NavLink>
             </li>
+            <li>
+              <NavLink to={"OrderSummary"}>Order Summary</NavLink>
+            </li>
 
             <li>
               <NavLink to={"Inventory"}>Inventory Status</NavLink>

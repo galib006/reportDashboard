@@ -60,7 +60,6 @@ function FullAdvancedInventoryIssue_CompleteGreen() {
         d.MaterialName.toLowerCase().includes(searchText.toLowerCase());
       return sectionMatch && itemMatch && searchMatch;
     });
-
     const costCenters = [
       ...new Set(filteredData.map((i) => i.CostCenterName)),
     ].sort();
@@ -88,6 +87,9 @@ function FullAdvancedInventoryIssue_CompleteGreen() {
           const issuesMap = {};
 
           const reqqqq = reqData.forEach((d) => {
+            
+
+    // console.log(item.Material, totalReqQty);
             const qty = d.IssueQTY ? parseFloat(d.IssueQTY) : 0;
             if (!issuesMap[d.IssueNo]) {
               issuesMap[d.IssueNo] = {
@@ -114,6 +116,7 @@ function FullAdvancedInventoryIssue_CompleteGreen() {
             RequisitionNo: reqNo,
             RequisitionDate: reqData[0]?.RequisitionDate,
             RequiredQty: requiredQty,
+    
             PendingQty: pendingQty,
             PendingPercent: ((pendingQty / requiredQty) * 100).toFixed(2),
             Issues: Object.values(issuesMap),
@@ -126,7 +129,21 @@ function FullAdvancedInventoryIssue_CompleteGreen() {
 
       return { CostCenter: cc, Items: items };
     });
+   
   }, [cndata.inventory, searchText, filterSection, filterItem]);
+UseData.map((row) => {
+  const grandTotal = row.Items.reduce((itemSum, item) => {
+    const itemTotal = item.Requisitions.reduce(
+      (reqSum, req) => reqSum + Number(req.RequiredQty || 0),
+      0
+    );
+
+    return itemSum + itemTotal;
+  }, 0);
+
+  console.log(grandTotal);
+});
+
 
   const exportExcel = (structuredData, startDateObj, endDateObj) => {
     const wb = XLSX.utils.book_new();
@@ -452,7 +469,10 @@ function FullAdvancedInventoryIssue_CompleteGreen() {
         </div>
       ) : (
         <div className="mt-5 space-y-6">
-          {UseData.map((cc, ccIdx) => (
+          {UseData.map((cc, ccIdx) => {
+            // console.log(cc);  
+            
+          return (
             <div key={ccIdx} className="border rounded p-2">
               <h2 className="font-bold text-xl mb-2 bg-blue-500 text-white p-2">
                 {cc.CostCenter}
@@ -598,17 +618,11 @@ function FullAdvancedInventoryIssue_CompleteGreen() {
                             Total Issue Qty
                           </td>
                           <td className="p-2 border">
-                            {cc.Items.map((item, idx) => {
-                              item.Requisitions.map((item,idx)=>{
-                                item.RequiredQty.reduce((sum,req)=> sum + req)
-                              })
-                              // const totalRequiredQty = item.Requisitions.reduce(
-                              //   (sum, req) => sum + Number(req.RequiredQty || 0),
-                              //   0
-                              // );
-
-                              return <div key={idx}>{totalRequiredQty}</div>;
-                            })}
+                            {/* {cc.Items.map((data)=>{
+                              let ddd = data.Requisitions.RequiredQty.reduce((data,prev)=>data += prev);
+                              console.log(ddd);
+                              
+                            })}  */}
                           </td>
                         </tr>
                       </tfoot>
@@ -617,7 +631,7 @@ function FullAdvancedInventoryIssue_CompleteGreen() {
                 </div>
               ))}
             </div>
-          ))}
+)})}
         </div>
       )}
     </>

@@ -26,6 +26,7 @@ function EmployeeListSingleSheet() {
     setLoading(true);
     try {
       const res = await axios.get(
+
         `https://tpl-api.ebs365.info/api/HRMBI/HRM_GET_EmployeeInformation_ReportExcel?CompanyID=1&DepartmentID=0&SectionID=0&LineID=0&FloorID=0&EmpTypeID=4&CommandID=1&MM=[December]&YYYY=${year}`,
         { headers: { Authorization: `${apiKey}` } }
       );
@@ -37,30 +38,69 @@ function EmployeeListSingleSheet() {
       setLoading(false);
     }
   };
+
 const designationPriority = {
-  "Supervisor": 1,
-  "Incharge": 2,
-  "Sr. Operator": 3,
-  "Operator": 4,
-  "Helper": 5,
-  "Operator (Washing)": 6,
-  "Helper (Washing)": 7,
-  "Quality Controller (Finishing)": 8,
-  "Helper ( Finishing)": 9,
-  "Operator (Warping)": 10,
-  "Technician (Rubber Covering)": 11,
-  "Helper (Warping)": 12,
-  "Q.C (Finishing)": 13,
+  "Incharge": 1,
+  "Supervisor": 2,  
+  "Printing Supervisor ": 3,
+  "Sr. Operator": 4,
+  "Operator": 5,
+  "Asst. operator": 6 ,
+  "Jr. Operator": 7,
+  "Helper": 8,
+  "Operator (Washing)": 9,
+  "Helper (Washing)": 10,
+  "Quality Controller (Finishing)": 11,
+  "Helper ( Finishing)": 12,
+  "Operator (Warping)": 13,
+  "Technician (Rubber Covering)": 14,
+  "Helper (Warping)": 15,
+  "Asst. QI": 16,
+  "Q.C (Finishing)": 17,
+  "Asst. Supervisor": 18,
+  "Delivery Man": 19,
+  "Office Assistant": 20,
+  "Driver": 21,
+  "Cook": 22, 
+  "Cleaner": 23,
+  "Loader": 24,
+  "Caretaker": 25,
 };
-
+const section = {
+  "Offset Printing" : 1,
+  "Sewing Thread" : 2,
+  "Poly" : 3,
+  "Drawstring" : 4,
+  "Elastic" : 5,
+  "Twill Tape" : 6,
+  "Gum Tape" : 7,
+  "Jacquard & Woven Elastic" : 8,
+  "Warping & Rubber Covering ": 9,
+  "Rib Tape" : 10,
+  "Washing" : 11,
+  "Warping & Rubber Covering" : 12,
+  "Operations and Maintenance" : 13,
+  "Store" : 14,
+  "General" : 15,
+  "Security" : 16,
+}
 // Group by section
-const uniqueSection = [...new Set(apiData.map((item) => item.SectionName))];
+const uniqueSection = [...new Set(apiData.map(item => item.SectionName))];
 
-const grpData = uniqueSection.map((section) => {
-  // Step 1: এই section এর employee ফিল্টার করা
-  const employees = apiData.filter((item) => item.SectionName === section);
+// section priority অনুযায়ী sort
+const sortedSection = uniqueSection.sort((a, b) => {
+  const rankA = section[a] || 999;
+  const rankB = section[b] || 999;
+  return rankA - rankB;
+});
 
-  // Step 2: designation priority অনুযায়ী sort করা
+const grpData = sortedSection.map((sec) => {
+  // এই section এর employee ফিল্টার
+  const employees = apiData.filter(
+    item => item.SectionName === sec
+  );
+
+  // designation priority অনুযায়ী sort
   const sortedEmployees = employees.sort((a, b) => {
     const rankA = designationPriority[a.Designation] || 999;
     const rankB = designationPriority[b.Designation] || 999;
@@ -68,7 +108,7 @@ const grpData = uniqueSection.map((section) => {
   });
 
   return {
-    Section: section,
+    Section: sec,
     Employee: sortedEmployees,
   };
 });
@@ -148,6 +188,7 @@ console.log(grpData);
           emp.Designation,
           "",
         ]);
+         row.height = 20;
 
         row.eachCell((cell) => {
           cell.border = cellBorder;
@@ -243,6 +284,8 @@ console.log(month);
             <th>Joining Date</th>
             <th>Section</th>
             <th>Designation</th>
+            <th>Basic Salary</th>
+            <th>Cash Salary</th>
           </tr>
         </thead>
 
@@ -250,7 +293,7 @@ console.log(month);
           {grpData.map((emp, idx) => (
             <React.Fragment key={idx}>
               <tr className="bg-gray-200">
-                <th colSpan={6} className="text-left text-xl">
+                <th colSpan={8} className="text-left text-xl">
                   {emp.Section}
                 </th>
               </tr>
@@ -262,6 +305,8 @@ console.log(month);
                   <td>{DateFormat(data.DateOfJoining)}</td>
                   <td>{data.SectionName}</td>
                   <td>{data.Designation}</td>
+                  <td>{data.BasicSalary}</td>
+                  <td>{data.CashSalary}</td>
                 </tr>
               ))}
             </React.Fragment>
