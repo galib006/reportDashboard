@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState } from "react";
+import React, { useContext, useEffect, useMemo, useState } from "react";
 import TableRow from "../components/TableRow";
 import { GetDataContext } from "../components/DataContext";
 import { FourSquare } from "react-loading-indicators";
@@ -9,7 +9,7 @@ import { UNSAFE_useFogOFWarDiscovery } from "react-router";
 
 function OrderSummary() {
   const { cndata, loading } = useContext(GetDataContext);
-   const [apidata,setApidata] = useState();
+   const [apidata,setApidata] = useState([]);
   const [search, setSearch] = useState("");
   const [itemOffset, setItemOffset] = useState(1);
   const itemsPerPage = 10;
@@ -20,9 +20,49 @@ function OrderSummary() {
       setApidata(cndata[0].apiData);
     }
   },[cndata]);
-  console.log(apidata);
-   const uniqueOrderNO = [...new Set(apidata.WorkOrderNo)]
-                    console.log(uniqueOrderNO);
+  // console.log(apidata);
+  // const UniqueWorkOrderNO = [...new Set(apidata.map((data)=>data.WorkOrderNo))];
+  // console.log(UniqueWorkOrderNO);
+const SummarizedData = useMemo(() => {
+  if (!apidata?.length) return [];
+
+  const grouped = apidata?.reduce((acc, item) => {
+
+    acc[item.WorkOrderNo] ??= {
+      WorkOrderNo: item.WorkOrderNo,
+      DeliverName: item.FName,
+      CustomerName: item.CName,
+      Buyer: item.BuyerName,
+      PINO: item.CustomerPINo,
+      CustomerPO: item.CustomerPONo,
+      Section: item.ProductCategoryName,
+      TotalQty: 0,
+      ChallanQTY: 0,
+      BalanceQty: 0,
+      ChallanNo: []
+    };
+
+    // qty sum
+    acc[item.WorkOrderNo].TotalQty += Number(item.BreakDownQTY);
+    acc[item.WorkOrderNo].ChallanQTY += Number(item.ChallanQTY);
+    acc[item.WorkOrderNo].BalanceQty += Number(item.BalanceQTY);
+
+    // challan collect
+    acc[item.WorkOrderNo].ChallanNo.push(item.ChallanNo);
+
+    return acc;
+  }, {});
+
+  // object → array + challan join
+  return Object.values(grouped).map(item => ({
+    ...item,
+    ChallanNo: [...new Set(item.ChallanNo)].join(", ")
+  }));
+
+}, [apidata]);
+
+  console.log(SummarizedData);
+  
   
   return (
     <>
@@ -47,11 +87,18 @@ function OrderSummary() {
     Export Excel
   </button>
       </div>
-          <table className="table">
+      <div className="overflow-x-auto">
+          <table className="table table-lg">
             <thead>
             <tr>
               <th>Order No.</th>
               <th>Customer Name.</th>
+              <th>Delivery</th>
+              <th>PI NO.</th>
+              <th>Section</th>
+              <th>Order Qty</th>
+              <th>Challan Qty</th>
+              <th>Balance Qty</th>
               <th>Challan NO.</th>
             </tr>
             </thead>
@@ -60,16 +107,24 @@ function OrderSummary() {
                       <FourSquare color="#32cd32" size="large" />
                     </div>) 
                    : (
-                apidata?.map((data)=>(
+                SummarizedData?.map((data)=>(
+                  
                  <tr className="hover:bg-base-300">
                  <td>{data.WorkOrderNo}</td>
-                 <td>{data.CName}</td>
+                 <td>{data.CustomerName}</td>
+                 <td>{data.DeliverName}</td>
+                 <td>{data.PINO}</td>
+                 <td>{data.Section}</td>
+                 <td>{data.TotalQty}</td>
+                 <td>{data.ChallanQTY}</td>
+                 <td>{data.BalanceQty}</td>                
                  <td>{data.ChallanNo}</td>
                  </tr>
               )
             )
               )}
           </table>
+          </div>
           
 
 
