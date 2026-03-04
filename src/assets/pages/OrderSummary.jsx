@@ -1,35 +1,31 @@
 import React, { useContext, useEffect, useMemo, useState } from "react";
-import TableRow from "../components/TableRow";
 import { GetDataContext } from "../components/DataContext";
 import { FourSquare } from "react-loading-indicators";
 import OrderForm from "../OrderReport/OrderForm";
 import * as XLSX from "xlsx";
 import ReactPaginate from "react-paginate";
-import { UNSAFE_useFogOFWarDiscovery } from "react-router";
-// import { MultiSelect } from "react-multi-select-component";
-import { MultiSelect } from "primereact/multiselect";
 
 function OrderSummary() {
   const { cndata, loading } = useContext(GetDataContext);
+
   const [apidata, setApidata] = useState([]);
   const [search, setSearch] = useState("");
-  const [itemOffset, setItemOffset] = useState(1);
+  const [currentPage, setCurrentPage] = useState(0);
   const itemsPerPage = 10;
-  const [selectedCities, setSelectedCities] = useState([]);
-  // setApidata(cndata[0].apiData);
-  // console.log(cndata[0].groupedData);
+
+  // Load API data from context
   useEffect(() => {
     if (cndata.length > 0) {
-      setApidata(cndata[0].apiData);
+      setApidata(cndata[0].apiData || []);
     }
   }, [cndata]);
-  // console.log(apidata);
-  // const UniqueWorkOrderNO = [...new Set(apidata.map((data)=>data.WorkOrderNo))];
-  // console.log(UniqueWorkOrderNO);
-  const SummarizedData = useMemo(() => {
+
+
+  // Summarize & group data
+  const summarizedData = useMemo(() => {
     if (!apidata?.length) return [];
 
-    const grouped = apidata?.reduce((acc, item) => {
+    const grouped = apidata.reduce((acc, item) => {
       acc[item.WorkOrderNo] ??= {
         WorkOrderNo: item.WorkOrderNo,
         DeliverName: item.FName,
@@ -39,44 +35,66 @@ function OrderSummary() {
         CustomerPO: item.CustomerPONo,
         Section: item.ProductCategoryName,
         TotalQty: 0,
+        TotalValue: 0,
         ChallanQTY: 0,
+        ChallanValue: 0,
         BalanceQty: 0,
+        BalanceValue: 0,
         ChallanNo: [],
       };
 
-      // qty sum
       acc[item.WorkOrderNo].TotalQty += Number(item.BreakDownQTY);
+      acc[item.WorkOrderNo].TotalValue += Number(item.TotalOrderValue);
       acc[item.WorkOrderNo].ChallanQTY += Number(item.ChallanQTY);
+      acc[item.WorkOrderNo].ChallanValue += Number(item.ChallanValue);
       acc[item.WorkOrderNo].BalanceQty += Number(item.BalanceQTY);
-
-      // challan collect
+      acc[item.WorkOrderNo].BalanceValue += Number(item.BalanceValue);
       acc[item.WorkOrderNo].ChallanNo.push(item.ChallanNo);
 
       return acc;
     }, {});
 
-    // object → array + challan join
     return Object.values(grouped).map((item) => ({
       ...item,
       ChallanNo: [...new Set(item.ChallanNo)].join(", "),
     }));
   }, [apidata]);
+  console.log("API Data:", apidata);
+  // Filtered data based on search
+  const filteredData = useMemo(() => {
+    if (!search) return summarizedData;
+    return summarizedData.filter(
+      (item) =>
+        item.WorkOrderNo.toString().includes(search) ||
+        item.CustomerName?.toLowerCase().includes(search.toLowerCase()) ||
+        item.DeliverName?.toLowerCase().includes(search.toLowerCase())
+    );
+  }, [summarizedData, search]);
 
-  console.log(SummarizedData);
+  // Pagination
+  const pageCount = Math.ceil(filteredData.length / itemsPerPage);
+  const displayedData = filteredData.slice(
+    currentPage * itemsPerPage,
+    currentPage * itemsPerPage + itemsPerPage
+  );
 
-  const cities = [
-    { name: "New York", code: "NY" },
-    { name: "Rome", code: "RM" },
-    { name: "London", code: "LDN" },
-    { name: "Istanbul", code: "IST" },
-    { name: "Paris", code: "PRS" },
-  ];
+  const handlePageClick = (event) => {
+    setCurrentPage(event.selected);
+  };
+
+  // Export to Excel
+  const exportToExcel = () => {
+    const worksheet = XLSX.utils.json_to_sheet(filteredData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Orders");
+    XLSX.writeFile(workbook, "OrderSummary.xlsx");
+  };
 
   return (
     <>
       <OrderForm />
 
-      {/* Search Box */}
+      {/* Search and Export */}
       <div className="flex justify-between my-5 px-9">
         <input
           type="text"
@@ -85,64 +103,81 @@ function OrderSummary() {
           value={search}
           onChange={(e) => {
             setSearch(e.target.value);
-            setItemOffset(0); // search দিলে pagination reset হবে
+            setCurrentPage(0);
           }}
         />
-        <div className="card flex justify-content-center">
-          <MultiSelect
-            value={selectedCities}
-            onChange={(e) => setSelectedCities(e.value)}
-            options={cities}
-            optionLabel="name"
-            filter
-            filterDelay={400}
-            placeholder="Select Cities"
-            maxSelectedLabels={3}
-            className="w-full md:w-20rem"
-          />
-        </div>
         <button
-          onClick={() => exportToExcel(filteredData)}
+          onClick={exportToExcel}
           className="btn btn-success px-4 py-2 text-white font-semibold rounded"
         >
           Export Excel
         </button>
       </div>
+
+      {/* Table */}
       <div className="overflow-x-auto">
-        <table className="table table-lg w-full">
-          <thead>
-            <tr>
-              <th className="w-1/12">Order No.</th>
-              <th className="w-1/12">Customer Name.</th>
-              <th className="w-1/12">Delivery</th>
-              <th className="w-1/12">PI NO.</th>
-              <th className="w-1/12">Section</th>
-              <th className="w-1/12">Order Qty</th>
-              <th className="w-1/12">Challan Qty</th>
-              <th className="w-1/12">Balance Qty</th>
-              <th className="w-1/12">Challan NO.</th>
-            </tr>
-          </thead>
-          {loading ? (
-            <div className="flex justify-center items-center h-screen">
-              <FourSquare color="#32cd32" size="large" />
-            </div>
-          ) : (
-            SummarizedData?.map((data) => (
-              <tr className="hover:bg-base-300">
-                <td>{data.WorkOrderNo}</td>
-                <td>{data.CustomerName}</td>
-                <td>{data.DeliverName}</td>
-                <td>{data.PINO}</td>
-                <td>{data.Section}</td>
-                <td>{data.TotalQty}</td>
-                <td>{data.ChallanQTY}</td>
-                <td>{data.BalanceQty}</td>
-                <td>{data.ChallanNo}</td>
+        {loading ? (
+          <div className="flex justify-center items-center h-64">
+            <FourSquare color="#32cd32" size="large" />
+          </div>
+        ) : (
+          <table className="table table-lg w-full">
+            <thead>
+              <tr className="bg-blue-400 text-center">
+                <th className="border">Order No.</th>
+                <th className="border">Customer Name</th>
+                <th className="border">Delivery</th>
+                <th className="border">PI NO.</th>
+                <th className="border">Section</th>
+                <th className="border">Order Qty</th>
+                <th className="border">Order Value</th>
+                <th className="border">Challan Qty</th>
+                <th className="border">Challan Value</th>
+                <th className="border">Balance Qty</th>
+                <th className="border">Balance Value</th>
+                <th className="border">Challan NO.</th>
               </tr>
-            ))
-          )}
-        </table>
+            </thead>
+            <tbody>
+              {displayedData.map((data) => (
+                <tr key={data.WorkOrderNo} className="hover:bg-base-300 text-center">
+                  <td className="border">{data.WorkOrderNo}</td>
+                  <td className="border">{data.CustomerName}</td>
+                  <td className="border">{data.DeliverName}</td>
+                  <td className="border">{data.PINO}</td>
+                  <td className="border">{data.Section}</td>
+                  <td className="border">{data.TotalQty}</td>
+                  <td className="border">{data.TotalValue}</td>
+                  <td className="border">{data.ChallanQTY}</td>
+                  <td className="border">{data.ChallanValue}</td>
+                  <td className="border">{data.BalanceQty}</td>
+                  <td className="border">{data.BalanceValue}</td>
+                  <td className="border">{data.ChallanNo}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      {/* Pagination */}
+      <div className="flex justify-center mt-5">
+        <ReactPaginate
+          breakLabel="..."
+          nextLabel="Next >"
+          onPageChange={handlePageClick}
+          pageRangeDisplayed={5}
+          pageCount={pageCount}
+          previousLabel="< Prev"
+          containerClassName="pagination flex gap-2"
+          pageClassName="page-item"
+          pageLinkClassName="page-link px-3 py-1 border rounded"
+          previousClassName="page-item"
+          previousLinkClassName="page-link px-3 py-1 border rounded"
+          nextClassName="page-item"
+          nextLinkClassName="page-link px-3 py-1 border rounded"
+          activeLinkClassName="bg-blue-500 text-white"
+        />
       </div>
     </>
   );
