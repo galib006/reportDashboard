@@ -67,7 +67,10 @@ function OrderSummary() {
       (item) =>
         item.WorkOrderNo.toString().includes(search) ||
         item.CustomerName?.toLowerCase().includes(search.toLowerCase()) ||
-        item.DeliverName?.toLowerCase().includes(search.toLowerCase())
+        item.DeliverName?.toLowerCase().includes(search.toLowerCase()) ||
+        item.PINO?.toLowerCase().includes(search.toLowerCase()) ||
+        item.Section?.toLowerCase().includes(search.toLowerCase()) ||
+        item.ChallanNo?.toLowerCase().includes(search.toLowerCase())
     );
   }, [summarizedData, search]);
 
@@ -147,11 +150,11 @@ function OrderSummary() {
                   <td className="border">{data.PINO}</td>
                   <td className="border">{data.Section}</td>
                   <td className="border">{data.TotalQty}</td>
-                  <td className="border">{data.TotalValue}</td>
+                  <td className="border border-black text-red-500">$ {Math.ceil(data.TotalValue)}</td>
                   <td className="border">{data.ChallanQTY}</td>
-                  <td className="border">{data.ChallanValue}</td>
+                  <td className="border border-black text-red-500">$ {Math.ceil(data.ChallanValue)}</td>
                   <td className="border">{data.BalanceQty}</td>
-                  <td className="border">{data.BalanceValue}</td>
+                  <td className="border border-black text-red-500">$ {Math.ceil(data.BalanceValue)}</td>
                   <td className="border">{data.ChallanNo}</td>
                 </tr>
               ))}
@@ -183,4 +186,4 @@ function OrderSummary() {
   );
 }
 
-export default OrderSummary;
+export default OrderSummary;  
