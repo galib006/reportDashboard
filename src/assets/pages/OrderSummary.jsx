@@ -150,9 +150,9 @@ function OrderSummary() {
                   <td className="border">{data.PINO}</td>
                   <td className="border">{data.Section}</td>
                   <td className="border">{data.TotalQty}</td>
-                  <td className="border border-black text-red-500">$ {Math.ceil(data.TotalValue)}</td>
+                  <td className="border border-black text-blue-500">$ {Math.ceil(data.TotalValue)}</td>
                   <td className="border">{data.ChallanQTY}</td>
-                  <td className="border border-black text-red-500">$ {Math.ceil(data.ChallanValue)}</td>
+                  <td className="border border-black text-green-500">$ {Math.ceil(data.ChallanValue)}</td>
                   <td className="border">{data.BalanceQty}</td>
                   <td className="border border-black text-red-500">$ {Math.ceil(data.BalanceValue)}</td>
                   <td className="border">{data.ChallanNo}</td>
