@@ -9,6 +9,7 @@ function OrderSummary() {
   const { cndata, loading } = useContext(GetDataContext);
 
   const [apidata, setApidata] = useState([]);
+  const [Challandata, setChallandata] = useState([]);
   const [search, setSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(0);
   const itemsPerPage = 10;
@@ -17,9 +18,12 @@ function OrderSummary() {
   useEffect(() => {
     if (cndata.length > 0) {
       setApidata(cndata[0].apiData || []);
+      setChallandata(cndata[0].grupChallan || []);
     }
   }, [cndata]);
 
+  console.log("cndata: ", cndata);
+  console.log("challan Data", Challandata);
 
   // Summarize & group data
   const summarizedData = useMemo(() => {
@@ -49,16 +53,31 @@ function OrderSummary() {
       acc[item.WorkOrderNo].ChallanValue += Number(item.ChallanValue);
       acc[item.WorkOrderNo].BalanceQty += Number(item.BalanceQTY);
       acc[item.WorkOrderNo].BalanceValue += Number(item.BalanceValue);
+
       acc[item.WorkOrderNo].ChallanNo.push(item.ChallanNo);
 
       return acc;
     }, {});
 
-    return Object.values(grouped).map((item) => ({
-      ...item,
-      ChallanNo: [...new Set(item.ChallanNo)].join(", "),
-    }));
-  }, [apidata]);
+    return Object.values(grouped).map((item) => {
+      const uniqueChallan = [...new Set(item.ChallanNo)];
+
+      const challanWithStatus = uniqueChallan.map((cn) => {
+        const match = Challandata.find(
+          (c) => c.workOrderNo === item.WorkOrderNo && c.challanNo === cn,
+        );
+
+        return {
+          challanNo: cn,
+          status: match?.statusDesc || "",
+        };
+      });
+      return {
+        ...item,
+        ChallanNo: challanWithStatus,
+      };
+    });
+  }, [apidata, Challandata]);
   console.log("API Data:", apidata);
   // Filtered data based on search
   const filteredData = useMemo(() => {
@@ -70,7 +89,7 @@ function OrderSummary() {
         item.DeliverName?.toLowerCase().includes(search.toLowerCase()) ||
         item.PINO?.toLowerCase().includes(search.toLowerCase()) ||
         item.Section?.toLowerCase().includes(search.toLowerCase()) ||
-        item.ChallanNo?.toLowerCase().includes(search.toLowerCase())
+        item.ChallanNo?.toLowerCase().includes(search.toLowerCase()),
     );
   }, [summarizedData, search]);
 
@@ -78,11 +97,19 @@ function OrderSummary() {
   const pageCount = Math.ceil(filteredData.length / itemsPerPage);
   const displayedData = filteredData.slice(
     currentPage * itemsPerPage,
-    currentPage * itemsPerPage + itemsPerPage
+    currentPage * itemsPerPage + itemsPerPage,
   );
 
   const handlePageClick = (event) => {
     setCurrentPage(event.selected);
+  };
+
+  const getStatusColor = (status) => {
+    if (status === "Challan Received") return "text-green-600";
+    if (status === "Send to Gate") return "text-yellow-600";
+    if (status === "Delivered") return "text-blue-600";
+    if (status === "Gate Out") return "text-red-600";
+    return "text-gray-600";
   };
 
   // Export to Excel
@@ -143,19 +170,34 @@ function OrderSummary() {
             </thead>
             <tbody>
               {displayedData.map((data) => (
-                <tr key={data.WorkOrderNo} className="hover:bg-base-300 text-center">
+                <tr
+                  key={data.WorkOrderNo}
+                  className="hover:bg-base-300 text-center"
+                >
                   <td className="border">{data.WorkOrderNo}</td>
                   <td className="border">{data.CustomerName}</td>
                   <td className="border">{data.DeliverName}</td>
                   <td className="border">{data.PINO}</td>
                   <td className="border">{data.Section}</td>
                   <td className="border">{data.TotalQty}</td>
-                  <td className="border border-black text-blue-500">$ {Math.ceil(data.TotalValue)}</td>
+                  <td className="border border-black text-blue-500">
+                    $ {Math.ceil(data.TotalValue)}
+                  </td>
                   <td className="border">{data.ChallanQTY}</td>
-                  <td className="border border-black text-green-500">$ {Math.ceil(data.ChallanValue)}</td>
+                  <td className="border border-black text-green-500">
+                    $ {Math.ceil(data.ChallanValue)}
+                  </td>
                   <td className="border">{data.BalanceQty}</td>
-                  <td className="border border-black text-red-500">$ {Math.ceil(data.BalanceValue)}</td>
-                  <td className="border">{data.ChallanNo}</td>
+                  <td className="border border-black text-red-500">
+                    $ {Math.ceil(data.BalanceValue)}
+                  </td>
+                  <td className="border"> 
+                    {data.ChallanNo.map((ch, i) => (
+                      <div key={i} className={getStatusColor(ch.status)}>
+                        {ch.challanNo} {ch.status && `(${ch.status})`}
+                      </div>
+                    ))}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -186,4 +228,4 @@ function OrderSummary() {
   );
 }
 
-export default OrderSummary;  
+export default OrderSummary;

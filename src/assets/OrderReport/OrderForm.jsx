@@ -23,7 +23,7 @@ function OrderForm() {
     const edDate = cndata.endDate.toISOString().split("T")[0];
 
     try {
-      const [res1, res2, res3] = await axios.all([
+      const [res1, res2, res3, res4] = await axios.all([
         axios.get(
           `https://tpl-api.ebs365.info/api/OrderReport/BI_OrderRelatedInformationReport?CompanyID=1&ProductCategoryID=0&ProductSubCategoryID=0&MarketingID=0&CustomerID=0&BuyerID=0&JobCardID=0&StartDate=${stDate}&EndDate=${edDate}&CommandID=5&EmpID=0`,
           { headers: { Authorization: `${apiKey}` } }
@@ -36,11 +36,16 @@ function OrderForm() {
           `https://tpl-api.ebs365.info/api/InventoryBI/SCM_GET_MaterialIssueDetail?CompanyID=1&ParentCategoryID=6&CategoryID=0&SubCategoryID=0&MainMaterialID=0&StartDate=${stDate}&EndDate=${edDate}&CommandID=2`,
           { headers: { Authorization: `${apiKey}` } }
         ),
+        axios.get(
+          `https://tpl-api.ebs365.info/api/Challan/GetDeliveryChalanDashboard?CompanyID=1&ProductCategoryID=0&CustomerID=0&MarkettingID=0&StatusID=7&StartDate=${stDate}&EndDate=${edDate}`,
+          { headers: { Authorization: `${apiKey}` } }
+        ),
       ]);
 
       const data = res1.data;
       const data2 = res2.data;
       const data3 = res3.data;
+      const data4 = res4.data;
 
       // Purchase & Issue filtering example
       const groupPRandIssue = data2.filter((item) => item.MaterialName);
@@ -81,7 +86,8 @@ function OrderForm() {
         }, {})
       );
 
-      setcndata([{ groupedData, apiData: data }]);
+
+      setcndata([{ groupedData, apiData: data, grupChallan: data4 }]);
       toast.success("Data fetched successfully!");
     } catch (err) {
       console.log("API ERROR:", err);
