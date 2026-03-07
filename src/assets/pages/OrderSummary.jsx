@@ -22,8 +22,15 @@ function OrderSummary() {
     }
   }, [cndata]);
 
-  console.log("cndata: ", cndata);
-  console.log("challan Data", Challandata);
+  // Pre-map Challan data for fast lookup
+  const challanMap = useMemo(() => {
+    const map = new Map();
+    Challandata.forEach((c) => {
+      const key = `${c.workOrderNo}-${c.challanNo}`;
+      map.set(key, c.statusDesc);
+    });
+    return map;
+  }, [Challandata]);
 
   // Summarize & group data
   const summarizedData = useMemo(() => {
@@ -54,7 +61,9 @@ function OrderSummary() {
       acc[item.WorkOrderNo].BalanceQty += Number(item.BalanceQTY);
       acc[item.WorkOrderNo].BalanceValue += Number(item.BalanceValue);
 
-      acc[item.WorkOrderNo].ChallanNo.push(item.ChallanNo);
+      if (item.ChallanNo) {
+        acc[item.WorkOrderNo].ChallanNo.push(item.ChallanNo);
+      }
 
       return acc;
     }, {});
@@ -63,34 +72,37 @@ function OrderSummary() {
       const uniqueChallan = [...new Set(item.ChallanNo)];
 
       const challanWithStatus = uniqueChallan.map((cn) => {
-        const match = Challandata.find(
-          (c) => c.workOrderNo === item.WorkOrderNo && c.challanNo === cn,
-        );
-
-        return {
-          challanNo: cn,
-          status: match?.statusDesc || "",
-        };
+        const status = challanMap.get(`${item.WorkOrderNo}-${cn}`) || "";
+        return { challanNo: cn, status };
       });
+
       return {
         ...item,
         ChallanNo: challanWithStatus,
       };
     });
-  }, [apidata, Challandata]);
-  console.log("API Data:", apidata);
+  }, [apidata, challanMap]);
+
   // Filtered data based on search
   const filteredData = useMemo(() => {
     if (!search) return summarizedData;
-    return summarizedData.filter(
-      (item) =>
+
+    return summarizedData.filter((item) => {
+      const challanMatch =
+        item.ChallanNo &&
+        item.ChallanNo.some((ch) =>
+          ch.challanNo.toLowerCase().includes(search.toLowerCase()),
+        );
+
+      return (
         item.WorkOrderNo.toString().includes(search) ||
         item.CustomerName?.toLowerCase().includes(search.toLowerCase()) ||
         item.DeliverName?.toLowerCase().includes(search.toLowerCase()) ||
         item.PINO?.toLowerCase().includes(search.toLowerCase()) ||
         item.Section?.toLowerCase().includes(search.toLowerCase()) ||
-        item.ChallanNo?.toLowerCase().includes(search.toLowerCase()),
-    );
+        challanMatch
+      );
+    });
   }, [summarizedData, search]);
 
   // Pagination
@@ -104,17 +116,24 @@ function OrderSummary() {
     setCurrentPage(event.selected);
   };
 
+  // Status color helper
   const getStatusColor = (status) => {
-    if (status === "Challan Received") return "text-green-600";
-    if (status === "Send to Gate") return "text-yellow-600";
-    if (status === "Delivered") return "text-blue-600";
-    if (status === "Gate Out") return "text-red-600";
+    if (status === "Challan Received") return "text-green-600 font-semibold";
+    if (status === "Send to Gate") return "text-yellow-600 font-semibold";
+    if (status === "Delivered") return "text-blue-600 font-semibold";
+    if (status === "Gate Out") return "text-red-600 font-semibold";
     return "text-gray-600";
   };
 
   // Export to Excel
   const exportToExcel = () => {
-    const worksheet = XLSX.utils.json_to_sheet(filteredData);
+    const excelData = filteredData.map((item) => ({
+      ...item,
+      ChallanNo: item.ChallanNo.map(
+        (ch) => `${ch.challanNo} (${ch.status})`,
+      ).join(", "),
+    }));
+    const worksheet = XLSX.utils.json_to_sheet(excelData);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Orders");
     XLSX.writeFile(workbook, "OrderSummary.xlsx");
@@ -191,12 +210,19 @@ function OrderSummary() {
                   <td className="border border-black text-red-500">
                     $ {Math.ceil(data.BalanceValue)}
                   </td>
-                  <td className="border"> 
-                    {data.ChallanNo.map((ch, i) => (
-                      <div key={i} className={getStatusColor(ch.status)}>
-                        {ch.challanNo} {ch.status && `(${ch.status})`}
+                  <td className="border">
+                    {data.ChallanNo && data.ChallanNo.length > 0 ? (
+                      data.ChallanNo.map((ch, i) => (
+                        <div key={i} className={getStatusColor(ch.status)}>
+                          {i + 1}. {ch.challanNo}{" "}
+                          {ch.status && `(${ch.status})`}
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-gray-400 font-semibold">
+                        No Challan
                       </div>
-                    ))}
+                    )}
                   </td>
                 </tr>
               ))}
