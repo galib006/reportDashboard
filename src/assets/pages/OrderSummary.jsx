@@ -31,7 +31,12 @@ function OrderSummary() {
     });
     return map;
   }, [Challandata]);
-
+  
+const formatDate = (dateStr) => {
+  if (!dateStr) return "";
+  const date = new Date(dateStr);
+  return date.toLocaleDateString("en-GB"); // DD/MM/YYYY
+};
   // Summarize & group data
   const summarizedData = useMemo(() => {
     if (!apidata?.length) return [];
@@ -39,6 +44,7 @@ function OrderSummary() {
     const grouped = apidata.reduce((acc, item) => {
       acc[item.WorkOrderNo] ??= {
         WorkOrderNo: item.WorkOrderNo,
+        OrderReceiveDate: item.OrderReceiveDate,
         DeliverName: item.FName,
         CustomerName: item.CName,
         Buyer: item.BuyerName,
@@ -174,6 +180,7 @@ function OrderSummary() {
             <thead>
               <tr className="bg-blue-400 text-center">
                 <th className="border">Order No.</th>
+                <th className="border">Order Date</th>
                 <th className="border">Customer Name</th>
                 <th className="border">Delivery</th>
                 <th className="border">PI NO.</th>
@@ -194,6 +201,7 @@ function OrderSummary() {
                   className="hover:bg-base-300 text-center"
                 >
                   <td className="border">{data.WorkOrderNo}</td>
+                  <td className="border">{formatDate(data.OrderReceiveDate)}</td>
                   <td className="border">{data.CustomerName}</td>
                   <td className="border">{data.DeliverName}</td>
                   <td className="border">{data.PINO}</td>
@@ -214,7 +222,7 @@ function OrderSummary() {
                     {data.ChallanNo && data.ChallanNo.length > 0 ? (
                       data.ChallanNo.map((ch, i) => (
                         <div key={i} className={getStatusColor(ch.status)}>
-                          {i + 1}. {ch.challanNo}{" "}
+                          {i + 1}. {ch.challanNo}{" "  } 
                           {ch.status && `(${ch.status})`}
                         </div>
                       ))
