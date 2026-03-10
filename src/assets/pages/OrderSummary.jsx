@@ -7,7 +7,6 @@ import ReactPaginate from "react-paginate";
 
 function OrderSummary() {
   const { cndata, loading } = useContext(GetDataContext);
-
   const [apidata, setApidata] = useState([]);
   const [Challandata, setChallandata] = useState([]);
   const [search, setSearch] = useState("");
@@ -73,6 +72,8 @@ const formatDate = (dateStr) => {
 
       return acc;
     }, {});
+    console.log("---------------------------------------------------",cndata);
+    
 
     return Object.values(grouped).map((item) => {
       const uniqueChallan = [...new Set(item.ChallanNo)];

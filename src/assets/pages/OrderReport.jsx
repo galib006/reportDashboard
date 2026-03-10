@@ -14,6 +14,7 @@ function OrderReport() {
   const { cndata, loading } = useContext(GetDataContext);
 
   const grpData = cndata[0]?.groupedData || [];
+  console.log(grpData);
 
 
   // Global Search
@@ -53,12 +54,14 @@ function OrderReport() {
   //     </div>
   //   );
   // }
+
+  
   const exportToExcel = (currentItems) => {
   if (!currentItems || currentItems.length === 0) {
     alert("No data available to export!");
     return;
   }
-
+  console.log("CurrentItems: ", currentItems);
 
   const exportData = currentItems.map((item, index) => ({
     SL: index + 1,
