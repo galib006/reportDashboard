@@ -2,7 +2,8 @@ import React, { useContext, useEffect, useMemo, useState } from "react";
 import { GetDataContext } from "../components/DataContext";
 import { FourSquare } from "react-loading-indicators";
 import OrderForm from "../OrderReport/OrderForm";
-import * as XLSX from "xlsx";
+// import * as XLSX from "xlsx";
+import * as XLSX from "xlsx-js-style";
 import ReactPaginate from "react-paginate";
 
 function OrderSummary() {
@@ -60,10 +61,10 @@ const formatDate = (dateStr) => {
       };
 
       acc[item.WorkOrderNo].TotalQty += Number(item.BreakDownQTY);
-      acc[item.WorkOrderNo].TotalValue += Number(item.TotalOrderValue);
       acc[item.WorkOrderNo].ChallanQTY += Number(item.ChallanQTY);
-      acc[item.WorkOrderNo].ChallanValue += Number(item.ChallanValue);
       acc[item.WorkOrderNo].BalanceQty += Number(item.BalanceQTY);
+      acc[item.WorkOrderNo].TotalValue += Number(item.TotalOrderValue);
+      acc[item.WorkOrderNo].ChallanValue += Number(item.ChallanValue);
       acc[item.WorkOrderNo].BalanceValue += Number(item.BalanceValue);
 
       if (item.ChallanNo) {
@@ -72,7 +73,6 @@ const formatDate = (dateStr) => {
 
       return acc;
     }, {});
-    console.log("---------------------------------------------------",cndata);
     
 
     return Object.values(grouped).map((item) => {
@@ -132,20 +132,166 @@ const formatDate = (dateStr) => {
     return "text-gray-600";
   };
 
-  // Export to Excel
-  const exportToExcel = () => {
-    const excelData = filteredData.map((item) => ({
-      ...item,
-      ChallanNo: item.ChallanNo.map(
-        (ch) => `${ch.challanNo} (${ch.status})`,
-      ).join(", "),
-    }));
-    const worksheet = XLSX.utils.json_to_sheet(excelData);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Orders");
-    XLSX.writeFile(workbook, "OrderSummary.xlsx");
+  // export to excel
+const exportToExcel = () => {
+
+  const title = [["ORDER SUMMARY REPORT"]];
+  const dateRow = [[`Generated: ${new Date().toLocaleDateString("en-GB")}`]];
+
+  const headers = [[
+    "Order No","Order Date","Customer","Delivery","PI No","Section",
+    "Order Qty","Challan Qty","Balance Qty",
+    "Order Value","Challan Value","Balance Value","Challan No"
+  ]];
+
+  const rows = filteredData.map((item)=>[
+    item.WorkOrderNo,
+    formatDate(item.OrderReceiveDate),
+    item.CustomerName,
+    item.DeliverName,
+    item.PINO,
+    item.Section,
+    item.TotalQty,
+    item.ChallanQTY,
+    item.BalanceQty,
+    item.TotalValue,
+    item.ChallanValue,
+    item.BalanceValue,
+    item.ChallanNo.map(ch=>`${ch.challanNo} (${ch.status})`).join(", ")
+  ]);
+
+  const grandTotal = [
+    "TOTAL","","","","","",
+    rows.reduce((a,b)=>a+Number(b[6]),0),
+    rows.reduce((a,b)=>a+Number(b[7]),0),
+    rows.reduce((a,b)=>a+Number(b[8]),0),
+    rows.reduce((a,b)=>a+Number(b[9]),0),
+    rows.reduce((a,b)=>a+Number(b[10]),0),
+    rows.reduce((a,b)=>a+Number(b[11]),0),
+    ""
+  ];
+
+  const data = [...title,...dateRow,[],...headers,...rows,grandTotal];
+
+  const ws = XLSX.utils.aoa_to_sheet(data);
+
+  ws["!merges"] = [
+    {s:{r:0,c:0},e:{r:0,c:12}},
+    {s:{r:1,c:0},e:{r:1,c:12}}
+  ];
+
+  ws["!cols"] = [
+    {wch:14},{wch:14},{wch:28},{wch:24},{wch:18},
+    {wch:18},{wch:14},{wch:14},{wch:14},
+    {wch:18},{wch:18},{wch:18},{wch:45}
+  ];
+
+  ws["A1"].s = {
+    font:{bold:true,sz:22},
+    alignment:{horizontal:"center",vertical:"center"}
   };
 
+  ws["A2"].s = {
+    font:{italic:true,sz:16},
+    alignment:{horizontal:"center",vertical:"center"}
+  };
+
+  const headerRow = 3;
+
+  for(let c=0;c<=12;c++){
+    const cell = XLSX.utils.encode_cell({r:headerRow,c});
+
+    ws[cell].s={
+      font:{bold:true,sz:16,color:{rgb:"FFFFFF"}},
+      fill:{fgColor:{rgb:"1F4E78"}},
+      alignment:{horizontal:"center",vertical:"center"},
+      border:{
+        top:{style:"thin"},
+        bottom:{style:"thin"},
+        left:{style:"thin"},
+        right:{style:"thin"}
+      }
+    };
+  }
+
+  const range = XLSX.utils.decode_range(ws["!ref"]);
+
+  for(let r=4;r<=range.e.r;r++){
+    for(let c=0;c<=range.e.c;c++){
+
+      const cell = XLSX.utils.encode_cell({r,c});
+      if(!ws[cell]) continue;
+
+      ws[cell].s={
+        font:{sz:16},
+        alignment:{
+          horizontal:"center",
+          vertical:"center",
+          wrapText:c===12
+        },
+        border:{
+          top:{style:"thin"},
+          bottom:{style:"thin"},
+          left:{style:"thin"},
+          right:{style:"thin"}
+        }
+      };
+
+      if(c===9 || c===10 || c===11){
+
+        ws[cell].s.numFmt='"$"#,##0';
+        ws[cell].s.alignment.horizontal="right";
+
+        if(c===9){
+          ws[cell].s.font.color={rgb:"1F4E78"};
+        }
+
+        if(c===10){
+          ws[cell].s.font.color={rgb:"008000"};
+        }
+
+        if(c===11){
+          ws[cell].s.font.color={rgb:"C00000"};
+        }
+
+      }
+
+    }
+  }
+
+  const totalRow = range.e.r;
+
+  for(let c=0;c<=12;c++){
+    const cell = XLSX.utils.encode_cell({r:totalRow,c});
+
+    if(ws[cell]){
+      ws[cell].s={
+        font:{bold:true,sz:16},
+        fill:{fgColor:{rgb:"D9E1F2"}},
+        alignment:{horizontal:"center",vertical:"center"},
+        border:{
+          top:{style:"medium"},
+          bottom:{style:"medium"},
+          left:{style:"thin"},
+          right:{style:"thin"}
+        }
+      };
+
+      if(c===9 || c===10 || c===11){
+        ws[cell].s.numFmt='"$"#,##0';
+      }
+    }
+  }
+
+  ws["!freeze"]={xSplit:0,ySplit:4};
+  ws["!autofilter"]={ref:"A4:M4"};
+
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,"Order Summary");
+
+  XLSX.writeFile(wb,"OrderSummaryReport.xlsx");
+
+};
   return (
     <>
       <OrderForm />
@@ -187,10 +333,10 @@ const formatDate = (dateStr) => {
                 <th className="border">PI NO.</th>
                 <th className="border">Section</th>
                 <th className="border">Order Qty</th>
-                <th className="border">Order Value</th>
                 <th className="border">Challan Qty</th>
-                <th className="border">Challan Value</th>
                 <th className="border">Balance Qty</th>
+                <th className="border">Order Value</th>
+                <th className="border">Challan Value</th>
                 <th className="border">Balance Value</th>
                 <th className="border">Challan NO.</th>
               </tr>

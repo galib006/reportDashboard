@@ -58,34 +58,56 @@ function Home() {
             month: monthName,
             TotalOrderValue: 0,
             TotalSaleValue: 0,
+            TotalBalanceValue: 0
           };
         }
         acc[monthName].TotalOrderValue += item.TotalOrderValue || 0;
         acc[monthName].TotalSaleValue += item.ChallanValue || 0;
-
+        acc[monthName].TotalBalanceValue += item.BalanceValue || 0;
         return acc;
       }, {}),
     );
   }, [cndata]);
 console.log(monthlyData);
 
-const chartData = {
+const OrderData = {
   labels: monthlyData.map(item => item.month),
 
   datasets: [
     {
-      label: "Total Order Value",
+      label: "Order",
       data: monthlyData.map(item => Number(item.TotalOrderValue.toFixed(2))),
       backgroundColor: "#4CAF50"
-    },
-    {
-      label: "Total Sale Value",
-      data: monthlyData.map(item => Number(item.TotalSaleValue.toFixed(2))),
-      backgroundColor: "#2196F3"
     }
   ]
 };
+const SaleData= {
+  labels: monthlyData.map(item => item.month),
 
+  datasets: [
+    {
+      label: "Sale",
+      data: monthlyData.map(item => Number(item.TotalSaleValue.toFixed(2))),
+      backgroundColor: "#2196F3"
+    },
+    //  {
+    //   label: "Balance",
+    //   data: monthlyData.map(item => Number(item.TotalBalanceValue.toFixed(2))),
+    //   backgroundColor: "#cd0c0c"
+    // }
+  ]
+};
+const BalanceData= {
+  labels: monthlyData.map(item => item.month),
+
+  datasets: [
+     {
+      label: "Balance",
+      data: monthlyData.map(item => Number(item.TotalBalanceValue.toFixed(2))),
+      backgroundColor: "#cd0c0c"
+    }
+  ]
+};
   return (
     <div>
 
@@ -163,9 +185,17 @@ const chartData = {
         </div>
       </div>
       {/* <BarChartData grpData={grpData} /> */}
-      <div style={{ width: "700px" }}>
-  <Bar data={chartData} />
-</div>
+      <div className="grid grid-cols-3 gap-12 mx-10">
+        <div style={{  }}>
+        <Bar data={OrderData} />
+      </div>
+      <div style={{ }}>
+        <Bar data={SaleData} />
+      </div>
+      <div style={{ }}>
+        <Bar data={BalanceData} />
+      </div>
+      </div>  
     </div>
   );
 }
