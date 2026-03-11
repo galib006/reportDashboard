@@ -183,7 +183,7 @@ const exportToExcel = () => {
   ws["!cols"] = [
     {wch:14},{wch:14},{wch:28},{wch:24},{wch:18},
     {wch:18},{wch:14},{wch:14},{wch:14},
-    {wch:18},{wch:18},{wch:18},{wch:45}
+    {wch:18},{wch:18},{},
   ];
 
   ws["A1"].s = {
