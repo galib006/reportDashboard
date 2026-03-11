@@ -1,5 +1,4 @@
-import React, { useContext, useEffect, useMemo } from "react";
-import BarChartData from "../components/BarChartData";
+import React, { useContext, useMemo, useState } from "react";
 import Gtotal from "../components/Gtotal";
 import { FaCartFlatbed } from "react-icons/fa6";
 import { RiMoneyDollarCircleFill } from "react-icons/ri";
@@ -19,183 +18,118 @@ ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip, Legend);
 
 function Home() {
   const { cndata } = useContext(GetDataContext);
+  const apiData = cndata[0]?.apiData || [];
 
-  // Extract data safely
-  const grpData = cndata[0]?.groupedData || [];
+  // Filters
+  const [selectedYear, setSelectedYear] = useState("All");
+  const [selectedMonth, setSelectedMonth] = useState("All");
 
-  // Compute grand totals
-  const grandTotal = grpData.reduce(
-    (acc, item) => {
-      acc.TotalDOrderQTY += Number(item.BreakDownQTY);
-      acc.TotalOrderValue += Number(item.TotalOrderValue);
-      acc.TotalChallanQty += Number(item.challanqty);
-      acc.TotalChallanValue += Number(item.ChallanValue);
-      acc.TotalBalanceQTY += Number(item.BalanceQTY);
-      acc.TotalBalanceValue += Number(item.BalanceValue);
-      return acc;
-    },
-    {
-      TotalDOrderQTY: 0,
-      TotalOrderValue: 0,
-      TotalChallanQty: 0,
-      TotalChallanValue: 0,
-      TotalBalanceQTY: 0,
-      TotalBalanceValue: 0,
-    },
-  );
-
-  useEffect(() => {
-    console.log("cndata in Home:", cndata[0]?.apiData);
-  }, [cndata]);
-  const monthlyData = useMemo(() => {
-    const apiData = cndata[0]?.apiData || [];
-    return Object.values(
-      apiData.reduce((acc, item) => {
-        const date = new Date(item.OrderReceiveDate);
-        const monthName = date.toLocaleString("default", { month: "short" });
-        if (!acc[monthName]) {
-          acc[monthName] = {
-            month: monthName,
-            TotalOrderValue: 0,
-            TotalSaleValue: 0,
-            TotalBalanceValue: 0
-          };
-        }
-        acc[monthName].TotalOrderValue += item.TotalOrderValue || 0;
-        acc[monthName].TotalSaleValue += item.ChallanValue || 0;
-        acc[monthName].TotalBalanceValue += item.BalanceValue || 0;
-        return acc;
-      }, {}),
+  // Unique years & months
+  const years = useMemo(() => {
+    const uniqueYears = Array.from(
+      new Set(apiData.map(item => new Date(item.OrderReceiveDate).getFullYear()))
     );
-  }, [cndata]);
-console.log(monthlyData);
+    return ["All", ...uniqueYears];
+  }, [apiData]);
 
-const OrderData = {
-  labels: monthlyData.map(item => item.month),
+  const months = useMemo(() => {
+    const filtered = selectedYear === "All" ? apiData : apiData.filter(item => new Date(item.OrderReceiveDate).getFullYear() === Number(selectedYear));
+    const uniqueMonths = Array.from(
+      new Set(filtered.map(item => new Date(item.OrderReceiveDate).toLocaleString("default", { month: "short" })))
+    );
+    return ["All", ...uniqueMonths];
+  }, [apiData, selectedYear]);
 
-  datasets: [
-    {
-      label: "Order",
-      data: monthlyData.map(item => Number(item.TotalOrderValue.toFixed(2))),
-      backgroundColor: "#4CAF50"
-    }
-  ]
-};
-const SaleData= {
-  labels: monthlyData.map(item => item.month),
+  // Aggregated Data
+  const aggregatedData = useMemo(() => {
+    const filtered = apiData.filter(item => {
+      const date = new Date(item.OrderReceiveDate);
+      const yearMatch = selectedYear === "All" || date.getFullYear() === Number(selectedYear);
+      const monthMatch = selectedMonth === "All" || date.toLocaleString("default", { month: "short" }) === selectedMonth;
+      return yearMatch && monthMatch;
+    });
 
-  datasets: [
-    {
-      label: "Sale",
-      data: monthlyData.map(item => Number(item.TotalSaleValue.toFixed(2))),
-      backgroundColor: "#2196F3"
-    },
-    //  {
-    //   label: "Balance",
-    //   data: monthlyData.map(item => Number(item.TotalBalanceValue.toFixed(2))),
-    //   backgroundColor: "#cd0c0c"
-    // }
-  ]
-};
-const BalanceData= {
-  labels: monthlyData.map(item => item.month),
+    const totals = {
+      TotalOrderQty: 0,
+      TotalOrderValue: 0,
+      TotalSaleQty: 0,
+      TotalSaleValue: 0,
+      TotalBalanceQty: 0,
+      TotalBalanceValue: 0,
+    };
 
-  datasets: [
-     {
-      label: "Balance",
-      data: monthlyData.map(item => Number(item.TotalBalanceValue.toFixed(2))),
-      backgroundColor: "#cd0c0c"
-    }
-  ]
-};
+    const monthly = {};
+
+    filtered.forEach(item => {
+      totals.TotalOrderQty += Number(item.BreakDownQTY).toFixed(2);
+      totals.TotalOrderValue += Number(item.TotalOrderValue).toFixed(2);
+      totals.TotalSaleQty += Number(item.challanqty).toFixed(2);
+      totals.TotalSaleValue += Number(item.ChallanValue).toFixed(2);
+      totals.TotalBalanceQty += Number(item.BalanceQTY).toFixed(2);
+      totals.TotalBalanceValue += Number(item.BalanceValue).toFixed(2);
+
+      const monthName = new Date(item.OrderReceiveDate).toLocaleString("default", { month: "short" });
+      if (!monthly[monthName]) monthly[monthName] = { Order: 0, Sale: 0, Balance: 0 };
+      monthly[monthName].Order += Number(item.TotalOrderValue).toFixed(2);
+      monthly[monthName].Sale += Number(item.ChallanValue).toFixed(2);
+      monthly[monthName].Balance += Number(item.BalanceValue).toFixed(2);
+    });
+
+    return { totals, monthly };
+  }, [apiData, selectedYear, selectedMonth]);
+
+  const chartLabels = Object.keys(aggregatedData.monthly);
+  const orderChartData = {
+    labels: chartLabels,
+    datasets: [{ label: "Order", data: chartLabels.map(m => aggregatedData.monthly[m].Order), backgroundColor: "#4CAF50" }]
+  };
+  const saleChartData = {
+    labels: chartLabels,
+    datasets: [{ label: "Sale", data: chartLabels.map(m => aggregatedData.monthly[m].Sale), backgroundColor: "#2196F3" }]
+  };
+  const balanceChartData = {
+    labels: chartLabels,
+    datasets: [{ label: "Balance", data: chartLabels.map(m => aggregatedData.monthly[m].Balance), backgroundColor: "#cd0c0c" }]
+  };
+
   return (
-    <div>
+    <div className="p-6">
+      {/* Filters */}
+      <div className="flex gap-4 mb-6">
+        <select value={selectedYear} onChange={e => setSelectedYear(e.target.value)} className="input">
+          {years.map(y => <option key={y} value={y}>{y}</option>)}
+        </select>
+        <select value={selectedMonth} onChange={e => setSelectedMonth(e.target.value)} className="input">
+          {months.map(m => <option key={m} value={m}>{m}</option>)}
+        </select>
+      </div>
 
-    <div>
-      {monthlyData.map((item) => (
-        <div key={item.month}>
-          <h3>{item.month}-  <span>{item.TotalOrderValue.toFixed(2)}</span></h3> 
-          <h3>{item.month}-  <span>{item.TotalSaleValue.toFixed(2)}</span></h3> 
-          
+      {/* KPI Cards */}
+      <div className="grid grid-cols-7 gap-5 mb-8">
+        <Gtotal title="Order Qty" Value={Number(aggregatedData.totals.TotalOrderQty).toFixed(2)} fontStyle="text-white" bgStyle="bg-blue" Icons={<FaCartFlatbed />} />
+        <Gtotal title="Order Value" Value={Number(aggregatedData.totals.TotalOrderValue).toFixed(2)} sign="$ " fontStyle="text-white" bgStyle="bg-blue" Icons={<RiMoneyDollarCircleFill />} />
+        <Gtotal title="Sales Qty" Value={Number(aggregatedData.totals.TotalSaleQty).toFixed(2)} fontStyle="text-white" bgStyle="bg-blue" Icons={<TbTruckDelivery />} />
+        <Gtotal title="Sales Value" Value={Number(aggregatedData.totals.TotalSaleValue).toFixed(2)} sign="$ " fontStyle="text-white" bgStyle="bg-blue" Icons={<RiMoneyDollarCircleFill />} />
+        <Gtotal title="Balance Qty" Value={Number(aggregatedData.totals.TotalBalanceQty).toFixed(2)} fontStyle="text-white" bgStyle="bg-blue" Icons={<FaCartFlatbed />} />
+        <Gtotal title="Balance Value" Value={Number(aggregatedData.totals.TotalBalanceValue).toFixed(2)} sign="$ " fontStyle="text-white" bgStyle="bg-blue" Icons={<RiMoneyDollarCircleFill />} />
+        <Gtotal title="Delivery %" Value={`${((Number(aggregatedData.totals.TotalSaleQty) / Number(aggregatedData.totals.TotalOrderQty))*100).toFixed(0)}%`} fontStyle="text-white" bgStyle="bg-blue" Icons={<FaCartFlatbed />} />
+      </div>
+
+      {/* Charts */}
+      <div className="grid grid-cols-3 gap-8">
+        <div className="p-4 bg-white shadow rounded">
+          <h3 className="mb-2 font-semibold">Order Value</h3>
+          <Bar data={orderChartData} />
         </div>
-      ))}
-    </div>
-      
-      <div className="bg-[#3e939585]">
-        <div className="mx-6 py-6">
-          <div className="grid grid-cols-6 gap-5 my-3">
-            <Gtotal
-              title={"Order QTY"}
-              Value={grandTotal.TotalDOrderQTY.toFixed(2)}
-              fontStyle={"text-white"}
-              bgStyle={"bg-blue"}
-              Icons={<FaCartFlatbed />}
-            />
-            <Gtotal
-              title={"Order Value"}
-              Value={grandTotal.TotalOrderValue.toFixed(2)}
-              sign={"$ "}
-              fontStyle={"text-white"}
-              bgStyle={"bg-blue"}
-              Icons={<RiMoneyDollarCircleFill />}
-            />
-            <Gtotal
-              title={"Sales QTY"}
-              Value={grandTotal.TotalChallanQty.toFixed(2)}
-              fontStyle={"text-white"}
-              bgStyle={"bg-blue"}
-              Icons={<TbTruckDelivery />}
-            />
-            <Gtotal
-              title={"Sales Value"}
-              Value={grandTotal.TotalChallanValue.toFixed(2)}
-              sign={"$ "}
-              fontStyle={"text-white"}
-              bgStyle={"bg-blue"}
-              Icons={<RiMoneyDollarCircleFill />}
-            />
-            <Gtotal
-              title={"Balance QTY"}
-              Value={grandTotal.TotalBalanceQTY.toFixed(2)}
-              fontStyle={"text-white"}
-              bgStyle={"bg-blue"}
-              Icons={<FaCartFlatbed />}
-            />
-            <Gtotal
-              title={"Balance Value"}
-              Value={grandTotal.TotalBalanceValue.toFixed(2)}
-              sign={"$ "}
-              fontStyle={"text-white"}
-              bgStyle={"bg-blue"}
-              Icons={<RiMoneyDollarCircleFill />}
-            />
-            <Gtotal
-              title={"Delivery Complete"}
-              Value={
-                (
-                  (grandTotal.TotalChallanQty / grandTotal.TotalDOrderQTY) *
-                  100
-                ).toFixed(0) + "%"
-              }
-              fontStyle={"text-white"}
-              bgStyle={"bg-blue"}
-              Icons={<FaCartFlatbed />}
-            />
-          </div>
+        <div className="p-4 bg-white shadow rounded">
+          <h3 className="mb-2 font-semibold">Sales Value</h3>
+          <Bar data={saleChartData} />
+        </div>
+        <div className="p-4 bg-white shadow rounded">
+          <h3 className="mb-2 font-semibold">Balance Value</h3>
+          <Bar data={balanceChartData} />
         </div>
       </div>
-      {/* <BarChartData grpData={grpData} /> */}
-      <div className="grid grid-cols-3 gap-12 mx-10">
-        <div style={{  }}>
-        <Bar data={OrderData} />
-      </div>
-      <div style={{ }}>
-        <Bar data={SaleData} />
-      </div>
-      <div style={{ }}>
-        <Bar data={BalanceData} />
-      </div>
-      </div>  
     </div>
   );
 }

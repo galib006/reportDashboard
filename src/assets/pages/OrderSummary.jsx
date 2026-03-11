@@ -38,57 +38,53 @@ const formatDate = (dateStr) => {
   return date.toLocaleDateString("en-GB"); // DD/MM/YYYY
 };
   // Summarize & group data
-  const summarizedData = useMemo(() => {
-    if (!apidata?.length) return [];
+  // apidata এবং Challandata state আর নেই
+const summarizedData = useMemo(() => {
+  const apidata = cndata[0]?.apiData || [];
+  const Challandata = cndata[0]?.grupChallan || [];
 
-    const grouped = apidata.reduce((acc, item) => {
-      acc[item.WorkOrderNo] ??= {
-        WorkOrderNo: item.WorkOrderNo,
-        OrderReceiveDate: item.OrderReceiveDate,
-        DeliverName: item.FName,
-        CustomerName: item.CName,
-        Buyer: item.BuyerName,
-        PINO: item.CustomerPINo,
-        CustomerPO: item.CustomerPONo,
-        Section: item.ProductCategoryName,
-        TotalQty: 0,
-        TotalValue: 0,
-        ChallanQTY: 0,
-        ChallanValue: 0,
-        BalanceQty: 0,
-        BalanceValue: 0,
-        ChallanNo: [],
-      };
+  const challanMap = new Map();
+  Challandata.forEach((c) => {
+    const key = `${c.workOrderNo}-${c.challanNo}`;
+    challanMap.set(key, c.statusDesc);
+  });
 
-      acc[item.WorkOrderNo].TotalQty += Number(item.BreakDownQTY);
-      acc[item.WorkOrderNo].ChallanQTY += Number(item.ChallanQTY);
-      acc[item.WorkOrderNo].BalanceQty += Number(item.BalanceQTY);
-      acc[item.WorkOrderNo].TotalValue += Number(item.TotalOrderValue);
-      acc[item.WorkOrderNo].ChallanValue += Number(item.ChallanValue);
-      acc[item.WorkOrderNo].BalanceValue += Number(item.BalanceValue);
+  const grouped = apidata.reduce((acc, item) => {
+    acc[item.WorkOrderNo] ??= {
+      WorkOrderNo: item.WorkOrderNo,
+      OrderReceiveDate: item.OrderReceiveDate,
+      DeliverName: item.FName,
+      CustomerName: item.CName,
+      PINO: item.CustomerPINo,
+      Section: item.ProductCategoryName,
+      TotalQty: 0,
+      TotalValue: 0,
+      ChallanQTY: 0,
+      ChallanValue: 0,
+      BalanceQty: 0,
+      BalanceValue: 0,
+      ChallanNo: [],
+    };
 
-      if (item.ChallanNo) {
-        acc[item.WorkOrderNo].ChallanNo.push(item.ChallanNo);
-      }
+    acc[item.WorkOrderNo].TotalQty += Number(item.BreakDownQTY);
+    acc[item.WorkOrderNo].ChallanQTY += Number(item.ChallanQTY);
+    acc[item.WorkOrderNo].BalanceQty += Number(item.BalanceQTY);
+    acc[item.WorkOrderNo].TotalValue += Number(item.TotalOrderValue);
+    acc[item.WorkOrderNo].ChallanValue += Number(item.ChallanValue);
+    acc[item.WorkOrderNo].BalanceValue += Number(item.BalanceValue);
 
-      return acc;
-    }, {});
-    
+    if (item.ChallanNo) acc[item.WorkOrderNo].ChallanNo.push(item.ChallanNo);
+    return acc;
+  }, {});
 
-    return Object.values(grouped).map((item) => {
-      const uniqueChallan = [...new Set(item.ChallanNo)];
-
-      const challanWithStatus = uniqueChallan.map((cn) => {
-        const status = challanMap.get(`${item.WorkOrderNo}-${cn}`) || "";
-        return { challanNo: cn, status };
-      });
-
-      return {
-        ...item,
-        ChallanNo: challanWithStatus,
-      };
-    });
-  }, [apidata, challanMap]);
+  return Object.values(grouped).map((item) => ({
+    ...item,
+    ChallanNo: [...new Set(item.ChallanNo)].map((cn) => ({
+      challanNo: cn,
+      status: challanMap.get(`${item.WorkOrderNo}-${cn}`) || "",
+    })),
+  }));
+}, [cndata]);
 
   // Filtered data based on search
   const filteredData = useMemo(() => {
@@ -180,11 +176,11 @@ const exportToExcel = () => {
     {s:{r:1,c:0},e:{r:1,c:12}}
   ];
 
-  ws["!cols"] = [
-    {wch:14},{wch:14},{wch:28},{wch:24},{wch:18},
-    {wch:18},{wch:14},{wch:14},{wch:14},
-    {wch:18},{wch:18},{},
-  ];
+ws["!cols"] = [
+  {wch:14},{wch:14},{wch:28},{wch:24},{wch:18},
+  {wch:18},{wch:14},{wch:14},{wch:14},
+  {wch:18},{wch:18},{wch:18},{wch:30}
+];
 
   ws["A1"].s = {
     font:{bold:true,sz:22},
