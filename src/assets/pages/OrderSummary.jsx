@@ -1,9 +1,11 @@
-import React, { useContext, useMemo, useState } from "react";
+import React, { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { GetDataContext } from "../components/DataContext";
 import { FourSquare } from "react-loading-indicators";
 import OrderForm from "../OrderReport/OrderForm";
 import * as XLSX from "xlsx-js-style";
 import ReactPaginate from "react-paginate";
+import FixedSizeList from 'react-window/dist/react-window.development.js';
+
 
 function OrderSummary() {
 
@@ -17,7 +19,11 @@ const [selectedOrder, setSelectedOrder] = useState([]);
 
 const [piSearch,setPiSearch] = useState("")
 const [orderSearch,setOrderSearch] = useState("")
+const [piOpen, setPiOpen] = useState(false);
+const [orderOpen, setOrderOpen] = useState(false);
 
+const piRef = useRef(null);
+const orderRef = useRef(null);
 const itemsPerPage = 10;
 
 
@@ -213,6 +219,27 @@ if(status==="Gate Out") return "text-red-600 font-semibold"
 return "text-gray-500"
 
 }
+
+useEffect(() => {
+  const handleClickOutside = (event) => {
+
+    if (piRef.current && !piRef.current.contains(event.target)) {
+      setPiOpen(false);
+    }
+
+    if (orderRef.current && !orderRef.current.contains(event.target)) {
+      setOrderOpen(false);
+    }
+
+  };
+
+  document.addEventListener("mousedown", handleClickOutside);
+
+  return () => {
+    document.removeEventListener("mousedown", handleClickOutside);
+  };
+
+}, []);
 
 
 
@@ -411,124 +438,135 @@ return (
           />
 
           {/* PI FILTER */}
-          <div className="dropdown relative">
-            <label tabIndex={0} className="btn btn-outline">
-              Filter PI
-            </label>
+         <div className="relative" ref={piRef}>
+  <button
+  className="btn btn-outline w-32"
+  onClick={() => setPiOpen(!piOpen)}
+>
+  Filter PI {selectedPI.length ? `(${selectedPI.length})` : ""}
+</button>
 
-            <div
-              className="dropdown-content bg-base-100 shadow p-3 rounded w-64 max-h-60 overflow-y-auto absolute z-50"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {/* Select / Uncheck All */}
-              <div className="flex justify-between mb-2">
-                <button
-                  className="text-blue-600 text-sm hover:underline"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setSelectedPI(uniquePI);
-                  }}
-                >
-                  Select All
-                </button>
-                <button
-                  className="text-red-600 text-sm hover:underline"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setSelectedPI([]);
-                  }}
-                >
-                  Uncheck All
-                </button>
-              </div>
+  {piOpen && (
+    <div className="absolute bg-base-100 shadow p-3 rounded w-64 max-h-60 overflow-y-auto z-50 mt-2">
 
-              {/* Search Input */}
-              <input
-                type="text"
-                placeholder="Search PI"
-                className="input input-sm w-full mb-2"
-                value={piSearch}
-                onChange={(e) => setPiSearch(e.target.value)}
-                onClick={(e) => e.stopPropagation()}
-              />
+      {/* Select / Uncheck All */}
+      <div className="flex justify-between mb-2">
+        <button
+          className="text-blue-600 text-sm hover:underline"
+          onClick={() => setSelectedPI(uniquePI)}
+        >
+          Select All
+        </button>
 
-              {/* Checkbox List */}
-              {filteredPI.map((pi) => (
-                <label
-                  key={pi}
-                  className="flex gap-2 py-1 items-center hover:bg-blue-100 rounded cursor-pointer"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <input
-                    type="checkbox"
-                    checked={selectedPI.includes(pi)}
-                    onChange={() => togglePI(pi)}
-                  />
-                  <span className="select-none">{pi}</span>
-                </label>
-              ))}
-            </div>
-          </div>
+        <button
+          className="text-red-600 text-sm hover:underline"
+          onClick={() => setSelectedPI([])}
+        >
+          Uncheck All
+        </button>
+      </div>
 
+      {/* Search Input */}
+      <input
+        type="text"
+        placeholder="Search PI"
+        className="input input-sm w-full mb-2"
+        value={piSearch}
+        onChange={(e) => setPiSearch(e.target.value)}
+      />
+
+      {/* Checkbox List */}
+      {filteredPI.map((pi) => (
+        <label
+          key={pi}
+          className="flex gap-2 py-1 items-center hover:bg-blue-100 rounded cursor-pointer"
+        >
+          <input
+            type="checkbox"
+            checked={selectedPI.includes(pi)}
+            onChange={() => togglePI(pi)}
+          />
+          <span className="select-none">{pi}</span>
+        </label>
+      ))}
+    </div>
+  )}
+</div>
+
+{/* <div style={style}>
+      <label className="flex gap-2 py-1 items-center hover:bg-blue-100 rounded cursor-pointer px-2">
+        <input
+          type="checkbox"
+          checked={selectedOrder.includes(order)}
+          onChange={() => toggleOrder(order)}
+        />
+        <span className="select-none">{order}</span>
+      </label>
+    </div> */}
+  
           {/* ORDER FILTER */}
-          <div className="dropdown relative">
-            <label tabIndex={0} className="btn btn-outline">
-              Filter Order
-            </label>
+          {/* ORDER FILTER */}
+<div className="relative" ref={orderRef}>
+  <button
+    className="btn btn-outline w-32"
+    onClick={() => setOrderOpen(!orderOpen)}
+  >
+    Filter Order {selectedOrder.length ? `(${selectedOrder.length})` : ""}
+  </button>
 
-            <div
-              className="dropdown-content bg-base-100 shadow p-3 rounded w-64 max-h-60 overflow-y-auto absolute z-50"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {/* Select / Uncheck All */}
-              <div className="flex justify-between mb-2">
-                <button
-                  className="text-blue-600 text-sm hover:underline"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setSelectedOrder(uniqueOrder);
-                  }}
-                >
-                  Select All
-                </button>
-                <button
-                  className="text-red-600 text-sm hover:underline"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setSelectedOrder([]);
-                  }}
-                >
-                  Uncheck All
-                </button>
-              </div>
+  {orderOpen && (
+    <div className="absolute bg-base-100 shadow p-3 rounded w-64 max-h-60 overflow-y-auto z-50 mt-2">
+      {/* Select / Uncheck All */}
+      <div className="flex justify-between mb-2">
+        <button
+          className="text-blue-600 text-sm hover:underline"
+          onClick={() => setSelectedOrder(uniqueOrder)}
+        >
+          Select All
+        </button>
+        <button
+          className="text-red-600 text-sm hover:underline"
+          onClick={() => setSelectedOrder([])}
+        >
+          Uncheck All
+        </button>
+      </div>
 
-              {/* Search Input */}
-              <input
-                type="text"
-                placeholder="Search Order"
-                className="input input-sm w-full mb-2"
-                value={orderSearch}
-                onChange={(e) => setOrderSearch(e.target.value)}
-                onClick={(e) => e.stopPropagation()}
-              />
+      {/* Search Input */}
+      <input
+        type="text"
+        placeholder="Search Order"
+        className="input input-sm w-full mb-2"
+        value={orderSearch}
+        onChange={(e) => setOrderSearch(e.target.value)}
+      />
 
-              {/* Checkbox List */}
-              {filteredOrder.map((order) => (
-                <label
-                  key={order}
-                  className="flex gap-2 py-1 items-center hover:bg-blue-100 rounded cursor-pointer"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <input
-                    type="checkbox"
-                    checked={selectedOrder.includes(order)}
-                    onChange={() => toggleOrder(order)}
-                  />
-                  <span className="select-none">{order}</span>
-                </label>
-              ))}
+      {/* ✅ Virtualized List */}
+      <FixedSizeList
+        height={240}           // dropdown visible height
+        itemCount={filteredOrder.length}
+        itemSize={32}          // এক একটি row এর height
+        width="100%"
+      >
+        {({ index, style }) => {
+          const order = filteredOrder[index];
+          return (
+            <div style={style} className="px-1">
+              <label className="flex gap-2 py-1 items-center hover:bg-blue-100 rounded cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={selectedOrder.includes(order)}
+                  onChange={() => toggleOrder(order)}
+                />
+                <span className="select-none">{order}</span>
+              </label>
             </div>
-          </div>
+          );
+        }}
+      </FixedSizeList>
+    </div>
+  )}
+</div>
         </div>
 
         <button
