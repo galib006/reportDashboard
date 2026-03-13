@@ -215,14 +215,15 @@ function OrderSummary() {
     });
 
     let data = [];
+    let mergeRowPointer = 0;
 
+    // Build data array with dynamic PI titles
     for (const [pi, items] of Object.entries(groupedByPI)) {
       // PI Title row
       data.push([`PI: ${pi}`]);
-      data.push([`Generated: ${new Date().toLocaleDateString("en-GB")}`]);
       data.push([]); // empty row before header
 
-      // Header
+      // Header row
       data.push([
         "Order No",
         "Order Date",
@@ -262,7 +263,7 @@ function OrderSummary() {
         ]);
       });
 
-      // Subtotal per PI
+      // Subtotal row
       data.push([
         "Subtotal",
         "",
@@ -280,17 +281,25 @@ function OrderSummary() {
       ]);
 
       data.push([]); // empty row after each PI
+
+      mergeRowPointer += 3 + items.length + 2; // title + empty + header + items + subtotal + empty
     }
 
+    // Create worksheet
     const ws = XLSX.utils.aoa_to_sheet(data);
 
-    // Merge PI title & date rows
-    ws["!merges"] = [
-      { s: { r: 0, c: 0 }, e: { r: 0, c: 12 } },
-      { s: { r: 1, c: 0 }, e: { r: 1, c: 12 } },
-    ];
+    // Dynamic merge PI title row
+    let titleRowPointer = 0;
+    for (const items of Object.values(groupedByPI)) {
+      if (!ws["!merges"]) ws["!merges"] = [];
+      ws["!merges"].push({
+        s: { r: titleRowPointer, c: 0 },
+        e: { r: titleRowPointer, c: 12 },
+      });
+      titleRowPointer += 3 + items.length + 2; // move to next PI
+    }
 
-    // Auto width
+    // Column width auto
     const colWidths = [];
     for (let c = 0; c <= 12; c++) {
       let maxLength = 10;
@@ -305,7 +314,18 @@ function OrderSummary() {
     }
     ws["!cols"] = colWidths;
 
-    // Style rows
+    // Row height auto
+    ws["!rows"] = data.map((row) => {
+      let maxLines = 1;
+      row.forEach((cell) => {
+        if (!cell) return;
+        const lines = cell.toString().split("\n").length;
+        if (lines > maxLines) maxLines = lines;
+      });
+      return { hpt: maxLines * 20 }; // adjust multiplier if needed
+    });
+
+    // Style all rows
     data.forEach((row, r) => {
       row.forEach((_, c) => {
         const cell = XLSX.utils.encode_cell({ r, c });
@@ -317,7 +337,7 @@ function OrderSummary() {
           alignment: {
             horizontal: c === 12 ? "left" : "center",
             vertical: "center",
-            wrapText: c === 12,
+            wrapText: true,
           },
           border: {
             top: { style: "thin", color: { rgb: "000000" } },
@@ -327,51 +347,39 @@ function OrderSummary() {
           },
         };
 
-        // PI title
-        if (r === 0) {
-          ws[cell].s = {
-            font: {
-              bold: true,
-              sz: 26,
-              color: { rgb: "FFFFFF" },
-              name: "Calibri",
-            },
-            fill: { fgColor: { rgb: "2F75B5" } },
-            alignment: { horizontal: "center", vertical: "center" },
+        // PI title style
+        if (ws["!merges"]?.some((m) => m.s.r === r)) {
+          ws[cell].s.font = {
+            bold: true,
+            sz: 26,
+            color: { rgb: "FFFFFF" },
+            name: "Calibri",
           };
+          ws[cell].s.fill = { fgColor: { rgb: "2F75B5" } };
+          ws[cell].s.alignment = { horizontal: "center", vertical: "center" };
         }
 
-        // Date row
-        if (r === 1) {
-          ws[cell].s = {
-            font: { italic: true, sz: 16, name: "Calibri" },
-            alignment: { horizontal: "center", vertical: "center" },
-          };
-        }
-
-        // Header row
+        // Header row style
         if (
-          r === 3 ||
-          (r > 3 &&
+          r === 2 ||
+          (r > 2 &&
             data[r - 1].length === 0 &&
             r < data.length - 1 &&
             data[r + 1].length > 0)
         ) {
-          ws[cell].s = {
-            font: {
-              bold: true,
-              sz: 16,
-              color: { rgb: "FFFFFF" },
-              name: "Calibri",
-            },
-            fill: { fgColor: { rgb: "305496" } },
-            alignment: { horizontal: "center", vertical: "center" },
-            border: {
-              top: { style: "thin", color: { rgb: "000000" } },
-              bottom: { style: "thin", color: { rgb: "000000" } },
-              left: { style: "thin", color: { rgb: "000000" } },
-              right: { style: "thin", color: { rgb: "000000" } },
-            },
+          ws[cell].s.font = {
+            bold: true,
+            sz: 16,
+            color: { rgb: "FFFFFF" },
+            name: "Calibri",
+          };
+          ws[cell].s.fill = { fgColor: { rgb: "305496" } };
+          ws[cell].s.alignment = { horizontal: "center", vertical: "center" };
+          ws[cell].s.border = {
+            top: { style: "thin", color: { rgb: "000000" } },
+            bottom: { style: "thin", color: { rgb: "000000" } },
+            left: { style: "thin", color: { rgb: "000000" } },
+            right: { style: "thin", color: { rgb: "000000" } },
           };
         }
 
@@ -393,7 +401,7 @@ function OrderSummary() {
     });
 
     // Freeze header
-    ws["!freeze"] = { xSplit: 0, ySplit: 4 };
+    ws["!freeze"] = { xSplit: 0, ySplit: 3 };
 
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Order Summary");
