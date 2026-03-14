@@ -22,7 +22,7 @@ function OrderSummary() {
 
   const piRef = useRef(null);
   const orderRef = useRef(null);
-  const itemsPerPage = 10;
+  const itemsPerPage = 20;
 
   /* ---------------- DATE FORMAT ---------------- */
 
@@ -192,222 +192,211 @@ function OrderSummary() {
 
   /* ---------------- EXPORT EXCEL ---------------- */
 
-  const exportToExcel = () => {
-    // Filtered data as per search & selection
-    const filteredData = summarizedData.filter((item) => {
-      const searchMatch =
-        !search ||
-        item.WorkOrderNo.toString().includes(search) ||
-        item.CustomerName?.toLowerCase().includes(search.toLowerCase()) ||
-        item.DeliverName?.toLowerCase().includes(search.toLowerCase());
-      const piMatch = selectedPI.length === 0 || selectedPI.includes(item.PINO);
-      const orderMatch =
-        selectedOrder.length === 0 || selectedOrder.includes(item.WorkOrderNo);
-      return searchMatch && piMatch && orderMatch;
+const exportToExcel = () => {
+
+  // UI filtered data use directly
+  const dataToExport = filteredData;
+
+  // Group data by PI
+  const groupedByPI = {};
+  dataToExport.forEach((item) => {
+    const key = item.PINO || "No PI";
+    if (!groupedByPI[key]) groupedByPI[key] = [];
+    groupedByPI[key].push(item);
+  });
+
+  let data = [];
+
+  // Build data array
+  for (const [pi, items] of Object.entries(groupedByPI)) {
+
+    // PI title
+    data.push([`PI: ${pi}`]);
+    data.push([]);
+
+    // Header
+    data.push([
+      "Order No",
+      "Order Date",
+      "Customer",
+      "Delivery",
+      "PI No",
+      "Section",
+      "Order Qty",
+      "Challan Qty",
+      "Balance Qty",
+      "Order Value",
+      "Challan Value",
+      "Balance Value",
+      "Challan No",
+    ]);
+
+    // Rows
+    items.forEach((item) => {
+      data.push([
+        item.WorkOrderNo,
+        item.OrderReceiveDate
+          ? new Date(item.OrderReceiveDate).toLocaleDateString("en-GB")
+          : "",
+        item.CustomerName,
+        item.DeliverName,
+        item.PINO,
+        item.Section,
+        item.TotalQty,
+        item.ChallanQTY,
+        item.BalanceQty,
+        item.TotalValue,
+        item.ChallanValue,
+        item.BalanceValue,
+        item.ChallanNo.map(
+          (ch) => `${ch.challanNo} (${ch.status})`
+        ).join(", "),
+      ]);
     });
 
-    // Group data by PI
-    const groupedByPI = {};
-    filteredData.forEach((item) => {
-      const key = item.PINO || "No PI";
-      if (!groupedByPI[key]) groupedByPI[key] = [];
-      groupedByPI[key].push(item);
+    // Subtotal
+    data.push([
+      "Subtotal",
+      "",
+      "",
+      "",
+      "",
+      "",
+      items.reduce((a, b) => a + Number(b.TotalQty), 0),
+      items.reduce((a, b) => a + Number(b.ChallanQTY), 0),
+      items.reduce((a, b) => a + Number(b.BalanceQty), 0),
+      items.reduce((a, b) => a + Number(b.TotalValue), 0),
+      items.reduce((a, b) => a + Number(b.ChallanValue), 0),
+      items.reduce((a, b) => a + Number(b.BalanceValue), 0),
+      "",
+    ]);
+
+    data.push([]);
+  }
+
+  const ws = XLSX.utils.aoa_to_sheet(data);
+
+  /* -------- PI TITLE MERGE -------- */
+
+  let rowPointer = 0;
+  for (const items of Object.values(groupedByPI)) {
+
+    if (!ws["!merges"]) ws["!merges"] = [];
+
+    ws["!merges"].push({
+      s: { r: rowPointer, c: 0 },
+      e: { r: rowPointer, c: 12 },
     });
 
-    let data = [];
-    let mergeRowPointer = 0;
+    rowPointer += 3 + items.length + 2;
+  }
 
-    // Build data array with dynamic PI titles
-    for (const [pi, items] of Object.entries(groupedByPI)) {
-      // PI Title row
-      data.push([`PI: ${pi}`]);
-      data.push([]); // empty row before header
+  /* -------- COLUMN WIDTH AUTO -------- */
 
-      // Header row
-      data.push([
-        "Order No",
-        "Order Date",
-        "Customer",
-        "Delivery",
-        "PI No",
-        "Section",
-        "Order Qty",
-        "Challan Qty",
-        "Balance Qty",
-        "Order Value",
-        "Challan Value",
-        "Balance Value",
-        "Challan No",
-      ]);
+  const colWidths = [];
 
-      // Rows
-      items.forEach((item) => {
-        data.push([
-          item.WorkOrderNo,
-          item.OrderReceiveDate
-            ? new Date(item.OrderReceiveDate).toLocaleDateString("en-GB")
-            : "",
-          item.CustomerName,
-          item.DeliverName,
-          item.PINO,
-          item.Section,
-          item.TotalQty,
-          item.ChallanQTY,
-          item.BalanceQty,
-          item.TotalValue,
-          item.ChallanValue,
-          item.BalanceValue,
-          item.ChallanNo.map((ch) => `${ch.challanNo} (${ch.status})`).join(
-            ", ",
-          ),
-        ]);
-      });
+  for (let c = 0; c <= 12; c++) {
 
-      // Subtotal row
-      data.push([
-        "Subtotal",
-        "",
-        "",
-        "",
-        "",
-        "",
-        items.reduce((a, b) => a + Number(b.TotalQty), 0),
-        items.reduce((a, b) => a + Number(b.ChallanQTY), 0),
-        items.reduce((a, b) => a + Number(b.BalanceQty), 0),
-        items.reduce((a, b) => a + Number(b.TotalValue), 0),
-        items.reduce((a, b) => a + Number(b.ChallanValue), 0),
-        items.reduce((a, b) => a + Number(b.BalanceValue), 0),
-        "",
-      ]);
+    let maxLength = 10;
 
-      data.push([]); // empty row after each PI
+    for (let r = 0; r < data.length; r++) {
 
-      mergeRowPointer += 3 + items.length + 2; // title + empty + header + items + subtotal + empty
-    }
+      const cellValue = data[r][c];
 
-    // Create worksheet
-    const ws = XLSX.utils.aoa_to_sheet(data);
-
-    // Dynamic merge PI title row
-    let titleRowPointer = 0;
-    for (const items of Object.values(groupedByPI)) {
-      if (!ws["!merges"]) ws["!merges"] = [];
-      ws["!merges"].push({
-        s: { r: titleRowPointer, c: 0 },
-        e: { r: titleRowPointer, c: 12 },
-      });
-      titleRowPointer += 3 + items.length + 2; // move to next PI
-    }
-
-    // Column width auto
-    const colWidths = [];
-    for (let c = 0; c <= 12; c++) {
-      let maxLength = 10;
-      for (let r = 0; r < data.length; r++) {
-        const cellValue = data[r][c];
-        if (cellValue) {
-          const len = cellValue.toString().length;
-          if (len > maxLength) maxLength = len + 2;
-        }
+      if (cellValue) {
+        const len = cellValue.toString().length;
+        if (len > maxLength) maxLength = len + 2;
       }
-      colWidths.push({ wch: maxLength });
     }
-    ws["!cols"] = colWidths;
 
-    // Row height auto
-    ws["!rows"] = data.map((row) => {
-      let maxLines = 1;
-      row.forEach((cell) => {
-        if (!cell) return;
-        const lines = cell.toString().split("\n").length;
-        if (lines > maxLines) maxLines = lines;
-      });
-      return { hpt: maxLines * 20 }; // adjust multiplier if needed
+    colWidths.push({ wch: maxLength });
+  }
+
+  ws["!cols"] = colWidths;
+
+  /* -------- ROW HEIGHT AUTO -------- */
+
+  ws["!rows"] = data.map((row) => {
+
+    let maxLines = 1;
+
+    row.forEach((cell) => {
+      if (!cell) return;
+
+      const lines = cell.toString().split("\n").length;
+      if (lines > maxLines) maxLines = lines;
     });
 
-    // Style all rows
-    data.forEach((row, r) => {
-      row.forEach((_, c) => {
-        const cell = XLSX.utils.encode_cell({ r, c });
-        if (!ws[cell]) return;
+    return { hpt: maxLines * 20 };
 
-        // Default style
-        ws[cell].s = {
-          font: { sz: 16, name: "Calibri" },
-          alignment: {
-            horizontal: c === 12 ? "left" : "center",
-            vertical: "center",
-            wrapText: true,
-          },
-          border: {
-            top: { style: "thin", color: { rgb: "000000" } },
-            bottom: { style: "thin", color: { rgb: "000000" } },
-            left: { style: "thin", color: { rgb: "000000" } },
-            right: { style: "thin", color: { rgb: "000000" } },
-          },
+  });
+
+  /* -------- STYLING -------- */
+
+  data.forEach((row, r) => {
+
+    row.forEach((_, c) => {
+
+      const cell = XLSX.utils.encode_cell({ r, c });
+
+      if (!ws[cell]) return;
+
+      ws[cell].s = {
+        font: { sz: 16, name: "Calibri" },
+        alignment: {
+          horizontal: c === 12 ? "left" : "center",
+          vertical: "center",
+          wrapText: true,
+        },
+        border: {
+          top: { style: "thin", color: { rgb: "000000" } },
+          bottom: { style: "thin", color: { rgb: "000000" } },
+          left: { style: "thin", color: { rgb: "000000" } },
+          right: { style: "thin", color: { rgb: "000000" } },
+        },
+      };
+
+      // PI title
+      if (ws["!merges"]?.some((m) => m.s.r === r)) {
+
+        ws[cell].s.font = {
+          bold: true,
+          sz: 26,
+          color: { rgb: "FFFFFF" },
         };
 
-        // PI title style
-        if (ws["!merges"]?.some((m) => m.s.r === r)) {
-          ws[cell].s.font = {
-            bold: true,
-            sz: 26,
-            color: { rgb: "FFFFFF" },
-            name: "Calibri",
-          };
-          ws[cell].s.fill = { fgColor: { rgb: "2F75B5" } };
-          ws[cell].s.alignment = { horizontal: "center", vertical: "center" };
-        }
+        ws[cell].s.fill = { fgColor: { rgb: "2F75B5" } };
 
-        // Header row style
-        if (
-          r === 2 ||
-          (r > 2 &&
-            data[r - 1].length === 0 &&
-            r < data.length - 1 &&
-            data[r + 1].length > 0)
-        ) {
-          ws[cell].s.font = {
-            bold: true,
-            sz: 16,
-            color: { rgb: "FFFFFF" },
-            name: "Calibri",
-          };
-          ws[cell].s.fill = { fgColor: { rgb: "305496" } };
-          ws[cell].s.alignment = { horizontal: "center", vertical: "center" };
-          ws[cell].s.border = {
-            top: { style: "thin", color: { rgb: "000000" } },
-            bottom: { style: "thin", color: { rgb: "000000" } },
-            left: { style: "thin", color: { rgb: "000000" } },
-            right: { style: "thin", color: { rgb: "000000" } },
-          };
-        }
+        ws[cell].s.alignment = {
+          horizontal: "center",
+          vertical: "center",
+        };
+      }
 
-        // Currency formatting
-        if (c === 9 || c === 10 || c === 11) {
-          ws[cell].s.numFmt = '"$"#,##0';
-          if (c === 9) ws[cell].s.font.color = { rgb: "1F4E78" };
-          if (c === 10) ws[cell].s.font.color = { rgb: "008000" };
-          if (c === 11) ws[cell].s.font.color = { rgb: "C00000" };
-          ws[cell].s.alignment.horizontal = "right";
-        }
+      // Currency
+      if (c === 9 || c === 10 || c === 11) {
 
-        // Subtotal row style
-        if (row[0] === "Subtotal") {
-          ws[cell].s.fill = { fgColor: { rgb: "D9E1F2" } };
-          ws[cell].s.font.bold = true;
-        }
-      });
+        ws[cell].s.numFmt = '"$"#,##0';
+
+        ws[cell].s.alignment.horizontal = "right";
+      }
+
+      // Subtotal style
+      if (row[0] === "Subtotal") {
+
+        ws[cell].s.fill = { fgColor: { rgb: "D9E1F2" } };
+
+        ws[cell].s.font.bold = true;
+      }
     });
+  });
 
-    // Freeze header
-    ws["!freeze"] = { xSplit: 0, ySplit: 3 };
+  const wb = XLSX.utils.book_new();
 
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Order Summary");
-    XLSX.writeFile(wb, "OrderSummaryReport.xlsx");
-  };
+  XLSX.utils.book_append_sheet(wb, ws, "Order Summary");
 
+  XLSX.writeFile(wb, "OrderSummaryReport.xlsx");
+};
   /* ---------------- UI ---------------- */
 
   return (
@@ -567,13 +556,13 @@ function OrderSummary() {
       </div>
 
       {/* TABLE */}
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto w-full">
         {loading ? (
           <div className="flex justify-center items-center h-64">
             <FourSquare color="#32cd32" size="large" />
           </div>
         ) : (
-          <table className="table w-full text-center">
+          <table className="table table-md ">
             <thead className="bg-blue-500 text-white">
               <tr>
                 <th>Order</th>
@@ -593,26 +582,26 @@ function OrderSummary() {
             </thead>
             <tbody>
               {displayedData.map((data) => (
-                <tr key={data.WorkOrderNo}>
-                  <td>{data.WorkOrderNo}</td>
-                  <td>{formatDate(data.OrderReceiveDate)}</td>
-                  <td>{data.CustomerName}</td>
-                  <td>{data.DeliverName}</td>
-                  <td>{data.PINO}</td>
-                  <td>{data.Section}</td>
-                  <td>{data.TotalQty}</td>
-                  <td>{data.ChallanQTY}</td>
-                  <td>{data.BalanceQty}</td>
-                  <td className="text-blue-600">
+                <tr key={data.WorkOrderNo} className="border-black">
+                  <td className="w-sm border-black">{data.WorkOrderNo}</td>
+                  <td className="w-sm border-black">{formatDate(data.OrderReceiveDate)}</td>
+                  <td className="w-sm border-black">{data.CustomerName}</td>
+                  <td className="w-sm border-black">{data.DeliverName}</td>
+                  <td className="w-sm border-black">{data.PINO}</td>
+                  <td className="w-sm border-black">{data.Section}</td>
+                  <td className="w-sm border-black">{data.TotalQty}</td>
+                  <td className="w-sm border-black">{data.ChallanQTY}</td>
+                  <td className="w-sm border-black">{data.BalanceQty}</td>
+                  <td className="text-blue-600 border-black ">
                     $ {Math.ceil(data.TotalValue)}
                   </td>
-                  <td className="text-green-600">
+                  <td className="text-green-600 border-black ">
                     $ {Math.ceil(data.ChallanValue)}
                   </td>
-                  <td className="text-red-600">
+                  <td className="text-red-600 border-black ">
                     $ {Math.ceil(data.BalanceValue)}
                   </td>
-                  <td>
+                  <td className="w-3xl border-black">
                     {data.ChallanNo.length > 0 ? (
                       data.ChallanNo.map((ch, i) => (
                         <div key={i} className={getStatusColor(ch.status)}>
