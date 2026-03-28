@@ -130,8 +130,9 @@ function OrderSummary() {
 
   /* ---------------- FILTER DATA ---------------- */
 
-  const filteredData = useMemo(() => {
-    return summarizedData.filter((item) => {
+const filteredData = useMemo(() => {
+  return summarizedData
+    .filter((item) => {
       const searchMatch =
         !search ||
         item.WorkOrderNo.toString().includes(search) ||
@@ -139,14 +140,36 @@ function OrderSummary() {
         item.DeliverName?.toLowerCase().includes(search.toLowerCase()) ||
         item.PINO?.toLowerCase().includes(search.toLowerCase());
 
-      const piMatch = selectedPI.length === 0 || selectedPI.includes(item.PINO);
+      const piMatch =
+        selectedPI.length === 0 || selectedPI.includes(item.PINO);
 
       const orderMatch =
-        selectedOrder.length === 0 || selectedOrder.includes(item.WorkOrderNo);
+        selectedOrder.length === 0 ||
+        selectedOrder.includes(item.WorkOrderNo);
 
       return searchMatch && piMatch && orderMatch;
-    });
-  }, [summarizedData, search, selectedPI, selectedOrder]);
+    })
+    .sort((a, b) => {
+  const getParts = (val) => {
+    const parts = val.split("-");
+    return {
+      num: Number(parts[1]) || 0,
+      year: Number(parts[2]) || 0,
+    };
+  };
+
+  const A = getParts(a.WorkOrderNo);
+  const B = getParts(b.WorkOrderNo);
+
+  // 🔥 First sort by YEAR (descending)
+  if (B.year !== A.year) {
+    return B.year - A.year;
+  }
+
+  // 🔥 Then sort by NUMBER (descending)
+  return B.num - A.num;
+});
+}, [summarizedData, search, selectedPI, selectedOrder]);
 
   /* ---------------- PAGINATION ---------------- */
 
