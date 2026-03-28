@@ -37,3 +37,10 @@ ul.pagination li.disabled{
   color: #fff;
   font-weight: bold;
 }
+.page-paginate ul li {
+  cursor: pointer;
+  padding: 3px 3px;
+}
+.page-paginate ul li:hover {
+  background-color: #eee;
+}

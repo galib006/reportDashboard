@@ -605,26 +605,26 @@ const exportToExcel = () => {
             </thead>
             <tbody>
               {displayedData.map((data) => (
-                <tr key={data.WorkOrderNo} className="border-black">
-                  <td className="w-sm border-black">{data.WorkOrderNo}</td>
-                  <td className="w-sm border-black">{formatDate(data.OrderReceiveDate)}</td>
-                  <td className="w-sm border-black">{data.CustomerName}</td>
-                  <td className="w-sm border-black">{data.DeliverName}</td>
-                  <td className="w-sm border-black">{data.PINO}</td>
-                  <td className="w-sm border-black">{data.Section}</td>
-                  <td className="w-sm border-black">{data.TotalQty}</td>
-                  <td className="w-sm border-black">{data.ChallanQTY}</td>
-                  <td className="w-sm border-black">{data.BalanceQty}</td>
-                  <td className="text-blue-600 border-black ">
+                <tr key={data.WorkOrderNo} className="hover:bg-gray-300 cursor-pointer">
+                  <td className="w-sm ">{data.WorkOrderNo}</td>
+                  <td className="w-sm ">{formatDate(data.OrderReceiveDate)}</td>
+                  <td className="w-sm ">{data.CustomerName}</td>
+                  <td className="w-sm ">{data.DeliverName}</td>
+                  <td className="w-sm ">{data.PINO}</td>
+                  <td className="w-sm ">{data.Section}</td>
+                  <td className="w-sm ">{data.TotalQty.toFixed(2)}</td>
+                  <td className="w-sm ">{data.ChallanQTY.toFixed(2)}</td>
+                  <td className="w-sm ">{data.BalanceQty.toFixed(2)}</td>
+                  <td className="text-blue-600  ">
                     $ {Math.ceil(data.TotalValue)}
                   </td>
-                  <td className="text-green-600 border-black ">
+                  <td className="text-green-600  ">
                     $ {Math.ceil(data.ChallanValue)}
                   </td>
-                  <td className="text-red-600 border-black ">
+                  <td className="text-red-600  ">
                     $ {Math.ceil(data.BalanceValue)}
                   </td>
-                  <td className="w-3xl border-black">
+                  <td className="w-3xl ">
                     {data.ChallanNo.length > 0 ? (
                       data.ChallanNo.map((ch, i) => (
                         <div key={i} className={getStatusColor(ch.status)}>
@@ -643,7 +643,7 @@ const exportToExcel = () => {
       </div>
 
       {/* PAGINATION */}
-      <div className="flex justify-center mt-5">
+      <div className="flex justify-center mt-5 page-paginate">
         <ReactPaginate
           breakLabel="..."
           nextLabel="Next >"
