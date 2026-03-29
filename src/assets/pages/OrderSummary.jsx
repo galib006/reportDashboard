@@ -22,7 +22,7 @@ function OrderSummary() {
 
   const piRef = useRef(null);
   const orderRef = useRef(null);
-  const itemsPerPage = 20;
+  const itemsPerPage = 50;
 
   /* ---------------- DATE FORMAT ---------------- */
 
@@ -179,6 +179,23 @@ const filteredData = useMemo(() => {
     currentPage * itemsPerPage,
     currentPage * itemsPerPage + itemsPerPage,
   );
+    const totalData = displayedData.reduce((acc, item) => {
+  acc.TotalQty += Number(item.TotalQty || 0);
+  acc.ChallanQTY += Number(item.ChallanQTY || 0);
+  acc.BalanceQty += Number(item.BalanceQty || 0);
+  acc.TotalValue += Number(item.TotalValue || 0);
+  acc.ChallanValue += Number(item.ChallanValue || 0);
+  acc.BalanceValue += Number(item.BalanceValue || 0);
+
+  return acc; // 🔥 এটা খুব important
+}, {
+  TotalQty: 0,
+  ChallanQTY: 0,
+  BalanceQty: 0,
+  TotalValue: 0,
+  ChallanValue: 0,
+  BalanceValue: 0
+}); 
 
   const handlePageClick = (event) => {
     setCurrentPage(event.selected);
@@ -579,15 +596,15 @@ const exportToExcel = () => {
       </div>
 
       {/* TABLE */}
-      <div className="overflow-x-auto w-full">
+      <div className="overflow-x-auto w-full max-h-[650px] overflow-y-auto">
         {loading ? (
           <div className="flex justify-center items-center h-64">
             <FourSquare color="#32cd32" size="large" />
           </div>
         ) : (
-          <table className="table table-md ">
-            <thead className="bg-blue-500 text-white">
-              <tr>
+          <table className="table table-md min-w-full border">
+            <thead className="bg-blue-500 text-white sticky top-0 z-10">
+              <tr className="text-center">
                 <th>Order</th>
                 <th>Date</th>
                 <th>Customer</th>
@@ -605,26 +622,27 @@ const exportToExcel = () => {
             </thead>
             <tbody>
               {displayedData.map((data) => (
-                <tr key={data.WorkOrderNo} className="hover:bg-gray-300 cursor-pointer">
-                  <td className="w-sm ">{data.WorkOrderNo}</td>
+                <>
+                <tr key={data.WorkOrderNo} className="hover:bg-gray-300 cursor-pointer text-center">
+                  <td className="w-xl ">{data.WorkOrderNo}</td>
                   <td className="w-sm ">{formatDate(data.OrderReceiveDate)}</td>
                   <td className="w-sm ">{data.CustomerName}</td>
                   <td className="w-sm ">{data.DeliverName}</td>
-                  <td className="w-sm ">{data.PINO}</td>
+                  <td className="w-lg ">{data.PINO}</td>
                   <td className="w-sm ">{data.Section}</td>
                   <td className="w-sm ">{data.TotalQty.toFixed(2)}</td>
                   <td className="w-sm ">{data.ChallanQTY.toFixed(2)}</td>
                   <td className="w-sm ">{data.BalanceQty.toFixed(2)}</td>
                   <td className="text-blue-600  ">
-                    $ {Math.ceil(data.TotalValue)}
+                    $ {(data.TotalValue).toFixed(2)}
                   </td>
                   <td className="text-green-600  ">
-                    $ {Math.ceil(data.ChallanValue)}
+                    $ {(data.ChallanValue).toFixed(2)}
                   </td>
                   <td className="text-red-600  ">
-                    $ {Math.ceil(data.BalanceValue)}
+                    $ {(data.BalanceValue).toFixed(2)}
                   </td>
-                  <td className="w-3xl ">
+                  <td className="w-xl text-left">
                     {data.ChallanNo.length > 0 ? (
                       data.ChallanNo.map((ch, i) => (
                         <div key={i} className={getStatusColor(ch.status)}>
@@ -636,8 +654,22 @@ const exportToExcel = () => {
                     )}
                   </td>
                 </tr>
+                </>
               ))}
+
             </tbody>
+            <tfoot className="sticky bottom-0 bg-blue-300 z-10">
+            <tr className="font-bold text-lg text-center text-black">
+              <td colSpan={6}></td>
+              <td>{totalData.TotalQty.toFixed(2)}</td>
+              <td className="text-green-700">{totalData.ChallanQTY.toFixed(2)}</td>
+              <td className="text-red-700">{totalData.BalanceQty.toFixed(2)}</td>
+              <td>${(totalData.TotalValue).toFixed(2)}</td>
+              <td className="text-green-700">${(totalData.ChallanValue).toFixed(2)}</td>
+              <td className="text-red-700">${(totalData.BalanceValue).toFixed(2)}</td>
+              <td></td>
+              </tr>
+            </tfoot>
           </table>
         )}
       </div>

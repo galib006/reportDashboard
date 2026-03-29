@@ -83,7 +83,7 @@ function OrderReport() {
 
   XLSX.writeFile(workbook, "Order_Report.xlsx");
 };
-console.log(deliveryPercent);
+// console.log(deliveryPercent);
 
   return (
     <>
