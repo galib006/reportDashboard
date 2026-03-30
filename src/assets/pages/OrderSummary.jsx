@@ -45,6 +45,7 @@ function OrderSummary() {
     });
 
     const grouped = {};
+console.log("apidata", apidata);
 
     apidata.forEach((item) => {
       if (!grouped[item.WorkOrderNo]) {
@@ -55,16 +56,13 @@ function OrderSummary() {
           CustomerName: item.CName,
           PINO: item.CustomerPINo,
           Section: item.ProductCategoryName,
-
+          Buyer: item.BuyerName,
           TotalQty: 0,
           TotalValue: 0,
-
           ChallanQTY: 0,
           ChallanValue: 0,
-
           BalanceQty: 0,
           BalanceValue: 0,
-
           ChallanNo: [],
         };
       }
@@ -138,7 +136,8 @@ const filteredData = useMemo(() => {
         item.WorkOrderNo.toString().includes(search) ||
         item.CustomerName?.toLowerCase().includes(search.toLowerCase()) ||
         item.DeliverName?.toLowerCase().includes(search.toLowerCase()) ||
-        item.PINO?.toLowerCase().includes(search.toLowerCase());
+        item.PINO?.toLowerCase().includes(search.toLowerCase()) ||
+        item.Buyer?.toLowerCase().includes(search.toLowerCase());
 
       const piMatch =
         selectedPI.length === 0 || selectedPI.includes(item.PINO);
@@ -174,7 +173,6 @@ const filteredData = useMemo(() => {
   /* ---------------- PAGINATION ---------------- */
 
   const pageCount = Math.ceil(filteredData.length / itemsPerPage);
-
   const displayedData = filteredData.slice(
     currentPage * itemsPerPage,
     currentPage * itemsPerPage + itemsPerPage,
@@ -187,7 +185,7 @@ const filteredData = useMemo(() => {
   acc.ChallanValue += Number(item.ChallanValue || 0);
   acc.BalanceValue += Number(item.BalanceValue || 0);
 
-  return acc; // 🔥 এটা খুব important
+  return acc; 
 }, {
   TotalQty: 0,
   ChallanQTY: 0,
@@ -196,6 +194,8 @@ const filteredData = useMemo(() => {
   ChallanValue: 0,
   BalanceValue: 0
 }); 
+console.log(displayedData);
+
 
   const handlePageClick = (event) => {
     setCurrentPage(event.selected);
@@ -609,6 +609,7 @@ const exportToExcel = () => {
                 <th>Date</th>
                 <th>Customer</th>
                 <th>Delivery</th>
+                <th>Buyer</th>
                 <th>PI</th>
                 <th>Section</th>
                 <th>Order Qty</th>
@@ -622,12 +623,13 @@ const exportToExcel = () => {
             </thead>
             <tbody>
               {displayedData.map((data) => (
-                <>
+  
                 <tr key={data.WorkOrderNo} className="hover:bg-gray-300 cursor-pointer text-center">
                   <td className="w-xl ">{data.WorkOrderNo}</td>
                   <td className="w-sm ">{formatDate(data.OrderReceiveDate)}</td>
                   <td className="w-sm ">{data.CustomerName}</td>
                   <td className="w-sm ">{data.DeliverName}</td>
+                  <td className="w-sm ">{data.Buyer}</td>
                   <td className="w-lg ">{data.PINO}</td>
                   <td className="w-sm ">{data.Section}</td>
                   <td className="w-sm ">{data.TotalQty.toFixed(2)}</td>
@@ -654,13 +656,13 @@ const exportToExcel = () => {
                     )}
                   </td>
                 </tr>
-                </>
+           
               ))}
 
             </tbody>
             <tfoot className="sticky bottom-0 bg-blue-300 z-10">
             <tr className="font-bold text-lg text-center text-black">
-              <td colSpan={6}></td>
+              <td colSpan={7}></td>
               <td>{totalData.TotalQty.toFixed(2)}</td>
               <td className="text-green-700">{totalData.ChallanQTY.toFixed(2)}</td>
               <td className="text-red-700">{totalData.BalanceQty.toFixed(2)}</td>
