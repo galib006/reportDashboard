@@ -14,6 +14,7 @@ import InventoryIssue from "./assets/pages/InventoryIssue.jsx";
 import Delivery from "./assets/pages/Delivery.jsx";
 import EmployeeLIst from "./assets/pages/EmployeeLIst.jsx";
 import OrderSummary from "./assets/pages/OrderSummary.jsx";
+import BalanceSummary from "./assets/pages/BalanceSummary.jsx";
 
 
 
@@ -29,6 +30,10 @@ const router = createBrowserRouter([
     {
       path: "OrderSummary",
       Component:OrderSummary
+    },
+    {
+      path: "BalanceSummary",
+      Component: BalanceSummary
     },
   {path: "Inventory",
     Component:Inventory

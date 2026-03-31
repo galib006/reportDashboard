@@ -1,6 +1,7 @@
 import React from "react";
 import { NavLink } from "react-router";
 import Key from "./Key";
+import { GoArrowDown } from "react-icons/go";
 
 function Navbar() {
   return (
@@ -27,7 +28,7 @@ function Navbar() {
             </div>
             <ul
               tabIndex="-1"
-              className="menu menu-sm dropdown-content bg-base-100 rounded-box z-1 mt-3 w-52 p-2 shadow"
+              className="menu menu-sm dropdown-content bg-base-100 rounded-box z-1 mt-3 w-52 p-2 shadow font-bold"
             >
               {/* <li>
                 <a>Home</a>
@@ -53,7 +54,7 @@ function Navbar() {
           </NavLink>
         </div>
         <div className="navbar-center hidden lg:flex">
-          <ul className="menu menu-horizontal px-1">
+          <ul className="menu menu-horizontal px-1 font-bold">
             {/* <li>
               <NavLink to={"/"}>Home</NavLink>
             </li> */}
@@ -61,7 +62,21 @@ function Navbar() {
               <NavLink to={"OrderReport"}>Order Report</NavLink>
             </li>
             <li>
-              <NavLink to={"OrderSummary"}>Order Summary</NavLink>
+              <div className="dropdown">
+                <div
+                  tabIndex={0}
+                  role="button"
+                  className="flex items-center justify-center gap-1">
+                  Summary <GoArrowDown />
+                </div>
+
+                <ul
+                  tabIndex={-1}
+                  className="dropdown-content menu rounded-box z-999 w-52 shadow-sm bg-white border-black border-2">
+                  <NavLink to={"OrderSummary"} className={"mt-2 py-2 px-2 hover:bg-gray-200"}>Order Summary</NavLink>
+                  <NavLink to={"BalanceSummary"} className={"mt-2 py-2 px-2 hover:bg-gray-200 "}>Balance Summary</NavLink>
+                </ul>
+              </div>
             </li>
 
             <li>
@@ -71,7 +86,7 @@ function Navbar() {
             <li>
               <NavLink to={"InventoryIssue"}>Issue Report</NavLink>
             </li>
-             {/* <li>
+            {/* <li>
               <NavLink to={"Delivery"}>Delivery</NavLink>
             </li> */}
             <li>

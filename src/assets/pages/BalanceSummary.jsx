@@ -6,7 +6,7 @@ import * as XLSX from "xlsx-js-style";
 import ReactPaginate from "react-paginate";
 // import FixedSizeList from 'react-window/dist/react-window.development.js';
 
-function OrderSummary() {
+function BalanceSummary() {
   const { cndata, loading } = useContext(GetDataContext);
 
   const [search, setSearch] = useState("");
@@ -169,27 +169,6 @@ const filteredData = useMemo(() => {
   return B.num - A.num;
 });
 }, [summarizedData, search, selectedPI, selectedOrder]);
-
-//full grand total for all filtered data without pagination
-const grandTotal = useMemo(() => {
-  return filteredData.reduce((acc, item) => {
-    acc.TotalQty += Number(item.TotalQty || 0);
-    acc.ChallanQTY += Number(item.ChallanQTY || 0);
-    acc.BalanceQty += Number(item.BalanceQty || 0);
-    acc.TotalValue += Number(item.TotalValue || 0);
-    acc.ChallanValue += Number(item.ChallanValue || 0);
-    acc.BalanceValue += Number(item.BalanceValue || 0);
-
-    return acc;
-  }, {
-    TotalQty: 0,
-    ChallanQTY: 0,
-    BalanceQty: 0,
-    TotalValue: 0,
-    ChallanValue: 0,
-    BalanceValue: 0
-  });
-}, [filteredData]);
 
   /* ---------------- PAGINATION ---------------- */
 
@@ -610,16 +589,6 @@ const exportToExcel = () => {
 
           {/* </div>  */}
         </div>
-        {grandTotal.TotalQty  > 0 && (
-          <div className="flex items-center border rounded bg-gray-100">
-            <p className="border border-black p-3 font-bold bg-cyan-300">Total Qty: {Math.ceil(grandTotal.TotalQty)}</p>
-            <p className="border border-black p-3 font-bold bg-cyan-300">Challan Qty: {Math.ceil(grandTotal.ChallanQTY)}</p>
-            <p className="border border-black p-3 font-bold bg-cyan-300">Balance Qty: {Math.ceil(grandTotal.BalanceQty)}</p>
-            <p className="border border-black p-3 font-bold bg-cyan-300">Order: ${Math.ceil(grandTotal.TotalValue)}</p>
-            <p className="border border-black p-3 font-bold bg-cyan-300">Sales: ${Math.ceil(grandTotal.ChallanValue)}</p>
-          <p className="border border-black p-3 font-bold bg-cyan-300">Balance: ${Math.ceil(grandTotal.BalanceValue)}</p>
-            
-        </div>)}
 
         <button onClick={exportToExcel} className="btn btn-success text-white">
           Export Excel
@@ -724,4 +693,4 @@ const exportToExcel = () => {
   );
 }
 
-export default OrderSummary;
+export default BalanceSummary;
