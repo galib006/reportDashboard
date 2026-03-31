@@ -615,9 +615,9 @@ const exportToExcel = () => {
             <p className="border border-black p-3 font-bold bg-cyan-300">Total Qty: {Math.ceil(grandTotal.TotalQty)}</p>
             <p className="border border-black p-3 font-bold bg-cyan-300">Challan Qty: {Math.ceil(grandTotal.ChallanQTY)}</p>
             <p className="border border-black p-3 font-bold bg-cyan-300">Balance Qty: {Math.ceil(grandTotal.BalanceQty)}</p>
-            <p className="border border-black p-3 font-bold bg-cyan-300">Order: ${Math.ceil(grandTotal.TotalValue)}</p>
-            <p className="border border-black p-3 font-bold bg-cyan-300">Sales: ${Math.ceil(grandTotal.ChallanValue)}</p>
-          <p className="border border-black p-3 font-bold bg-cyan-300">Balance: ${Math.ceil(grandTotal.BalanceValue)}</p>
+            <p className="border border-black p-3 font-bold bg-emerald-500 text-white">Order: ${Math.ceil(grandTotal.TotalValue)}</p>
+            <p className="border border-black p-3 font-bold bg-cyan-300 bg-emerald-500 text-white">Sales: ${Math.ceil(grandTotal.ChallanValue)}</p>
+          <p className="border border-black p-3 font-bold bg-cyan-300 bg-emerald-500 text-white">Balance: ${Math.ceil(grandTotal.BalanceValue)}</p>
             
         </div>)}
 
