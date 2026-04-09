@@ -35,7 +35,15 @@ function Navbar() {
     },
     { name: "Inventory Status", path: "Inventory", roles: ["admin", "user"] },
     { name: "Issue Report", path: "InventoryIssue", roles: ["admin", "user"] },
-    { name: "Employee", path: "Employee-LIst", roles: ["admin", "user"] },
+    {
+      name: "Employee",
+      roles: ["admin", "user"],
+      dropdown: [
+        { name: "Worker", path: "Employee-LIst", roles: ["admin", "user"] },
+        { name: "Staff", path: "Staff-LIst", roles: ["admin", "user"] },
+      ],
+    },
+    
   ];
 
   // Filter menu by role

@@ -6,8 +6,7 @@ import ExcelJS from "exceljs";
 import { saveAs } from "file-saver";
 import { DatePicker, LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
-
-function EmployeeListSingleSheet() {
+function OfficeStaffList() {
   const { cndata, loading, setLoading } = useContext(GetDataContext);
   const [apiData, setApiData] = useState([]);
   const [month,setMonth] = useState('');
@@ -51,7 +50,7 @@ function EmployeeListSingleSheet() {
     setLoading(true);
     try {
       const res = await axios.get(
-        `https://tpl-api.ebs365.info/api/HRMBI/HRM_GET_EmployeeInformation_ReportExcel?CompanyID=1&DepartmentID=0&SectionID=0&LineID=0&FloorID=0&EmpTypeID=4&CommandID=1&MM=[December]&YYYY=${year}`,
+        `https://tpl-api.ebs365.info/api/HRMBI/HRM_GET_EmployeeInformation_ReportExcel?CompanyID=1&DepartmentID=0&SectionID=0&LineID=0&FloorID=0&EmpTypeID=3&CommandID=1&MM=[object%20Object]&YYYY=${year}`,
         { headers: { Authorization: `${apiKey}` } }
       );
       setApiData(Array.isArray(res.data) ? res.data : []);
@@ -143,7 +142,7 @@ function EmployeeListSingleSheet() {
   };
 
   const sectionStyle = {
-    font: { bold: true, size: 20 },
+    font: { bold: true, size: 14 },
     alignment: { horizontal: "center", vertical: "middle" },
     fill: { type: "pattern", pattern: "solid", fgColor: { argb: "FFCCE5FF" } },
   };
@@ -302,4 +301,5 @@ function EmployeeListSingleSheet() {
   );
 }
 
-export default EmployeeListSingleSheet;
+
+export default OfficeStaffList
