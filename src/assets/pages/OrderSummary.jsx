@@ -33,65 +33,75 @@ function OrderSummary() {
 
   /* ---------------- SUMMARIZED DATA ---------------- */
 
-  const summarizedData = useMemo(() => {
-    const apidata = cndata[0]?.apiData || [];
-    const challandata = cndata[0]?.grupChallan || [];
+const summarizedData = useMemo(() => {
+  const apidata = cndata?.[0]?.apiData || [];
+  const challandata = cndata?.[0]?.grupChallan || [];
 
-    const challanMap = new Map();
+  // 🔹 challan status map
+  const challanMap = new Map();
+  challandata.forEach((c) => {
+    challanMap.set(`${c.workOrderNo}-${c.challanNo}`, c.statusDesc);
+  });
 
-    challandata.forEach((c) => {
-      const key = `${c.workOrderNo}-${c.challanNo}`;
-      challanMap.set(key, c.statusDesc);
-    });
+  // 🔹 grouped data
+  const grouped = {};
 
-    const grouped = {};
-console.log("apidata", apidata);
+  apidata.forEach((item) => {
+    const key = item.WorkOrderNo;
 
-    apidata.forEach((item) => {
-      if (!grouped[item.WorkOrderNo]) {
-        grouped[item.WorkOrderNo] = {
-          WorkOrderNo: item.WorkOrderNo,
-          OrderReceiveDate: item.OrderReceiveDate,
-          DeliverName: item.FName,
-          CustomerName: item.CName,
-          PINO: item.CustomerPINo,
-          Section: item.ProductCategoryName,
-          Buyer: item.BuyerName,
-          TotalQty: 0,
-          TotalValue: 0,
-          ChallanQTY: 0,
-          ChallanValue: 0,
-          BalanceQty: 0,
-          BalanceValue: 0,
-          ChallanNo: [],
-        };
-      }
+    if (!grouped[key]) {
+      grouped[key] = {
+        WorkOrderNo: key,
+        OrderReceiveDate: item.OrderReceiveDate,
+        DeliverName: item.FName,
+        CustomerName: item.CName,
+        PINO: item.CustomerPINo,
+        Section: item.ProductCategoryName,
+        Buyer: item.BuyerName,
 
-      const row = grouped[item.WorkOrderNo];
+        TotalQty: 0,
+        TotalValue: 0,
+        ChallanQTY: 0,
+        ChallanValue: 0,
+        BalanceQty: 0,
+        BalanceValue: 0,
 
-      row.TotalQty += Number(item.BreakDownQTY);
-      row.ChallanQTY += Number(item.ChallanQTY);
-      row.BalanceQty += Number(item.BalanceQTY);
+        ChallanNo: new Set(), // 🔥 use Set directly
+      };
+    }
 
-      row.TotalValue += Number(item.TotalOrderValue);
-      row.ChallanValue += Number(item.ChallanValue);
-      row.BalanceValue += Number(item.BalanceValue);
+    const row = grouped[key];
 
-      if (item.ChallanNo) {
-        row.ChallanNo.push(item.ChallanNo);
-      }
-    });
+    // 🔹 numeric calculation
+    row.TotalQty += Number(item.BreakDownQTY) || 0;
+    row.ChallanQTY += Number(item.ChallanQTY) || 0;
+    row.BalanceQty += Number(item.BalanceQTY) || 0;
 
-    return Object.values(grouped).map((item) => ({
-      ...item,
+    row.TotalValue += Number(item.TotalOrderValue) || 0;
+    row.ChallanValue += Number(item.ChallanValue) || 0;
+    row.BalanceValue += Number(item.BalanceValue) || 0;
 
-      ChallanNo: [...new Set(item.ChallanNo)].map((cn) => ({
-        challanNo: cn,
-        status: challanMap.get(`${item.WorkOrderNo}-${cn}`) || "",
-      })),
-    }));
-  }, [cndata]);
+    // 🔹 split challan safely
+    if (item.ChallanNo) {
+      item.ChallanNo.split(",")
+        .map((c) => c.trim())
+        .filter(Boolean) // remove empty
+        .forEach((cn) => row.ChallanNo.add(cn));
+    }
+  });
 
+  // 🔹 final format
+  return Object.values(grouped).map((item) => ({
+    ...item,
+    ChallanNo: Array.from(item.ChallanNo).map((cn) => ({
+      challanNo: cn,
+      status: challanMap.get(`${item.WorkOrderNo}-${cn}`) || "",
+    })),
+  }));
+}, [cndata]);
+
+  console.log("Summarize data", summarizedData);
+  
   /* ---------------- UNIQUE FILTER LIST ---------------- */
 
   const uniquePI = useMemo(() => {
