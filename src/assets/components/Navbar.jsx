@@ -29,8 +29,8 @@ function Navbar() {
       name: "Summary",
       roles: ["admin", "user"],
       dropdown: [
+        { name: "PI Summary", path: "PISummary", roles: ["admin", "user"] },
         { name: "Order Summary", path: "OrderSummary", roles: ["admin", "user"] },
-        { name: "Balance Summary", path: "BalanceSummary", roles: ["admin", "user"] },
       ],
     },
     { name: "Inventory Status", path: "Inventory", roles: ["admin", "user"] },

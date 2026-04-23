@@ -168,6 +168,7 @@ function EmployeeListSingleSheet() {
       const sCell = ws.getCell("A1");
       sCell.value = section.Section;
       sCell.style = sectionStyle;
+      ws.getRow(1).height = 80;
       for (let col = 1; col <= headerRow.length; col++) ws.getCell(1, col).border = fullBorder;
 
       // Header
@@ -200,6 +201,7 @@ function EmployeeListSingleSheet() {
       const sCell = combined.getCell(`A${startRow}`);
       sCell.value = section.Section;
       sCell.style = sectionStyle;
+      combined.getRow(startRow).height = 80;
       for (let col = 1; col <= headerRow.length; col++) combined.getCell(startRow, col).border = fullBorder;
 
       const header = combined.addRow(headerRow);

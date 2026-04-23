@@ -33,7 +33,7 @@ const router = createBrowserRouter([
       Component:OrderSummary
     },
     {
-      path: "BalanceSummary",
+      path: "PISummary",
       Component: BalanceSummary
     },
   {path: "Inventory",
