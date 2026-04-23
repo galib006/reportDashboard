@@ -103,7 +103,7 @@ function EmployeeListSingleSheet() {
     "Jacquard & Woven Elastic" : 10,
     "Warping & Rubber Covering" : 11,
     "Washing" : 12,
-    "Finishing": 13,
+    "Finishing ": 13,
     "Operations and Maintenance" : 14,
     "Store" : 15,
     "General" : 16,
