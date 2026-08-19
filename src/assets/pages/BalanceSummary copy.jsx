@@ -13052,3 +13052,586 @@ function BalanceSummary() {
 }
 
 export default BalanceSummary;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+i want to update balnce summary. but at first i give u some api data .
+
+in that api - https://tpl-api.ebs365.info/api/OrderReport/BI_OrderRelatedInformationReport?CompanyID=1&ProductCategoryID=0&ProductSubCategoryID=0&MarketingID=0&CustomerID=0&BuyerID=0&JobCardID=0&StartDate=2026-07-19&EndDate=2026-08-19&CommandID=5&EmpID=0
+
+api data: 0
+: 
+{ChallanDate: "2026-07-22T00:00:00", ChallanNo: "CLN-005836-2026",…}
+BalanceQTY
+: 
+0
+BalanceValue
+: 
+0
+BreakDownQTY
+: 
+1124
+BuyerName
+: 
+"N/A"
+CName
+: 
+"Denim Venture & Fashion Ltd"
+ChallanDate
+: 
+"2026-07-22T00:00:00"
+ChallanNo
+: 
+"CLN-005836-2026"
+ChallanQTY
+: 
+1124
+ChallanValue
+: 
+52.828
+CustomerPINo
+: 
+"CPI-TPAL-000465-2026"
+CustomerPONo
+: 
+""
+DeliveryToAddress
+: 
+"761, Safwan Tower, Sharifpr, Malerker Bari, National University, Gazipur"
+FName
+: 
+"Tex Tech Company Ltd"
+ID
+: 
+685
+ItemDescription
+: 
+"Elastic - 3.5 cm 750 Dnr"
+JobCardNo
+: 
+"ELA-000134-2026"
+KeyEntry1
+: 
+"Style"
+KeyEntry1Value
+: 
+"DVP27NE653JE"
+KeyEntry2
+: 
+"Color"
+KeyEntry2Value
+: 
+"White"
+KeyEntry3
+: 
+"PO No"
+KeyEntry3Value
+: 
+""
+KeyEntry4
+: 
+""
+KeyEntry4Value
+: 
+""
+KeyEntry5
+: 
+""
+KeyEntry5Value
+: 
+""
+KeyEntry6
+: 
+""
+KeyEntry6Value
+: 
+""
+KeyEntry7
+: 
+""
+KeyEntry7Value
+: 
+""
+KeyEntry8
+: 
+""
+KeyEntry8Value
+: 
+""
+KeyEntry9
+: 
+"Item Description"
+KeyEntry9Value
+: 
+"Plain Elastic - 3.5 cm 750 Dnr"
+MarketingName
+: 
+"ROKIB  HOSSAIN Mamun"
+OrderReceiveDate
+: 
+"2026-07-19T00:00:00"
+ProductCategoryName
+: 
+"Elastic"
+ProductSubCategoryName
+: 
+"Plain Elastic"
+TotalOrderValue
+: 
+52.828
+Unit
+: 
+"yard"
+UnitPrice
+: 
+0.047
+WorkOrderNo
+: 
+"SO-002858-2026"
+1
+: 
+{ChallanDate: "2026-07-22T00:00:00", ChallanNo: "CLN-005836-2026",…}
+BalanceQTY
+: 
+0
+BalanceValue
+: 
+0
+BreakDownQTY
+: 
+963
+BuyerName
+: 
+"N/A"
+CName
+: 
+"Denim Venture & Fashion Ltd"
+ChallanDate
+: 
+"2026-07-22T00:00:00"
+ChallanNo
+: 
+"CLN-005836-2026"
+ChallanQTY
+: 
+963
+ChallanValue
+: 
+38.52
+CustomerPINo
+: 
+"CPI-TPAL-000465-2026"
+CustomerPONo
+: 
+""
+DeliveryToAddress
+: 
+"761, Safwan Tower, Sharifpr, Malerker Bari, National University, Gazipur"
+FName
+: 
+"Tex Tech Company Ltd"
+ID
+: 
+685
+ItemDescription
+: 
+"Elastic - 3 cm 750 Dnr"
+JobCardNo
+: 
+"ELA-000134-2026"
+KeyEntry1
+: 
+"Style"
+KeyEntry1Value
+: 
+"DVP27NE653JE"
+KeyEntry2
+: 
+"Color"
+KeyEntry2Value
+: 
+"White"
+KeyEntry3
+: 
+"PO No"
+KeyEntry3Value
+: 
+""
+KeyEntry4
+: 
+""
+KeyEntry4Value
+: 
+""
+KeyEntry5
+: 
+""
+KeyEntry5Value
+: 
+""
+KeyEntry6
+: 
+""
+KeyEntry6Value
+: 
+""
+KeyEntry7
+: 
+""
+KeyEntry7Value
+: 
+""
+KeyEntry8
+: 
+""
+KeyEntry8Value
+: 
+""
+KeyEntry9
+: 
+"Item Description"
+KeyEntry9Value
+: 
+"Plain Elastic - 3 cm 750 Dnr"
+MarketingName
+: 
+"ROKIB  HOSSAIN Mamun"
+OrderReceiveDate
+: 
+"2026-07-19T00:00:00"
+ProductCategoryName
+: 
+"Elastic"
+ProductSubCategoryName
+: 
+"Plain Elastic"
+TotalOrderValue
+: 
+38.52
+Unit
+: 
+"yard"
+UnitPrice
+: 
+0.04
+WorkOrderNo
+: 
+"SO-002858-2026"
+2
+: 
+{ChallanDate: "2026-07-28T00:00:00",…}
+3
+: 
+{ChallanDate: "2026-07-20T00:00:00", ChallanNo: "CLN-005784-2026",…}
+4
+: 
+{ChallanDate: "2026-07-20T00:00:00", ChallanNo: "CLN-005783-2026",…}
+
+
+you see in there - "KeyEntry2Value" that's our target this data is for Style. you add this in table that unique data are comma. example (a, b, c) etc.. .And can any style search by it. example in the search box our target is -apple  when type a or app it wil be appear it.   style column also in toggle column. normally uncheck can also check. and also in excel. 
+
+Add Another "KeyEntry2Value" this is requirement same as Keny Entry 2 value. This field we called "Color"
+
+Add Another "KeyEntry3Value" this is requirement same as Keny Entry 2 value. This field we called "PO"
+
+Add Another "CustomerPONo" this we called "Customer PO". same rule as Key enty 2 value"
+
+Note: When there are no data normally it will be blank.
+
+Now we need another data in our challan column there now show challan no. and challan status. we also need there challan qty.
+you can get this challan qty data in that api: 
+https://tpl-api.ebs365.info/api/Challan/GetDeliveryChalanDashboard?CompanyID=1&ProductCategoryID=0&CustomerID=0&MarkettingID=0&StatusID=7&StartDate=2026-07-19&EndDate=2026-08-19
+
+api data is: 0
+: 
+{statusDesc: "Send to Gate", deliveryChallanID: 23291, challanNo: "CLN-006471-2026",…}
+statusDesc
+: 
+"Send to Gate"
+deliveryChallanID
+: 
+23291
+challanNo
+: 
+"CLN-006471-2026"
+combineChallanID
+: 
+0
+combineChallanNo
+: 
+""
+gatePassID
+: 
+23190
+gatePassTypeID
+: 
+2
+gatePassNo
+: 
+"GPN-006454-2026"
+combineGatePassID
+: 
+5363
+combineGatePassNo
+: 
+"CGPN-001321-2026"
+workOrderID
+: 
+11856
+workOrderNo
+: 
+"SO-003009-2026"
+jobCardID
+: 
+11464
+jobCardNo
+: 
+"OFF-000798-2026"
+productCategoryName
+: 
+"Offset Printing"
+productSubCategoryName
+: 
+"Hang Tag"
+buyerName
+: 
+"N/A"
+brandName
+: 
+"N/A"
+customerID
+: 
+450
+customerName
+: 
+"SUMEC TEXTILE & LIGHT INDUSTRY CO.,LTD"
+deliveryToName
+: 
+"Angel Grace Fashion Ltd."
+deliveryToID
+: 
+430
+deliveryToAddress
+: 
+"98, Choydana, National University, Gasa, Gazipur"
+jobQty
+: 
+389228
+uoM
+: 
+"PC"
+jobValue
+: 
+729.8025
+challanQty
+: 
+6505
+totalChallanValue
+: 
+24.719
+challanDate
+: 
+"2026-08-19T00:00:00"
+createdBy
+: 
+"SAIFUR  RAHMAN"
+marketingName
+: 
+"Md Masud Parves"
+remarks
+: 
+""
+statusID
+: 
+2
+isGateOut
+: 
+false
+isCombineChallanCreated
+: 
+0
+customerPIID
+: 
+0
+customerPINo
+: 
+""
+lcid
+: 
+0
+lcNo
+: 
+""
+sampleName
+: 
+"Hang Tag"
+customerPoNo
+: 
+null
+deliveredBy
+: 
+null
+trackingNo
+: 
+null
+gateOutDate
+: 
+null
+1
+: 
+{statusDesc: "Send to Gate", deliveryChallanID: 23290, challanNo: "CLN-006470-2026",…}
+statusDesc
+: 
+"Send to Gate"
+deliveryChallanID
+: 
+23290
+challanNo
+: 
+"CLN-006470-2026"
+combineChallanID
+: 
+0
+combineChallanNo
+: 
+""
+gatePassID
+: 
+23191
+gatePassTypeID
+: 
+2
+gatePassNo
+: 
+"GPN-006455-2026"
+combineGatePassID
+: 
+5363
+combineGatePassNo
+: 
+"CGPN-001321-2026"
+workOrderID
+: 
+11854
+workOrderNo
+: 
+"SO-003007-2026"
+jobCardID
+: 
+11462
+jobCardNo
+: 
+"OFF-000796-2026"
+productCategoryName
+: 
+"Offset Printing"
+productSubCategoryName
+: 
+"Hang Tag"
+buyerName
+: 
+"N/A"
+brandName
+: 
+"N/A"
+customerID
+: 
+450
+customerName
+: 
+"SUMEC TEXTILE & LIGHT INDUSTRY CO.,LTD"
+deliveryToName
+: 
+"Angel Grace Fashion Ltd."
+deliveryToID
+: 
+430
+deliveryToAddress
+: 
+"98, Choydana, National University, Gasa, Gazipur"
+jobQty
+: 
+335040
+uoM
+: 
+"PC"
+jobValue
+: 
+628.2
+challanQty
+: 
+1522
+totalChallanValue
+: 
+5.7836
+challanDate
+: 
+"2026-08-19T00:00:00"
+createdBy
+: 
+"SAIFUR  RAHMAN"
+marketingName
+: 
+"Md Masud Parves"
+remarks
+: 
+""
+statusID
+: 
+2
+isGateOut
+: 
+false
+isCombineChallanCreated
+: 
+0
+customerPIID
+: 
+0
+customerPINo
+: 
+""
+lcid
+: 
+0
+lcNo
+: 
+""
+sampleName
+: 
+"Hang Tag"
+customerPoNo
+: 
+null
+deliveredBy
+: 
+null
+trackingNo
+: 
+null
+gateOutDate
+: 
+null
+2
+: 
+{statusDesc: "Send to Gate", deliveryChallanID: 23289, challanNo: "CLN-006469-2026",…}
+3
+: 
+{statusDesc: "Send to Gate", deliveryChallanID: 23287, challanNo: "CLN-006467-2026",…}
+
+
+in there "challanQty" it's the Challan Qty. There will be a toggle option that we want challan qty. normally it's disable. can enable. Add also Chalan Value - "totalChallanValue" this also be same ase challan qty requirement.
+
+this also be show in excel also as per previous requirement. 

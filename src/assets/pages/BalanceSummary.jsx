@@ -7,8 +7,8 @@ import ReactPaginate from "react-paginate";
 import { toast } from "react-toastify";
 import axios from "axios";
 import JSZip from 'jszip';
-import CryptoJS from 'crypto-js';  
-import * as ExcelJS from 'exceljs'; 
+import CryptoJS from 'crypto-js';
+import * as ExcelJS from 'exceljs';
 
 // ============================================================
 // CONSTANTS & CONFIGURATION
@@ -59,8 +59,13 @@ const COLUMN_CONFIG = {
     { id: "OrderValue", label: "Order Value", required: true, pinned: false, width: 120 },
     { id: "ChallanValue", label: "Challan Value", required: true, pinned: false, width: 120 },
     { id: "BalanceValue", label: "Balance Value", required: true, pinned: false, width: 120 },
-    { id: "Challan", label: "Challan", required: false, pinned: false, width: 200 },
+    { id: "Challan", label: "Challan", required: false, pinned: false, width: 300 },
     { id: "Progress", label: "Progress", required: false, pinned: false, width: 120 },
+    // NEW COLUMNS
+    { id: "Style", label: "Style", required: false, pinned: false, width: 100 },
+    { id: "Color", label: "Color", required: false, pinned: false, width: 100 },
+    { id: "PO", label: "PO", required: false, pinned: false, width: 120 },
+    { id: "CustomerPO", label: "Customer PO", required: false, pinned: false, width: 120 },
   ]
 };
 
@@ -145,10 +150,10 @@ const downloadSingleAttachmentWithCORS = async (attachment, apiKey, prefix = '')
 
     // Get the blob from the response
     const blob = await response.blob();
-    
+
     // Create a URL for the blob
     const url = window.URL.createObjectURL(blob);
-    
+
     // Create a temporary anchor element
     const link = document.createElement('a');
     link.href = url;
@@ -157,30 +162,30 @@ const downloadSingleAttachmentWithCORS = async (attachment, apiKey, prefix = '')
     fileName = fileName.replace(/[^a-zA-Z0-9.\-_\s]/g, '');
     const finalFileName = prefix ? `${prefix}_${fileName}` : fileName;
     link.download = finalFileName;
-    
+
     // Append to body, click, and remove
     document.body.appendChild(link);
     link.click();
-    
+
     // Clean up after a short delay
     setTimeout(() => {
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
     }, 100);
-    
+
     return true;
   } catch (error) {
     console.error("Error downloading attachment:", error);
-    
+
     // Fallback: Try using axios
     try {
       const fileResponse = await axios.get(attachment.documentPath, {
         responseType: 'blob',
-        headers: { 
+        headers: {
           'Authorization': `${apiKey}`,
         }
       });
-      
+
       const url = window.URL.createObjectURL(fileResponse.data);
       const link = document.createElement('a');
       link.href = url;
@@ -198,7 +203,7 @@ const downloadSingleAttachmentWithCORS = async (attachment, apiKey, prefix = '')
     } catch (axiosError) {
       console.error("Axios download failed:", axiosError);
     }
-    
+
     // Final fallback: Open in new tab
     if (attachment.documentPath) {
       toast.info(`Opening ${attachment.documentLocation || 'file'} in new tab. Right-click to save.`);
@@ -217,17 +222,17 @@ const downloadAllAttachments = async (referenceDocNameID, referenceDocID, apiKey
       toast.warning("No attachments found");
       return 0;
     }
-    
+
     console.log(`Found ${attachments.length} attachments`);
-    
+
     let successCount = 0;
     for (let i = 0; i < attachments.length; i++) {
       const attachment = attachments[i];
       console.log(`Downloading attachment ${i + 1}/${attachments.length}: ${attachment.documentLocation}`);
-      
+
       // Add a small delay to prevent browser blocking
       await new Promise(resolve => setTimeout(resolve, 500));
-      
+
       const success = await downloadSingleAttachmentWithCORS(attachment, apiKey, prefix);
       if (success) successCount++;
     }
@@ -243,7 +248,7 @@ const fetchChallanReceiveData = async (apiKey, startDate, endDate) => {
     // Use dynamic dates from context instead of hardcoded
     const stDate = startDate || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
     const edDate = endDate || new Date().toISOString();
-    
+
     const response = await axios.get(
       `https://tpl-api.ebs365.info/api/Challan/GetDeliveryChalanReceiveDashboard?CompanyID=1&ProductCategoryID=0&CustomerID=0&MarkettingID=0&Status=Receive-Complete&StartDate=${stDate}&EndDate=${edDate}`,
       { headers: { Authorization: `${apiKey}` } }
@@ -262,7 +267,7 @@ const downloadSingleAttachment = async (attachment, apiKey, prefix = '') => {
       responseType: 'blob',
       headers: { Authorization: `${apiKey}` }
     });
-    
+
     const url = window.URL.createObjectURL(fileResponse.data);
     const link = document.createElement('a');
     link.href = url;
@@ -304,19 +309,19 @@ const encryptWorkOrderId = (workOrderId) => {
 // ============================================================
 
 const encryptDeliveryChallanId = (deliveryChallanId) => {
-    try {
-        // Use the exact same encryption as the working code
-        const encrypted = CryptoJS.AES.encrypt(
-            String(deliveryChallanId), 
-            "12HMZ5kjhg"
-        ).toString();
-        
-        // URL encode the result
-        return encodeURIComponent(encrypted);
-    } catch (error) {
-        console.error("Encryption error:", error);
-        return deliveryChallanId;
-    }
+  try {
+    // Use the exact same encryption as the working code
+    const encrypted = CryptoJS.AES.encrypt(
+      String(deliveryChallanId),
+      "12HMZ5kjhg"
+    ).toString();
+
+    // URL encode the result
+    return encodeURIComponent(encrypted);
+  } catch (error) {
+    console.error("Encryption error:", error);
+    return deliveryChallanId;
+  }
 };
 
 
@@ -398,17 +403,17 @@ const useLocalStorage = (key, initialValue) => {
       return item ? JSON.parse(item) : initialValue;
     } catch { return initialValue; }
   });
-  
+
   const setValue = useCallback((value) => {
     try {
       const valueToStore = value instanceof Function ? value(storedValue) : value;
       setStoredValue(valueToStore);
       window.localStorage.setItem(`${CONFIG.STORAGE_PREFIX}${key}`, JSON.stringify(valueToStore));
-    } catch (error) { 
-      console.error("localStorage error:", error); 
+    } catch (error) {
+      console.error("localStorage error:", error);
     }
   }, [key, storedValue]);
-  
+
   return [storedValue, setValue];
 };
 
@@ -433,9 +438,9 @@ const useTheme = () => {
 // ENHANCED ATTACHMENT DOWNLOADER COMPONENT - FIXED
 // ============================================================
 
-const AttachmentDownloader = React.memo(({ 
-  referenceDocNameID, 
-  referenceDocID, 
+const AttachmentDownloader = React.memo(({
+  referenceDocNameID,
+  referenceDocID,
   folderName,
   onComplete,
   docType = 'attachment',
@@ -451,8 +456,8 @@ const AttachmentDownloader = React.memo(({
   const [isLoading, setIsLoading] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState(0);
   const [downloadedCount, setDownloadedCount] = useState(0);
-  
-const effectiveApiKey = apiKey || localStorage.getItem("apiKey");
+
+  const effectiveApiKey = apiKey || localStorage.getItem("apiKey");
 
   // Update local attachments when prop changes
   useEffect(() => {
@@ -482,31 +487,98 @@ const effectiveApiKey = apiKey || localStorage.getItem("apiKey");
     }
   };
 
- const handleDownloadAll = async (e) => {
-  e.stopPropagation();
-  if (localAttachments.length === 0) {
-    toast.warning("No attachments found");
-    return;
-  }
-  
-  console.log(`Starting download of ${localAttachments.length} attachments`);
-  setIsDownloading(true);
-  setDownloadProgress(0);
-  setDownloadedCount(0);
-  
-  let successCount = 0;
-  const total = localAttachments.length;
-  
-  toast.info(`Downloading ${total} attachments...`);
-  
-  // Use a for loop instead of forEach for better control
-  for (let i = 0; i < localAttachments.length; i++) {
-    const attachment = localAttachments[i];
-    const fileName = attachment.documentLocation || `file_${i + 1}`;
-    console.log(`Downloading ${i + 1}/${total}: ${fileName}`);
-    
+  const handleDownloadAll = async (e) => {
+    e.stopPropagation();
+    if (localAttachments.length === 0) {
+      toast.warning("No attachments found");
+      return;
+    }
+
+    console.log(`Starting download of ${localAttachments.length} attachments`);
+    setIsDownloading(true);
+    setDownloadProgress(0);
+    setDownloadedCount(0);
+
+    let successCount = 0;
+    const total = localAttachments.length;
+
+    toast.info(`Downloading ${total} attachments...`);
+
+    // Use a for loop instead of forEach for better control
+    for (let i = 0; i < localAttachments.length; i++) {
+      const attachment = localAttachments[i];
+      const fileName = attachment.documentLocation || `file_${i + 1}`;
+      console.log(`Downloading ${i + 1}/${total}: ${fileName}`);
+
+      try {
+        // Use fetch directly with proper blob handling
+        const response = await fetch(attachment.documentPath, {
+          method: 'GET',
+          headers: {
+            'Authorization': `${effectiveApiKey}`,
+            'Accept': '*/*'
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        let cleanFileName = attachment.documentLocation || 'attachment';
+        cleanFileName = cleanFileName.replace(/[^a-zA-Z0-9.\-_\s]/g, '');
+        const finalFileName = folderName ? `${folderName}_${cleanFileName}` : cleanFileName;
+        link.download = finalFileName;
+        document.body.appendChild(link);
+        link.click();
+        setTimeout(() => {
+          document.body.removeChild(link);
+          window.URL.revokeObjectURL(url);
+        }, 100);
+
+        successCount++;
+        setDownloadedCount(successCount);
+        toast.info(`Downloaded ${i + 1}/${total}: ${cleanFileName}`);
+      } catch (error) {
+        console.error(`Error downloading ${fileName}:`, error);
+        // Try fallback - open in new tab
+        if (attachment.documentPath) {
+          toast.info(`Opening ${fileName} in new tab. Right-click to save.`);
+          window.open(attachment.documentPath, '_blank');
+          successCount++;
+          setDownloadedCount(successCount);
+        }
+      }
+
+      // Update progress
+      const progress = ((i + 1) / total) * 100;
+      setDownloadProgress(progress);
+
+      // Add a delay between downloads - CRITICAL for multiple files
+      await new Promise(resolve => setTimeout(resolve, 800));
+    }
+
+    setIsDownloading(false);
+    setDownloadProgress(100);
+
+    if (successCount > 0) {
+      toast.success(`✅ Downloaded ${successCount}/${total} attachments successfully!`);
+    } else {
+      toast.error(`❌ Failed to download attachments.`);
+    }
+
+    if (onComplete) onComplete();
+  };
+
+  // In AttachmentDownloader - handle single file download with CORS fallback
+  const handleSingleDownload = async (attachment, e) => {
+    e.stopPropagation();
+
     try {
-      // Use fetch directly with proper blob handling
+      // Try fetch with credentials
       const response = await fetch(attachment.documentPath, {
         method: 'GET',
         headers: {
@@ -523,92 +595,25 @@ const effectiveApiKey = apiKey || localStorage.getItem("apiKey");
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      let cleanFileName = attachment.documentLocation || 'attachment';
-      cleanFileName = cleanFileName.replace(/[^a-zA-Z0-9.\-_\s]/g, '');
-      const finalFileName = folderName ? `${folderName}_${cleanFileName}` : cleanFileName;
-      link.download = finalFileName;
+      const fileName = folderName ? `${folderName}_${attachment.documentLocation}` : attachment.documentLocation;
+      link.download = fileName;
       document.body.appendChild(link);
       link.click();
-      setTimeout(() => {
-        document.body.removeChild(link);
-        window.URL.revokeObjectURL(url);
-      }, 100);
-      
-      successCount++;
-      setDownloadedCount(successCount);
-      toast.info(`Downloaded ${i + 1}/${total}: ${cleanFileName}`);
-    } catch (error) {
-      console.error(`Error downloading ${fileName}:`, error);
-      // Try fallback - open in new tab
-      if (attachment.documentPath) {
-        toast.info(`Opening ${fileName} in new tab. Right-click to save.`);
-        window.open(attachment.documentPath, '_blank');
-        successCount++;
-        setDownloadedCount(successCount);
-      }
-    }
-    
-    // Update progress
-    const progress = ((i + 1) / total) * 100;
-    setDownloadProgress(progress);
-    
-    // Add a delay between downloads - CRITICAL for multiple files
-    await new Promise(resolve => setTimeout(resolve, 800));
-  }
-  
-  setIsDownloading(false);
-  setDownloadProgress(100);
-  
-  if (successCount > 0) {
-    toast.success(`✅ Downloaded ${successCount}/${total} attachments successfully!`);
-  } else {
-    toast.error(`❌ Failed to download attachments.`);
-  }
-  
-  if (onComplete) onComplete();
-};
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
 
-  // In AttachmentDownloader - handle single file download with CORS fallback
-const handleSingleDownload = async (attachment, e) => {
-  e.stopPropagation();
-  
-  try {
-    // Try fetch with credentials
-    const response = await fetch(attachment.documentPath, {
-      method: 'GET',
-      headers: {
-        'Authorization': `${effectiveApiKey}`,
-        'Accept': '*/*'
+      toast.success(`Downloaded: ${attachment.documentLocation}`);
+    } catch (error) {
+      console.error('Download error:', error);
+      // Fallback: Open in new tab
+      if (attachment.documentPath) {
+        toast.info(`Opening ${attachment.documentLocation} in new tab. Right-click to save.`);
+        window.open(attachment.documentPath, '_blank');
+      } else {
+        toast.error('Failed to download attachment');
       }
-    });
-    
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
     }
-    
-    const blob = await response.blob();
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    const fileName = folderName ? `${folderName}_${attachment.documentLocation}` : attachment.documentLocation;
-    link.download = fileName;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    window.URL.revokeObjectURL(url);
-    
-    toast.success(`Downloaded: ${attachment.documentLocation}`);
-  } catch (error) {
-    console.error('Download error:', error);
-    // Fallback: Open in new tab
-    if (attachment.documentPath) {
-      toast.info(`Opening ${attachment.documentLocation} in new tab. Right-click to save.`);
-      window.open(attachment.documentPath, '_blank');
-    } else {
-      toast.error('Failed to download attachment');
-    }
-  }
-};
+  };
 
   const toggleAttachments = (e) => {
     e.stopPropagation();
@@ -641,7 +646,7 @@ const handleSingleDownload = async (attachment, e) => {
           >
             📎 {localAttachments.length}
           </button>
-          
+
           <button
             className={`btn btn-${buttonSize} btn-ghost text-green-500 hover:text-green-700`}
             onClick={handleDownloadAll}
@@ -656,7 +661,7 @@ const handleSingleDownload = async (attachment, e) => {
       )}
 
       {showAttachments && localAttachments.length > 0 && (
-        <div 
+        <div
           className="absolute right-0 mt-1 bg-white shadow-xl rounded-lg p-2 z-50 border border-gray-200 min-w-[280px] max-h-80 overflow-y-auto"
           onClick={(e) => e.stopPropagation()}
         >
@@ -664,32 +669,32 @@ const handleSingleDownload = async (attachment, e) => {
             <span className="text-xs font-semibold text-gray-700">
               📎 {docType.toUpperCase()} Attachments ({localAttachments.length})
             </span>
-            <button 
+            <button
               className="text-xs text-gray-400 hover:text-gray-600"
               onClick={toggleAttachments}
             >
               ✕
             </button>
           </div>
-          
+
           {isDownloading && (
             <div className="mb-2">
               <div className="text-xs text-gray-500 mb-1">
                 Downloading {downloadedCount}/{localAttachments.length}
               </div>
               <div className="w-full bg-gray-200 rounded-full h-1.5">
-                <div 
+                <div
                   className="bg-blue-500 h-1.5 rounded-full transition-all duration-300"
                   style={{ width: `${downloadProgress}%` }}
                 />
               </div>
             </div>
           )}
-          
+
           <div className="space-y-1 max-h-40 overflow-y-auto">
             {localAttachments.map((att, idx) => (
-              <div 
-                key={idx} 
+              <div
+                key={idx}
                 className="flex items-center justify-between gap-2 p-1.5 hover:bg-gray-50 rounded text-xs cursor-pointer"
               >
                 <span className="truncate max-w-[150px] text-gray-700" title={att.documentLocation}>
@@ -699,14 +704,14 @@ const handleSingleDownload = async (attachment, e) => {
                   {(att.fileSize / 1024).toFixed(1)} KB
                 </span>
                 <div className="flex gap-1 flex-shrink-0">
-                  <button 
+                  <button
                     className="text-blue-500 hover:text-blue-700"
                     onClick={(e) => openAttachmentInNewTab(att, e)}
                     title="Open in new tab"
                   >
                     👁️
                   </button>
-                  <button 
+                  <button
                     className="text-green-500 hover:text-green-700"
                     onClick={(e) => handleSingleDownload(att, e)}
                     title="Download"
@@ -719,13 +724,13 @@ const handleSingleDownload = async (attachment, e) => {
             ))}
           </div>
           <div className="mt-2 pt-2 border-t">
-            <button 
+            <button
               className="btn btn-xs btn-primary text-white w-full"
               onClick={handleDownloadAll}
               disabled={isDownloading}
             >
-              {isDownloading 
-                ? `Downloading ${Math.round(downloadProgress)}% (${downloadedCount}/${localAttachments.length})` 
+              {isDownloading
+                ? `Downloading ${Math.round(downloadProgress)}% (${downloadedCount}/${localAttachments.length})`
                 : `⬇ Download All (${localAttachments.length} files)`}
             </button>
           </div>
@@ -746,10 +751,10 @@ AttachmentDownloader.displayName = "AttachmentDownloader";
 // BULK ATTACHMENT DOWNLOADER - FIXED
 // ============================================================
 
-const BulkAttachmentDownloader = React.memo(({ 
-  selectedOrders, 
+const BulkAttachmentDownloader = React.memo(({
+  selectedOrders,
   onComplete,
-  apiKey 
+  apiKey
 }) => {
   const { cndata } = useContext(GetDataContext);
   const [isDownloading, setIsDownloading] = useState(false);
@@ -771,7 +776,7 @@ const BulkAttachmentDownloader = React.memo(({
     setTotalAttachments(0);
     setCurrentOrder('');
     setFailedDownloads([]);
-    
+
     let successCount = 0;
     let total = 0;
 
@@ -779,35 +784,35 @@ const BulkAttachmentDownloader = React.memo(({
 
     // First pass: collect all attachments
     const allAttachmentsList = [];
-    
+
     for (const order of selectedOrders) {
       try {
         setCurrentOrder(`Scanning: ${order.WorkOrderNo}`);
-        
+
         // Get Work Order attachments (ReferenceDocNameID: 51)
         const woAttachments = await fetchAttachments(51, order.WorkOrderID, apiKey);
         if (woAttachments && woAttachments.length > 0) {
-          allAttachmentsList.push({ 
-            order, 
-            type: 'workorder', 
-            attachments: woAttachments 
+          allAttachmentsList.push({
+            order,
+            type: 'workorder',
+            attachments: woAttachments
           });
           total += woAttachments.length;
         }
-        
+
         // Check if order has challans
         if (order.ChallanNo && order.ChallanNo.length > 0) {
           for (const challan of order.ChallanNo) {
-            const challanEntry = cndata?.grupChallan?.find(c => 
+            const challanEntry = cndata?.grupChallan?.find(c =>
               c.challanNo === challan.challanNo && c.workOrderNo === order.WorkOrderNo
             );
-            
+
             if (challanEntry && challanEntry.deliveryChallanID) {
               const challanAttachments = await fetchAttachments(52, challanEntry.deliveryChallanID, apiKey);
               if (challanAttachments && challanAttachments.length > 0) {
-                allAttachmentsList.push({ 
-                  order, 
-                  type: 'challan', 
+                allAttachmentsList.push({
+                  order,
+                  type: 'challan',
                   attachments: challanAttachments,
                   challanNo: challan.challanNo
                 });
@@ -820,9 +825,9 @@ const BulkAttachmentDownloader = React.memo(({
         console.error(`Error scanning ${order.WorkOrderNo}:`, error);
       }
     }
-    
+
     setTotalAttachments(total);
-    
+
     if (total === 0) {
       toast.warning("No attachments found for selected orders");
       setIsDownloading(false);
@@ -835,66 +840,66 @@ const BulkAttachmentDownloader = React.memo(({
 
     // Second pass: download all attachments
     // Second pass: download all attachments with proper delays
-let currentIndex = 0;
-for (const { order, type, attachments, challanNo } of allAttachmentsList) {
-  const prefix = type === 'challan' ? `${order.WorkOrderNo}_${challanNo || 'challan'}` : order.WorkOrderNo;
-  
-  for (const attachment of attachments) {
-    currentIndex++;
-    setCurrentOrder(`${order.WorkOrderNo} (${currentIndex}/${total})`);
-    
-    try {
-      // Use fetch directly
-      const response = await fetch(attachment.documentPath, {
-        method: 'GET',
-        headers: {
-          'Authorization': `${apiKey}`,
-          'Accept': '*/*'
+    let currentIndex = 0;
+    for (const { order, type, attachments, challanNo } of allAttachmentsList) {
+      const prefix = type === 'challan' ? `${order.WorkOrderNo}_${challanNo || 'challan'}` : order.WorkOrderNo;
+
+      for (const attachment of attachments) {
+        currentIndex++;
+        setCurrentOrder(`${order.WorkOrderNo} (${currentIndex}/${total})`);
+
+        try {
+          // Use fetch directly
+          const response = await fetch(attachment.documentPath, {
+            method: 'GET',
+            headers: {
+              'Authorization': `${apiKey}`,
+              'Accept': '*/*'
+            }
+          });
+
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+
+          const blob = await response.blob();
+          const url = window.URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          let fileName = attachment.documentLocation || 'attachment';
+          fileName = fileName.replace(/[^a-zA-Z0-9.\-_\s]/g, '');
+          const finalFileName = prefix ? `${prefix}_${fileName}` : fileName;
+          link.download = finalFileName;
+          document.body.appendChild(link);
+          link.click();
+          setTimeout(() => {
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(url);
+          }, 100);
+
+          successCount++;
+          setDownloaded(successCount);
+          setProgress((currentIndex / total) * 100);
+        } catch (error) {
+          console.error("Error downloading attachment:", error);
+          // Fallback: open in new tab
+          if (attachment.documentPath) {
+            window.open(attachment.documentPath, '_blank');
+            successCount++;
+            setDownloaded(successCount);
+            setProgress((currentIndex / total) * 100);
+          }
         }
-      });
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      let fileName = attachment.documentLocation || 'attachment';
-      fileName = fileName.replace(/[^a-zA-Z0-9.\-_\s]/g, '');
-      const finalFileName = prefix ? `${prefix}_${fileName}` : fileName;
-      link.download = finalFileName;
-      document.body.appendChild(link);
-      link.click();
-      setTimeout(() => {
-        document.body.removeChild(link);
-        window.URL.revokeObjectURL(url);
-      }, 100);
-      
-      successCount++;
-      setDownloaded(successCount);
-      setProgress((currentIndex / total) * 100);
-    } catch (error) {
-      console.error("Error downloading attachment:", error);
-      // Fallback: open in new tab
-      if (attachment.documentPath) {
-        window.open(attachment.documentPath, '_blank');
-        successCount++;
-        setDownloaded(successCount);
-        setProgress((currentIndex / total) * 100);
+        // CRITICAL: Add delay between downloads
+        await new Promise(resolve => setTimeout(resolve, 600));
       }
     }
-    
-    // CRITICAL: Add delay between downloads
-    await new Promise(resolve => setTimeout(resolve, 600));
-  }
-}
 
     setIsDownloading(false);
     setProgress(100);
     setCurrentOrder('');
-    
+
     if (successCount > 0) {
       toast.success(`✅ ${successCount}/${total} attachments processed successfully!`);
       if (failedDownloads.length > 0) {
@@ -903,7 +908,7 @@ for (const { order, type, attachments, challanNo } of allAttachmentsList) {
     } else {
       toast.warning("No attachments could be downloaded. Please try opening in new tabs.");
     }
-    
+
     if (onComplete) onComplete();
   }, [selectedOrders, apiKey, onComplete]);
 
@@ -929,9 +934,9 @@ for (const { order, type, attachments, challanNo } of allAttachmentsList) {
 });
 BulkAttachmentDownloader.displayName = "BulkAttachmentDownloader";
 
-const OrderDetailViewModal = React.memo(({ 
-  order, 
-  isOpen, 
+const OrderDetailViewModal = React.memo(({
+  order,
+  isOpen,
   onClose,
   onDownloadFull,
   apiKey
@@ -944,110 +949,110 @@ const OrderDetailViewModal = React.memo(({
   const [challanAttachments, setChallanAttachments] = useState({});
   const { cndata } = useContext(GetDataContext);
 
-useEffect(() => {
-  if (isOpen && order) {
-    // Use the challans from the order data directly
-    if (order.ChallanNo && order.ChallanNo.length > 0) {
-      // Convert to format expected by the modal
-      const formattedChallans = order.ChallanNo.map(ch => {
-        // Find the full challan info from grupChallan
-        const challanEntry = cndata?.grupChallan?.find(c => 
-          c.challanNo === ch.challanNo || c.challanNo?.includes(ch.challanNo)
-        );
-        
-        return {
-          challanNo: ch.challanNo,
-          statusDesc: ch.status || challanEntry?.statusDesc || 'Unknown',
-          hasAttachments: ch.hasAttachments || false,
-          challanDate: challanEntry?.challanDate || order.OrderReceiveDate || new Date().toISOString(),
-          challanQty: challanEntry?.challanQty || 0,
-          totalChallanValue: challanEntry?.totalChallanValue || 0,
-          jobCardNo: challanEntry?.jobCardNo || order.JobBag || 'N/A',
-          customerName: challanEntry?.customerName || order.CustomerName || 'N/A',
-          deliveryChallanID: challanEntry?.deliveryChallanID || null
-        };
-      });
-      setChallans(formattedChallans);
-      
-      // Check attachments for each challan
-      formattedChallans.forEach(ch => {
-        checkChallanAttachments(ch.challanNo);
-      });
-    }
-    
-    fetchPIsAndInvoices();
-  }
-}, [isOpen, order, cndata]);
+  useEffect(() => {
+    if (isOpen && order) {
+      // Use the challans from the order data directly
+      if (order.ChallanNo && order.ChallanNo.length > 0) {
+        // Convert to format expected by the modal
+        const formattedChallans = order.ChallanNo.map(ch => {
+          // Find the full challan info from grupChallan
+          const challanEntry = cndata?.grupChallan?.find(c =>
+            c.challanNo === ch.challanNo || c.challanNo?.includes(ch.challanNo)
+          );
 
-const checkChallanAttachments = useCallback(async (challanNo) => {
-  if (!apiKey) return;
-  
-  try {
-    // First find the deliveryChallanID from the grupChallan data
-    const challanEntry = cndata?.grupChallan?.find(c => 
-      c.challanNo === challanNo
-    );
-    
-    const deliveryChallanID = challanEntry?.deliveryChallanID;
-    if (!deliveryChallanID) {
-      console.log(`No deliveryChallanID found for ${challanNo}`);
-      // Try to get it from the order's challan data
-      const orderChallan = order?.ChallanNo?.find(c => c.challanNo === challanNo);
-      if (orderChallan) {
-        // Try to find the deliveryChallanID from the raw data
-        const rawEntry = cndata?.grupChallan?.find(c => 
-          c.challanNo === challanNo || c.challanNo?.includes(challanNo)
-        );
-        if (rawEntry?.deliveryChallanID) {
-          const id = rawEntry.deliveryChallanID;
-          console.log(`Found deliveryChallanID ${id} from raw data for ${challanNo}`);
-          await fetchAttachmentsForChallan(challanNo, id);
-        }
+          return {
+            challanNo: ch.challanNo,
+            statusDesc: ch.status || challanEntry?.statusDesc || 'Unknown',
+            hasAttachments: ch.hasAttachments || false,
+            challanDate: challanEntry?.challanDate || order.OrderReceiveDate || new Date().toISOString(),
+            challanQty: challanEntry?.challanQty || 0,
+            totalChallanValue: challanEntry?.totalChallanValue || 0,
+            jobCardNo: challanEntry?.jobCardNo || order.JobBag || 'N/A',
+            customerName: challanEntry?.customerName || order.CustomerName || 'N/A',
+            deliveryChallanID: challanEntry?.deliveryChallanID || null
+          };
+        });
+        setChallans(formattedChallans);
+
+        // Check attachments for each challan
+        formattedChallans.forEach(ch => {
+          checkChallanAttachments(ch.challanNo);
+        });
       }
+
+      fetchPIsAndInvoices();
+    }
+  }, [isOpen, order, cndata]);
+
+  const checkChallanAttachments = useCallback(async (challanNo) => {
+    if (!apiKey) return;
+
+    try {
+      // First find the deliveryChallanID from the grupChallan data
+      const challanEntry = cndata?.grupChallan?.find(c =>
+        c.challanNo === challanNo
+      );
+
+      const deliveryChallanID = challanEntry?.deliveryChallanID;
+      if (!deliveryChallanID) {
+        console.log(`No deliveryChallanID found for ${challanNo}`);
+        // Try to get it from the order's challan data
+        const orderChallan = order?.ChallanNo?.find(c => c.challanNo === challanNo);
+        if (orderChallan) {
+          // Try to find the deliveryChallanID from the raw data
+          const rawEntry = cndata?.grupChallan?.find(c =>
+            c.challanNo === challanNo || c.challanNo?.includes(challanNo)
+          );
+          if (rawEntry?.deliveryChallanID) {
+            const id = rawEntry.deliveryChallanID;
+            console.log(`Found deliveryChallanID ${id} from raw data for ${challanNo}`);
+            await fetchAttachmentsForChallan(challanNo, id);
+          }
+        }
+        return;
+      }
+
+      await fetchAttachmentsForChallan(challanNo, deliveryChallanID);
+
+    } catch (error) {
+      console.error(`Error checking attachments for ${challanNo}:`, error);
+    }
+  }, [apiKey, cndata, order]);
+
+  // Add this helper function
+  const fetchAttachmentsForChallan = useCallback(async (challanNo, deliveryChallanID) => {
+    if (!deliveryChallanID) {
+      console.log(`No deliveryChallanID for ${challanNo}`);
       return;
     }
-    
-    await fetchAttachmentsForChallan(challanNo, deliveryChallanID);
-    
-  } catch (error) {
-    console.error(`Error checking attachments for ${challanNo}:`, error);
-  }
-}, [apiKey, cndata, order]);
 
-// Add this helper function
-const fetchAttachmentsForChallan = useCallback(async (challanNo, deliveryChallanID) => {
-  if (!deliveryChallanID) {
-    console.log(`No deliveryChallanID for ${challanNo}`);
-    return;
-  }
-  
-  console.log(`Fetching attachments for challan: ${challanNo} (ID: ${deliveryChallanID})`);
-  
-  try {
-    const response = await axios.get(
-      `https://tpl-api.ebs365.info/api/File?ReferenceDocNameID=52&ReferenceDocID=${deliveryChallanID}`,
-      { headers: { Authorization: `${apiKey}` } }
-    );
-    
-    const attachments = response.data || [];
-    if (attachments.length > 0) {
-      setChallanAttachments(prev => ({
-        ...prev,
-        [challanNo]: attachments
-      }));
-      console.log(`✅ Found ${attachments.length} attachments for challan ${challanNo}`);
-    } else {
-      console.log(`ℹ️ No attachments found for challan ${challanNo}`);
+    console.log(`Fetching attachments for challan: ${challanNo} (ID: ${deliveryChallanID})`);
+
+    try {
+      const response = await axios.get(
+        `https://tpl-api.ebs365.info/api/File?ReferenceDocNameID=52&ReferenceDocID=${deliveryChallanID}`,
+        { headers: { Authorization: `${apiKey}` } }
+      );
+
+      const attachments = response.data || [];
+      if (attachments.length > 0) {
+        setChallanAttachments(prev => ({
+          ...prev,
+          [challanNo]: attachments
+        }));
+        console.log(`✅ Found ${attachments.length} attachments for challan ${challanNo}`);
+      } else {
+        console.log(`ℹ️ No attachments found for challan ${challanNo}`);
+      }
+    } catch (error) {
+      console.error(`Error fetching attachments for ${challanNo}:`, error);
     }
-  } catch (error) {
-    console.error(`Error fetching attachments for ${challanNo}:`, error);
-  }
-}, [apiKey]);
+  }, [apiKey]);
 
   const fetchPIsAndInvoices = useCallback(async () => {
     if (!order || !apiKey) return;
     setIsLoading(true);
-    
+
     try {
       // Fetch PIs
       const piResponse = await axios.get(
@@ -1059,18 +1064,18 @@ const fetchAttachmentsForChallan = useCallback(async (challanNo, deliveryChallan
         return pi.workOrderNo.split(',').map(w => w.trim()).includes(order.WorkOrderNo);
       });
       setPis(filteredPIs);
-      
+
       // Fetch Invoices
       const invoiceResponse = await axios.get(
         `https://tpl-api.ebs365.info/api/CommercialInvoice/GetInvoiceDashboard?CompanyID=1&CustomerID=0`,
         { headers: { Authorization: `${apiKey}` } }
       );
       const orderPIs = filteredPIs.map(pi => pi.customerPINo);
-      const filteredInvoices = (invoiceResponse.data || []).filter(inv => 
+      const filteredInvoices = (invoiceResponse.data || []).filter(inv =>
         orderPIs.includes(inv.customerPINo)
       );
       setInvoices(filteredInvoices);
-      
+
     } catch (error) {
       console.error("Error fetching PI/Invoice data:", error);
     } finally {
@@ -1112,7 +1117,7 @@ const downloadFullOrder = async (order, apiKey) => {
     toast.error("No order data provided");
     return;
   }
-  
+
   console.log("Downloading full order:", order);
 
   let workOrderId = order.WorkOrderID;
@@ -1136,7 +1141,7 @@ const downloadFullOrder = async (order, apiKey) => {
   }
 
   toast.info(`Preparing full download for ${order.WorkOrderNo || 'Order'}...`);
-  
+
   try {
     // Fetch Work Order Report
     const workOrderResponse = await axios({
@@ -1149,19 +1154,19 @@ const downloadFullOrder = async (order, apiKey) => {
       },
       data: { WorkOrderID: parseInt(workOrderId) }
     });
-    
+
     // Fetch Work Order attachments (ReferenceDocNameID: 51)
     const woAttachments = await fetchAttachments(51, workOrderId, apiKey);
-    
+
     // Fetch Challan attachments if there are challans
     let challanAttachments = [];
     if (order.ChallanNo && order.ChallanNo.length > 0) {
       for (const challan of order.ChallanNo) {
         // Find the actual challan entry
-        const challanEntry = cndata?.grupChallan?.find(c => 
+        const challanEntry = cndata?.grupChallan?.find(c =>
           c.challanNo === challan.challanNo && c.workOrderNo === order.WorkOrderNo
         );
-        
+
         if (challanEntry && challanEntry.deliveryChallanID) {
           const attachments = await fetchAttachments(52, challanEntry.deliveryChallanID, apiKey);
           if (attachments && attachments.length > 0) {
@@ -1173,9 +1178,9 @@ const downloadFullOrder = async (order, apiKey) => {
         }
       }
     }
-    
+
     const allAttachments = [...woAttachments, ...challanAttachments];
-    
+
     const fullData = {
       order: {
         workOrderNo: order.WorkOrderNo,
@@ -1200,7 +1205,7 @@ const downloadFullOrder = async (order, apiKey) => {
       attachments: allAttachments || [],
       attachmentCount: allAttachments?.length || 0
     };
-    
+
     // Download JSON data
     const jsonBlob = new Blob([JSON.stringify(fullData, null, 2)], { type: 'application/json' });
     const jsonUrl = window.URL.createObjectURL(jsonBlob);
@@ -1211,7 +1216,7 @@ const downloadFullOrder = async (order, apiKey) => {
     jsonLink.click();
     document.body.removeChild(jsonLink);
     window.URL.revokeObjectURL(jsonUrl);
-    
+
     // Download attachments
     let attachmentCount = 0;
     if (allAttachments && allAttachments.length > 0) {
@@ -1228,9 +1233,9 @@ const downloadFullOrder = async (order, apiKey) => {
         await new Promise(resolve => setTimeout(resolve, 300));
       }
     }
-    
+
     toast.success(`✅ Downloaded ${attachmentCount}/${allAttachments.length} attachments with data for ${order.WorkOrderNo}`);
-    
+
   } catch (error) {
     console.error("Error downloading full order:", error);
     toast.error("Failed to download full order: " + (error.message || "Unknown error"));
@@ -1248,16 +1253,16 @@ const useDataMaps = (cndata, piCompanyData) => {
     const invoiceMap = new Map();
     const piCompanyMap = new Map();
     const salesPersonMap = new Map();
-    
+
     try {
       if (!cndata) {
         console.log("useDataMaps: cndata is null or undefined");
-        return { challanMap, lcMap, invoiceMap, piCompanyMap, salesPersonMap  };
+        return { challanMap, lcMap, invoiceMap, piCompanyMap, salesPersonMap };
       }
-      
+
       // console.log("useDataMaps: cndata keys:", Object.keys(cndata));
       // console.log("useDataMaps: cndata.grupChallan length:", cndata.grupChallan?.length || 0);
-      
+
       if (piCompanyData && Array.isArray(piCompanyData)) {
         piCompanyData.forEach(item => {
           if (item.customerPINo && item.customerName) {
@@ -1278,62 +1283,62 @@ const useDataMaps = (cndata, piCompanyData) => {
       // ===== BUILD challanMap FROM grupChallan =====
       // In useDataMaps - update the part where we build challanMap
 
-// ===== BUILD challanMap FROM grupChallan =====
-if (cndata.grupChallan && Array.isArray(cndata.grupChallan) && cndata.grupChallan.length > 0) {
-  // console.log("Building challanMap from grupChallan, count:", cndata.grupChallan.length);
-  
-  for (const c of cndata.grupChallan) {
-    const challanNo = c.challanNo || c.ChallanNo || null;
-    const workOrderNo = c.workOrderNo || null;
-    
-    if (challanNo) {
-      // ===== FIX: Trim the challan number to remove any spaces =====
-      const trimmedChallanNo = challanNo.trim();
-      // Get status from statusDesc field
-      const status = c.statusDesc || c.StatusDesc || 'Unknown';
-      
-      // Store by trimmed challanNo (primary key)
-      challanMap.set(trimmedChallanNo, status);
-      
-      // Store by workOrderNo (this is the key fix!)
-      if (workOrderNo) {
-        const trimmedWorkOrderNo = workOrderNo.trim();
-        // Store by workOrderNo -> status
-        challanMap.set(`WO_${trimmedWorkOrderNo}`, status);
-        // Store by workOrderNo-challanNo combination
-        challanMap.set(`${trimmedWorkOrderNo}-${trimmedChallanNo}`, status);
+      // ===== BUILD challanMap FROM grupChallan =====
+      if (cndata.grupChallan && Array.isArray(cndata.grupChallan) && cndata.grupChallan.length > 0) {
+        // console.log("Building challanMap from grupChallan, count:", cndata.grupChallan.length);
+
+        for (const c of cndata.grupChallan) {
+          const challanNo = c.challanNo || c.ChallanNo || null;
+          const workOrderNo = c.workOrderNo || null;
+
+          if (challanNo) {
+            // ===== FIX: Trim the challan number to remove any spaces =====
+            const trimmedChallanNo = challanNo.trim();
+            // Get status from statusDesc field
+            const status = c.statusDesc || c.StatusDesc || 'Unknown';
+
+            // Store by trimmed challanNo (primary key)
+            challanMap.set(trimmedChallanNo, status);
+
+            // Store by workOrderNo (this is the key fix!)
+            if (workOrderNo) {
+              const trimmedWorkOrderNo = workOrderNo.trim();
+              // Store by workOrderNo -> status
+              challanMap.set(`WO_${trimmedWorkOrderNo}`, status);
+              // Store by workOrderNo-challanNo combination
+              challanMap.set(`${trimmedWorkOrderNo}-${trimmedChallanNo}`, status);
+            }
+
+            // Store additional info
+            challanMap.set(`${trimmedChallanNo}_info`, {
+              workOrderNo: workOrderNo,
+              statusDesc: status,
+              deliveryChallanID: c.deliveryChallanID,
+              challanDate: c.challanDate,
+              challanQty: c.challanQty,
+              totalChallanValue: c.totalChallanValue,
+              customerName: c.customerName
+            });
+
+            // console.log(`Added to challanMap: '${trimmedChallanNo}' -> ${status} (WO: ${workOrderNo})`);
+          }
+        }
       }
-      
-      // Store additional info
-      challanMap.set(`${trimmedChallanNo}_info`, {
-        workOrderNo: workOrderNo,
-        statusDesc: status,
-        deliveryChallanID: c.deliveryChallanID,
-        challanDate: c.challanDate,
-        challanQty: c.challanQty,
-        totalChallanValue: c.totalChallanValue,
-        customerName: c.customerName
-      });
-      
-      // console.log(`Added to challanMap: '${trimmedChallanNo}' -> ${status} (WO: ${workOrderNo})`);
-    }
-  }
-}
-      
+
       else {
         console.log("WARNING: cndata.grupChallan is empty or not an array!");
       }
-      
+
       // ... rest of the code (BBLC, Invoice, etc.)
-      
-    } catch (e) { 
-      console.error("Data map error:", e); 
+
+    } catch (e) {
+      console.error("Data map error:", e);
     }
-    
+
     // console.log("challanMap size:", challanMap.size);
     // console.log("challanMap keys sample:", [...challanMap.keys()].slice(0, 10));
-    
-    return { challanMap, lcMap, invoiceMap, piCompanyMap, salesPersonMap  };
+
+    return { challanMap, lcMap, invoiceMap, piCompanyMap, salesPersonMap };
   }, [cndata, piCompanyData]);
 };
 // ============================================================
@@ -1344,36 +1349,89 @@ const useSummarizedData = (cndata, maps) => {
     const apidata = cndata?.apiData ?? [];
     const workOrderIdMap = cndata?.workOrderIdMap || {};
     const challanReceiveMap = cndata?.challanReceiveMap || {};
-    
+
     const { challanMap, lcMap, invoiceMap, piCompanyMap, salesPersonMap } = maps;
-    
+
     try {
       if (!apidata.length) return [];
-      
+
+      // ===== FIRST, BUILD CHALLAN MAP FROM ORDERREPORT API DATA =====
+      // This ensures we have qty and value for ALL challans
+      const apiChallanMap = {};
+      apidata.forEach(item => {
+        if (item.ChallanNo) {
+          const challans = item.ChallanNo.split(",").map(c => c.trim()).filter(Boolean);
+          const challanQty = Number(item.ChallanQTY) || 0;
+          const challanValue = Number(item.ChallanValue) || 0;
+
+          challans.forEach(challanNo => {
+            if (!apiChallanMap[challanNo]) {
+              apiChallanMap[challanNo] = {
+                challanQty: 0,
+                totalChallanValue: 0,
+                statusDesc: 'Unknown',
+                deliveryChallanID: null
+              };
+            }
+            apiChallanMap[challanNo].challanQty += challanQty;
+            apiChallanMap[challanNo].totalChallanValue += challanValue;
+          });
+        }
+      });
+
+      // ===== MERGE WITH EXISTING challanReceiveMap (for deliveryChallanID & status) =====
+    const mergedChallanMap = {};
+
+      // First, copy from apiChallanMap (has qty and value)
+      Object.keys(challanReceiveMap).forEach(key => {
+  if (mergedChallanMap[key]) {
+    // Update existing with deliveryChallanID and status
+    mergedChallanMap[key].deliveryChallanID = challanReceiveMap[key].deliveryChallanID || null;
+    mergedChallanMap[key].statusDesc = challanReceiveMap[key].statusDesc || 'Unknown';
+    // Also update qty and value if they exist in challanReceiveMap
+    if (challanReceiveMap[key].challanQty) {
+      mergedChallanMap[key].challanQty = challanReceiveMap[key].challanQty;
+    }
+    if (challanReceiveMap[key].totalChallanValue) {
+      mergedChallanMap[key].totalChallanValue = challanReceiveMap[key].totalChallanValue;
+    }
+  } else {
+    // Add new entry from challanReceiveMap
+    mergedChallanMap[key] = {
+      challanQty: challanReceiveMap[key].challanQty || 0,
+      totalChallanValue: challanReceiveMap[key].totalChallanValue || 0,
+      deliveryChallanID: challanReceiveMap[key].deliveryChallanID || null,
+      statusDesc: challanReceiveMap[key].statusDesc || 'Unknown'
+    };
+  }
+});
+
+      if (cndata) {
+  cndata.mergedChallanMap = mergedChallanMap;
+}
+
+console.log('📊 mergedChallanMap built with keys:', Object.keys(mergedChallanMap));
+console.log('📊 mergedChallanMap sample:', mergedChallanMap['CLN-006467-2026']);
+
       const grouped = new Map();
-      
+
       for (const item of apidata) {
         const orderNo = item.WorkOrderNo || 'N/A';
         const piNo = item.CustomerPINo || 'No PI';
         const piCompany = piCompanyMap.get(piNo.trim()) || '-';
-        
+
         // ===== GET SALES PERSON - ONLY ONCE =====
         let salesPerson = 'Unknown';
         if (orderNo) {
-          // Try exact match first
           if (salesPersonMap && salesPersonMap.has(orderNo.trim())) {
             salesPerson = salesPersonMap.get(orderNo.trim());
-          } 
-          // Try case-insensitive
-          else if (salesPersonMap && salesPersonMap.has(orderNo.trim().toLowerCase())) {
+          } else if (salesPersonMap && salesPersonMap.has(orderNo.trim().toLowerCase())) {
             salesPerson = salesPersonMap.get(orderNo.trim().toLowerCase());
-          } 
-          // Fallback to MarketingName from item
-          else {
+          } else {
             salesPerson = item.MarketingName || 'Unknown';
           }
         }
-        
+
         // Get WorkOrderID with case-insensitive matching
         let workOrderID = null;
         if (workOrderIdMap && Object.keys(workOrderIdMap).length > 0) {
@@ -1382,22 +1440,19 @@ const useSummarizedData = (cndata, maps) => {
           } else {
             const orderNoUpper = orderNo.toUpperCase().trim();
             const orderNoLower = orderNo.toLowerCase().trim();
-            
-            const matchedKey = Object.keys(workOrderIdMap).find(key => 
-              key.toUpperCase().trim() === orderNoUpper || 
+
+            const matchedKey = Object.keys(workOrderIdMap).find(key =>
+              key.toUpperCase().trim() === orderNoUpper ||
               key.toLowerCase().trim() === orderNoLower ||
               key.trim() === orderNo.trim()
             );
-            
+
             if (matchedKey) {
               workOrderID = workOrderIdMap[matchedKey];
-              console.log(`✅ Found WorkOrderID ${workOrderID} for ${orderNo} (matched key: ${matchedKey})`);
-            } else {
-              console.warn(`⚠️ No WorkOrderID found for: ${orderNo}`);
             }
           }
         }
-        
+
         if (!grouped.has(orderNo)) {
           grouped.set(orderNo, {
             WorkOrderNo: orderNo,
@@ -1422,9 +1477,13 @@ const useSummarizedData = (cndata, maps) => {
             PIList: [],
             Status: item.Status || 'Active',
             ChallanStatusMap: {},
+            Style: item.KeyEntry1Value || '',
+            Color: item.KeyEntry2Value || '',
+            PO: item.KeyEntry3Value || '',
+            CustomerPO: item.CustomerPONo || '',
           });
         }
-        
+
         const row = grouped.get(orderNo);
         const breakdownQty = Number(item.BreakDownQTY) || 0;
         const challanQty = Number(item.ChallanQTY) || 0;
@@ -1432,16 +1491,16 @@ const useSummarizedData = (cndata, maps) => {
         const orderValue = Number(item.TotalOrderValue) || 0;
         const challanValue = Number(item.ChallanValue) || 0;
         const balanceValue = Number(item.BalanceValue) || 0;
-        
+
         row.PINOs.add(piNo);
         if (salesPerson !== 'Unknown' && (row.SalesPerson === 'Unknown' || row.SalesPerson === '')) {
           row.SalesPerson = salesPerson;
-        } 
-        
+        }
+
         if (piCompany !== 'N/A') {
           row.PICompany = piCompany;
         }
-        
+
         let existingPI = row.PIList.find(p => p.piNo === piNo);
         if (existingPI) {
           existingPI.qty += breakdownQty;
@@ -1460,7 +1519,7 @@ const useSummarizedData = (cndata, maps) => {
             balanceValue,
             ChallanNo: item.ChallanNo || '',
             ProductCategoryName: item.ProductCategoryName || 'Uncategorized',
-            WorkOrderNo: orderNo 
+            WorkOrderNo: orderNo
           });
         } else {
           row.PIList.push({
@@ -1488,7 +1547,7 @@ const useSummarizedData = (cndata, maps) => {
             invoiceList: []
           });
         }
-        
+
         row.TotalQty += breakdownQty;
         row.ChallanQTY += challanQty;
         row.BalanceQty += balanceQty;
@@ -1497,74 +1556,60 @@ const useSummarizedData = (cndata, maps) => {
         row.BalanceValue += balanceValue;
         row.itemCount += 1;
         row.history.push(challanQty);
-        
+
         if (row.history.length > CONFIG.MAX_HISTORY_ITEMS) {
           row.history = row.history.slice(-CONFIG.MAX_HISTORY_ITEMS);
         }
-        
-        // ===== PROCESS CHALLANS - FIXED STATUS =====
+
+        // ===== PROCESS CHALLANS - USE MERGED CHALLAN MAP =====
         if (item.ChallanNo) {
           const challans = item.ChallanNo.split(",")
             .map(c => c.trim())
             .filter(Boolean);
-          
+
           const trimmedOrderNo = orderNo.trim();
           let workOrderStatus = null;
-          
-          // Try to get status from challanMap by Work Order Number
+
           if (challanMap && challanMap.has(`WO_${trimmedOrderNo}`)) {
             workOrderStatus = challanMap.get(`WO_${trimmedOrderNo}`);
           } else if (challanMap) {
             const allKeys = [...challanMap.keys()];
-            const foundKey = allKeys.find(k => 
+            const foundKey = allKeys.find(k =>
               typeof k === 'string' && k.includes(`WO_${trimmedOrderNo}`)
             );
             if (foundKey) {
               workOrderStatus = challanMap.get(foundKey);
             }
           }
-          
+
           for (const challanNo of challans) {
             const trimmedChallanNo = challanNo.trim();
             let status = "Unknown";
             let hasAttachments = false;
             let deliveryChallanID = null;
-            
-            // ===== FIX: Get status from grupChallan data FIRST =====
-            // This preserves the actual status like "Send to Gate"
-            const infoKey = `${trimmedChallanNo}_info`;
-            if (challanMap && challanMap.has(infoKey)) {
-              const info = challanMap.get(infoKey);
-              status = info.statusDesc || 'Unknown'; // Use actual status from grupChallan
-              deliveryChallanID = info.deliveryChallanID;
-              //  console.log(`📌 Status for ${trimmedChallanNo}: ${status} (from grupChallan)`);
+
+            // ===== GET STATUS FROM MERGED CHALLAN MAP =====
+            const mergedData = mergedChallanMap[trimmedChallanNo];
+            if (mergedData) {
+              status = mergedData.statusDesc || 'Unknown';
+              deliveryChallanID = mergedData.deliveryChallanID;
             }
-            
-            // ===== Check if this challan has attachments =====
-            // Only mark as "Challan Received" if it has attachments, but keep the original status too
-            if (challanReceiveMap && challanReceiveMap[trimmedChallanNo]) {
-              hasAttachments = true;
-              // Don't override status with "Challan Received" - keep the original status
-              // Instead, we'll show the original status + attachment indicator
-              // console.log(`📎 ${trimmedChallanNo} has attachments (status: ${status})`);
-            } else {
-              // If no attachments, try to get status from challanMap
-              if (workOrderStatus && status === "Unknown") {
+
+            // If no status from merged map, try from challanMap
+            if (status === "Unknown") {
+              if (workOrderStatus) {
                 status = workOrderStatus;
-                console.log(`📌 Using workOrder status for ${trimmedChallanNo}: ${status}`);
-              } else if (challanMap && challanMap.has(`${trimmedOrderNo}-${trimmedChallanNo}`) && status === "Unknown") {
+              } else if (challanMap && challanMap.has(`${trimmedOrderNo}-${trimmedChallanNo}`)) {
                 status = challanMap.get(`${trimmedOrderNo}-${trimmedChallanNo}`);
-                console.log(`📌 Found status for ${trimmedChallanNo} with workOrder prefix: ${status}`);
-              } else if (challanMap && challanMap.has(trimmedChallanNo) && status === "Unknown") {
+              } else if (challanMap && challanMap.has(trimmedChallanNo)) {
                 status = challanMap.get(trimmedChallanNo);
-                console.log(`📌 Found status for ${trimmedChallanNo}: ${status}`);
               }
             }
-            
+
             if (!row.ChallanNo.some(c => c.challanNo === trimmedChallanNo)) {
-              row.ChallanNo.push({ 
-                challanNo: trimmedChallanNo, 
-                status: status, // Now preserves "Send to Gate" etc.
+              row.ChallanNo.push({
+                challanNo: trimmedChallanNo,
+                status: status,
                 hasAttachments: hasAttachments,
                 deliveryChallanID: deliveryChallanID
               });
@@ -1572,14 +1617,14 @@ const useSummarizedData = (cndata, maps) => {
           }
         }
       }
-      
+
       // Build result
       const result = [];
       for (const item of grouped.values()) {
         for (const pi of item.PIList) {
           const lcList = (lcMap && lcMap.get(pi.piNo)) || [];
           const filteredLcList = lcList.filter(lc => lc.lcNo && lc.lcNo !== 'N/A');
-          
+
           const invoiceList = [];
           for (const lc of filteredLcList) {
             const invoices = (invoiceMap && invoiceMap.get(lc.lcNo)) || [];
@@ -1589,15 +1634,15 @@ const useSummarizedData = (cndata, maps) => {
               }
             }
           }
-          
+
           pi.lcList = filteredLcList;
           pi.invoiceList = invoiceList;
         }
-        
-        const completionRate = item.TotalQty > 0 
-          ? ((item.ChallanQTY / item.TotalQty) * 100) 
+
+        const completionRate = item.TotalQty > 0
+          ? ((item.ChallanQTY / item.TotalQty) * 100)
           : 0;
-        
+
         result.push({
           ...item,
           SalesPerson: item.SalesPerson || 'Unknown',
@@ -1611,11 +1656,14 @@ const useSummarizedData = (cndata, maps) => {
           InvoiceList: item.PIList.flatMap(pi => pi.invoiceList || []),
         });
       }
-      
+      // In useSummarizedData, after building mergedChallanMap:
+      console.log('📊 mergedChallanMap built with keys:', Object.keys(mergedChallanMap));
+      console.log('📊 mergedChallanMap sample:', mergedChallanMap['CLN-006467-2026']);
+
       return result;
-    } catch (e) { 
-      console.error("Summarize error:", e); 
-      return []; 
+    } catch (e) {
+      console.error("Summarize error:", e);
+      return [];
     }
   }, [cndata, maps]);
 };
@@ -1628,17 +1676,17 @@ const useFilters = (summarizedData, filters, search, maps) => {
     if (!ms?.trim()) return [];
     return ms.split(/[\n,;|]+/).map(s => s.trim()).filter(Boolean);
   }, []);
-  
+
   const multiSearchItems = useMemo(() => getMultiSearchItems(filters.multiSearch), [filters.multiSearch, getMultiSearchItems]);
 
   return useMemo(() => {
     try {
       if (!summarizedData.length) return [];
-      
+
       const { challanMap } = maps;
       const sv = normalize(search);
-      const { 
-         selectedPI, selectedOrder, selectedSalesPerson, selectedLC, selectedInvoice, 
+      const {
+        selectedPI, selectedOrder, selectedSalesPerson, selectedLC, selectedInvoice,
         selectedCustomer, selectedBuyer, selectedDelivery, selectedChallan,
         dateRange, minValue, maxValue, statusFilter, sectionFilter,
         favorites, showFavoritesOnly, multiSearch, selectedPIMultiOrder,
@@ -1648,7 +1696,7 @@ const useFilters = (summarizedData, filters, search, maps) => {
       const safeSelectedChallan = selectedChallan || [];
       const challanSet = new Set(safeSelectedChallan.map(normalize));
       const piSet = new Set(selectedPI.map(normalize));
-      const piMultiSet = selectedPIMultiOrder && selectedPIMultiOrder.length > 0 
+      const piMultiSet = selectedPIMultiOrder && selectedPIMultiOrder.length > 0
         ? new Set(selectedPIMultiOrder.map(normalize))
         : new Set();
       const orderSet = new Set(selectedOrder.map(normalize));
@@ -1661,7 +1709,7 @@ const useFilters = (summarizedData, filters, search, maps) => {
       const favSet = new Set(favorites || []);
       const piCompanySet = new Set((selectedPICompany || []).map(normalize));
       const msItems = multiSearchItems;
-      
+
       const minVal = minValue ? Number(minValue) : null;
       const maxVal = maxValue ? Number(maxValue) : null;
       const minQtyVal = minQty ? Number(minQty) : null;
@@ -1669,42 +1717,42 @@ const useFilters = (summarizedData, filters, search, maps) => {
 
       const hasPIFilter = piSet.size > 0 || piMultiSet.size > 0 || piCompanySet.size > 0;
       let processedData = summarizedData;
-      
+
       if (hasPIFilter) {
         processedData = summarizedData
           .map(item => {
             let matchingPIs = item.PIList || [];
-            
+
             if (piSet.size > 0) {
               matchingPIs = matchingPIs.filter(pi => {
                 const piNormalized = normalize(pi.piNo || '');
                 return piSet.has(piNormalized);
               });
             }
-            
+
             if (piMultiSet.size > 0) {
               matchingPIs = matchingPIs.filter(pi => {
                 const piNormalized = normalize(pi.piNo || '');
                 return piMultiSet.has(piNormalized);
               });
             }
-            
+
             if (piCompanySet.size > 0) {
               matchingPIs = matchingPIs.filter(pi => {
                 const companyNormalized = normalize(pi.piCompany || 'N/A');
                 return piCompanySet.has(companyNormalized);
               });
             }
-            
+
             if (matchingPIs.length === 0) return null;
-            
+
             const totalQty = matchingPIs.reduce((sum, pi) => sum + (pi.qty || 0), 0);
             const totalValue = matchingPIs.reduce((sum, pi) => sum + (pi.value || 0), 0);
             const totalChallanQty = matchingPIs.reduce((sum, pi) => sum + (pi.challanQty || 0), 0);
             const totalChallanValue = matchingPIs.reduce((sum, pi) => sum + (pi.challanValue || 0), 0);
             const totalBalanceQty = matchingPIs.reduce((sum, pi) => sum + (pi.balanceQty || 0), 0);
             const totalBalanceValue = matchingPIs.reduce((sum, pi) => sum + (pi.balanceValue || 0), 0);
-            
+
             const allChallans = [];
             matchingPIs.forEach(pi => {
               if (pi.items) {
@@ -1718,7 +1766,7 @@ const useFilters = (summarizedData, filters, search, maps) => {
                     } else if (Array.isArray(item.ChallanNo)) {
                       challans = item.ChallanNo.map(c => c.challanNo || c).filter(Boolean);
                     }
-                    
+
                     const orderNo = item.WorkOrderNo || '';
                     challans.forEach(ch => {
                       const status = challanMap.get(`${orderNo}-${ch}`) || 'Unknown';
@@ -1737,7 +1785,7 @@ const useFilters = (summarizedData, filters, search, maps) => {
                 });
               }
             });
-            
+
             const history = [];
             matchingPIs.forEach(pi => {
               if (pi.items) {
@@ -1746,13 +1794,13 @@ const useFilters = (summarizedData, filters, search, maps) => {
                 });
               }
             });
-            
-            const completionRate = totalQty > 0 
+
+            const completionRate = totalQty > 0
               ? Math.min(100, (totalChallanQty / totalQty) * 100)
               : 0;
-            
+
             const piCompany = matchingPIs.length > 0 ? matchingPIs[0].piCompany || 'N/A' : 'N/A';
-            
+
             return {
               ...item,
               PIList: matchingPIs,
@@ -1776,21 +1824,28 @@ const useFilters = (summarizedData, filters, search, maps) => {
           })
           .filter(item => item !== null);
       }
-      
+
       return processedData
         .filter(item => {
           const wo = normalize(item.WorkOrderNo);
           const cust = normalize(item.CustomerName);
           const del = normalize(item.DeliverName);
-           const salesPerson = normalize(item.SalesPerson || 'Unknown');
-            const salesPersonMatch = salesPersonSet.size === 0 || salesPersonSet.has(salesPerson);
+          const salesPerson = normalize(item.SalesPerson || 'Unknown');
+          const salesPersonMatch = salesPersonSet.size === 0 || salesPersonSet.has(salesPerson);
           const buy = normalize(item.Buyer);
           const pi = normalize(item.PINO || "No PI");
           const piCompany = normalize(item.PICompany || "N/A");
           const lc = normalize((item.LCList || []).map(l => l.lcNo).join(",") || "No LC");
           const inv = normalize((item.InvoiceList || []).map(i => i.invoiceNo).join(",") || "No Invoice");
-          const searchMatch = !sv || [wo, cust, del, pi, piCompany, buy, lc, inv, (item.ChallanNo || []).map(ch => ch.challanNo).join(",")
-          ].some(v => v.toLowerCase().includes(sv));
+          const searchMatch = !sv || [
+            wo, cust, del, pi, piCompany, buy, lc, inv,
+            (item.ChallanNo || []).map(ch => ch.challanNo).join(","),
+            // NEW FIELDS
+            item.Style || '',
+            item.Color || '',
+            item.PO || '',
+            item.CustomerPO || ''
+          ].some(v => String(v || '').toLowerCase().includes(sv));
           const msMatch = msItems.length === 0 || msItems.some(msi => {
             const n = normalize(msi);
             return [wo, cust, del, pi, piCompany, buy, lc, inv].some(v => v.includes(n));
@@ -1808,26 +1863,26 @@ const useFilters = (summarizedData, filters, search, maps) => {
             const start = new Date(dateRange.start);
             const end = new Date(dateRange.end);
             if (!isNaN(orderDate.getTime()) && !isNaN(start.getTime()) && !isNaN(end.getTime())) {
-              start.setHours(0,0,0,0);
-              end.setHours(23,59,59,999);
+              start.setHours(0, 0, 0, 0);
+              end.setHours(23, 59, 59, 999);
               dateMatch = orderDate >= start && orderDate <= end;
             }
           }
-          
+
           let valueMatch = true;
           if (minVal !== null || maxVal !== null) {
             const tv = Number(item.TotalValue) || 0;
             if (minVal !== null && tv < minVal) valueMatch = false;
             if (maxVal !== null && tv > maxVal) valueMatch = false;
           }
-          
+
           let qtyMatch = true;
           if (minQtyVal !== null || maxQtyVal !== null) {
             const tq = Number(item.TotalQty) || 0;
             if (minQtyVal !== null && tq < minQtyVal) qtyMatch = false;
             if (maxQtyVal !== null && tq > maxQtyVal) qtyMatch = false;
           }
-          
+
           let statusMatch = true;
           if (statusFilter) {
             const c = parseFloat(item.completionRate);
@@ -1837,7 +1892,7 @@ const useFilters = (summarizedData, filters, search, maps) => {
             if (statusFilter === 'multi-pi' && item.piCount < 2) statusMatch = false;
             if (statusFilter === 'high-value' && Number(item.TotalValue) < 50000) statusMatch = false;
           }
-          
+
           let orderStatusMatch = true;
           if (orderStatusFilter) {
             const status = item.Status || 'Active';
@@ -1845,51 +1900,51 @@ const useFilters = (summarizedData, filters, search, maps) => {
             if (orderStatusFilter === 'completed' && status !== 'Completed') orderStatusMatch = false;
             if (orderStatusFilter === 'cancelled' && status !== 'Cancelled') orderStatusMatch = false;
           }
-          
+
           let deliveryStatusMatch = true;
           if (deliveryStatusFilter) {
             const hasChallan = item.ChallanNo && item.ChallanNo.length > 0;
             if (deliveryStatusFilter === 'delivered' && !hasChallan) deliveryStatusMatch = false;
             if (deliveryStatusFilter === 'pending-delivery' && hasChallan) deliveryStatusMatch = false;
           }
-          
+
           const sectionMatch = !sectionFilter || normalize(item.Section) === normalize(sectionFilter);
-          
+
           let lcMatch = true;
           if (lcSet.size > 0) {
             lcMatch = (item.LCList || []).some(l => lcSet.has(normalize(l.lcNo)));
           }
-          
+
           let invMatch = true;
           if (invSet.size > 0) {
             invMatch = (item.InvoiceList || []).some(i => invSet.has(normalize(i.invoiceNo)));
           }
 
           // CHALLAN STATUS FILTER REMOVED - No longer filtering by status
-          
-          return searchMatch && msMatch && orderMatch && 
-                 custMatch && buyerMatch && delMatch && 
-                 favMatch && dateMatch && valueMatch && 
-                 salesPersonMatch &&
-                 qtyMatch && statusMatch && sectionMatch &&
-                 orderStatusMatch && deliveryStatusMatch &&
-                 lcMatch && invMatch && challanMatch;
+
+          return searchMatch && msMatch && orderMatch &&
+            custMatch && buyerMatch && delMatch &&
+            favMatch && dateMatch && valueMatch &&
+            salesPersonMatch &&
+            qtyMatch && statusMatch && sectionMatch &&
+            orderStatusMatch && deliveryStatusMatch &&
+            lcMatch && invMatch && challanMatch;
         })
         .sort((a, b) => {
           const gp = v => {
             const parts = (v || "").split("-");
-            return { 
-              num: Number(parts[1]) || 0, 
-              year: Number(parts[2]) || 0 
+            return {
+              num: Number(parts[1]) || 0,
+              year: Number(parts[2]) || 0
             };
           };
           const A = gp(a.WorkOrderNo);
           const B = gp(b.WorkOrderNo);
           return B.year !== A.year ? B.year - A.year : B.num - A.num;
         });
-    } catch (e) { 
-      console.error("Filter error:", e); 
-      return []; 
+    } catch (e) {
+      console.error("Filter error:", e);
+      return [];
     }
   }, [summarizedData, search, filters, normalize, multiSearchItems]);
 };
@@ -1898,7 +1953,7 @@ const usePagination = (filteredData, itemsPerPage = CONFIG.ITEMS_PER_PAGE) => {
   const [currentPage, setCurrentPage] = useState(0);
   const pageCount = Math.max(1, Math.ceil(filteredData.length / itemsPerPage));
   const displayedData = filteredData.slice(currentPage * itemsPerPage, currentPage * itemsPerPage + itemsPerPage);
-  
+
   const totalData = useMemo(() => {
     return displayedData.reduce((a, i) => {
       a.TotalQty += Number(i.TotalQty) || 0;
@@ -1911,7 +1966,7 @@ const usePagination = (filteredData, itemsPerPage = CONFIG.ITEMS_PER_PAGE) => {
       return a;
     }, { TotalQty: 0, ChallanQTY: 0, BalanceQty: 0, TotalValue: 0, ChallanValue: 0, BalanceValue: 0, itemCount: 0 });
   }, [displayedData]);
-  
+
   const grandTotal = useMemo(() => {
     return filteredData.reduce((a, i) => {
       a.TotalQty += Number(i.TotalQty) || 0;
@@ -1923,17 +1978,17 @@ const usePagination = (filteredData, itemsPerPage = CONFIG.ITEMS_PER_PAGE) => {
       return a;
     }, { TotalQty: 0, ChallanQTY: 0, BalanceQty: 0, TotalValue: 0, ChallanValue: 0, BalanceValue: 0 });
   }, [filteredData]);
-  
+
   useEffect(() => setCurrentPage(0), [filteredData.length]);
-  
-  return { 
-    currentPage, 
-    setCurrentPage, 
-    pageCount, 
-    displayedData, 
-    totalData, 
-    grandTotal, 
-    totalItems: filteredData.length 
+
+  return {
+    currentPage,
+    setCurrentPage,
+    pageCount,
+    displayedData,
+    totalData,
+    grandTotal,
+    totalItems: filteredData.length
   };
 };
 
@@ -1989,22 +2044,22 @@ class ErrorBoundary extends React.Component {
 
 const Sparkline = React.memo(({ data, width = CONFIG.SPARKLINE_WIDTH, height = CONFIG.SPARKLINE_HEIGHT, color = "#3b82f6" }) => {
   if (!data || data.length === 0) return null;
-  
+
   const validData = data.filter(d => !isNaN(d) && isFinite(d));
   if (validData.length === 0) return null;
-  
+
   const max = Math.max(...validData);
   const min = Math.min(...validData);
   const range = max - min || 1;
-  
+
   const points = validData.map((d, i) => {
     const x = (i / (validData.length - 1 || 1)) * width;
     const y = height - ((d - min) / range) * height;
     return `${x},${y}`;
   }).join(' ');
-  
+
   const areaPoints = `0,${height} ${points} ${width},${height}`;
-  
+
   return (
     <svg width={width} height={height} className="inline-block">
       <defs>
@@ -2015,7 +2070,7 @@ const Sparkline = React.memo(({ data, width = CONFIG.SPARKLINE_WIDTH, height = C
       </defs>
       <polygon points={areaPoints} fill={`url(#spark-${color.replace('#', '')})`} />
       <polyline points={points} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-      <circle cx={width} cy={height - ((validData[validData.length-1] - min) / range) * height} r="2" fill={color} />
+      <circle cx={width} cy={height - ((validData[validData.length - 1] - min) / range) * height} r="2" fill={color} />
     </svg>
   );
 });
@@ -2024,7 +2079,7 @@ Sparkline.displayName = "Sparkline";
 const ProgressBar = React.memo(({ value, color, height = 6, showLabel = false, animated = true }) => {
   const v = Math.min(100, Math.max(0, parseFloat(value) || 0));
   const barColor = color || (v >= 100 ? '#10b981' : v > 50 ? '#f59e0b' : '#ef4444');
-  
+
   return (
     <div className="w-full">
       <div className="w-full bg-gray-200 rounded-full overflow-hidden" style={{ height }}>
@@ -2033,12 +2088,12 @@ const ProgressBar = React.memo(({ value, color, height = 6, showLabel = false, a
           style={{ width: `${v}%`, background: `linear-gradient(90deg, ${barColor}, ${barColor}dd)` }}
         >
           {animated && (
-            <div 
-              className="absolute inset-0 bg-white/30" 
-              style={{ 
+            <div
+              className="absolute inset-0 bg-white/30"
+              style={{
                 background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent)',
                 animation: 'shimmer 2s infinite'
-              }} 
+              }}
             />
           )}
         </div>
@@ -2055,16 +2110,16 @@ const ProgressRing = React.memo(({ value, size = 60, strokeWidth = 6, color, lab
   const circumference = 2 * Math.PI * radius;
   const offset = circumference - (v / 100) * circumference;
   const ringColor = color || (v >= 100 ? '#10b981' : v > 50 ? '#f59e0b' : '#ef4444');
-  
+
   return (
     <div className="relative inline-flex items-center justify-center" style={{ width: size, height: size }}>
       <svg width={size} height={size} className="-rotate-90">
-        <circle cx={size/2} cy={size/2} r={radius} stroke="#e5e7eb" strokeWidth={strokeWidth} fill="none" />
-        <circle 
-          cx={size/2} cy={size/2} r={radius} 
+        <circle cx={size / 2} cy={size / 2} r={radius} stroke="#e5e7eb" strokeWidth={strokeWidth} fill="none" />
+        <circle
+          cx={size / 2} cy={size / 2} r={radius}
           stroke={ringColor} strokeWidth={strokeWidth} fill="none"
           strokeDasharray={circumference} strokeDashoffset={offset} strokeLinecap="round"
-          style={{ transition: 'stroke-dashoffset 0.7s ease' }} 
+          style={{ transition: 'stroke-dashoffset 0.7s ease' }}
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
@@ -2088,12 +2143,12 @@ const DonutChart = React.memo(({ data, size = 200, thickness = 30 }) => {
     <div className="flex items-center gap-4">
       <div className="relative" style={{ width: size, height: size }}>
         <svg width={size} height={size} className="-rotate-90">
-          <circle cx={size/2} cy={size/2} r={radius} stroke="#e5e7eb" strokeWidth={thickness} fill="none" />
+          <circle cx={size / 2} cy={size / 2} r={radius} stroke="#e5e7eb" strokeWidth={thickness} fill="none" />
           {data.map((d, i) => {
             const pct = d.value / total;
             const dash = pct * circumference;
             const seg = (
-              <circle key={i} cx={size/2} cy={size/2} r={radius}
+              <circle key={i} cx={size / 2} cy={size / 2} r={radius}
                 stroke={colors[i % colors.length]} strokeWidth={thickness} fill="none"
                 strokeDasharray={`${dash} ${circumference - dash}`} strokeDashoffset={-offset}
                 style={{ transition: 'stroke-dasharray 0.5s ease' }} />
@@ -2112,7 +2167,7 @@ const DonutChart = React.memo(({ data, size = 200, thickness = 30 }) => {
           <div key={i} className="flex items-center gap-2 text-xs">
             <span className="w-3 h-3 rounded-sm" style={{ background: colors[i % colors.length] }} />
             <span className="font-medium truncate max-w-[120px]" title={d.label}>{d.label}</span>
-            <span className="text-gray-500">({((d.value/total)*100).toFixed(1)}%)</span>
+            <span className="text-gray-500">({((d.value / total) * 100).toFixed(1)}%)</span>
           </div>
         ))}
       </div>
@@ -2137,11 +2192,11 @@ const BarChartMini = React.memo(({ data, width = 300, height = 150 }) => {
               style={{ transition: 'all 0.5s ease' }}>
               <title>{d.label}: {d.value}</title>
             </rect>
-            <text x={x + barWidth/2} y={height - 8} textAnchor="middle" className="text-[9px] fill-gray-500">
+            <text x={x + barWidth / 2} y={height - 8} textAnchor="middle" className="text-[9px] fill-gray-500">
               {d.label.length > 8 ? d.label.slice(0, 8) + '…' : d.label}
             </text>
-            <text x={x + barWidth/2} y={y - 4} textAnchor="middle" className="text-[8px] fill-gray-700 font-bold">
-              {d.value > 999 ? `${(d.value/1000).toFixed(1)}k` : d.value}
+            <text x={x + barWidth / 2} y={y - 4} textAnchor="middle" className="text-[8px] fill-gray-700 font-bold">
+              {d.value > 999 ? `${(d.value / 1000).toFixed(1)}k` : d.value}
             </text>
           </g>
         );
@@ -2166,13 +2221,13 @@ const ExpandableSummaryCards = React.memo(({ data, onQuickView, onFilter }) => {
   const [modalData, setModalData] = useState([]);
   const [modalTitle, setModalTitle] = useState('');
   const [modalIcon, setModalIcon] = useState('');
-  
+
   // ===== REMOVE activeCategory state - we'll show ALL categories =====
   // const [activeCategory, setActiveCategory] = useState('customers');
 
   const summaryData = useMemo(() => {
     if (!data || data.length === 0) return {};
-    
+
     const categoryFieldMap = {
       customers: 'CustomerName',
       salesPersons: 'SalesPerson',
@@ -2181,13 +2236,13 @@ const ExpandableSummaryCards = React.memo(({ data, onQuickView, onFilter }) => {
       sections: 'Section',
       piCompanies: 'PICompany'
     };
-    
+
     const result = {};
-    
+
     Object.keys(categoryFieldMap).forEach(category => {
       const field = categoryFieldMap[category];
       const groupMap = new Map();
-      
+
       data.forEach(item => {
         const name = item[field] || 'Unknown';
         if (!groupMap.has(name)) {
@@ -2207,11 +2262,11 @@ const ExpandableSummaryCards = React.memo(({ data, onQuickView, onFilter }) => {
         if (parseFloat(item.completionRate) >= 100) group.completedOrders += 1;
         group.orders.push(item);
       });
-      
+
       result[category] = Array.from(groupMap.values())
         .sort((a, b) => b.totalValue - a.totalValue);
     });
-    
+
     return result;
   }, [data]);
 
@@ -2235,7 +2290,7 @@ const ExpandableSummaryCards = React.memo(({ data, onQuickView, onFilter }) => {
   // Check if any data exists
   const hasData = Object.values(summaryData).some(arr => arr && arr.length > 0);
   if (!hasData) return null;
-  
+
   return (
     <>
       {/* ===== CARDS DISPLAY - ALL CATEGORIES SIDE BY SIDE ===== */}
@@ -2245,11 +2300,11 @@ const ExpandableSummaryCards = React.memo(({ data, onQuickView, onFilter }) => {
           const config = categoryConfig[category];
           const displayItems = items.slice(0, CONFIG.TOP_ITEMS_COUNT);
           const hasMore = items.length > CONFIG.TOP_ITEMS_COUNT;
-          
+
           if (items.length === 0) return null;
-          
+
           return (
-            <div 
+            <div
               key={category}
               className="bg-white/95 backdrop-blur-sm rounded-xl shadow-sm p-3 border transition-all hover:shadow-md"
             >
@@ -2261,7 +2316,7 @@ const ExpandableSummaryCards = React.memo(({ data, onQuickView, onFilter }) => {
                   </span>
                 </h4>
                 {hasMore && (
-                  <button 
+                  <button
                     className="text-[10px] text-blue-500 font-medium hover:text-blue-700"
                     onClick={() => handleViewAll(category, items)}
                   >
@@ -2269,25 +2324,25 @@ const ExpandableSummaryCards = React.memo(({ data, onQuickView, onFilter }) => {
                   </button>
                 )}
               </div>
-              
+
               <div className="mt-1.5 space-y-1.5 max-h-[180px] overflow-y-auto pr-1">
                 {displayItems.map((item, idx) => (
-                  <div 
-                    key={`${category}-${item.name}-${idx}`} 
+                  <div
+                    key={`${category}-${item.name}-${idx}`}
                     className="flex items-center justify-between group hover:bg-gray-50 rounded px-1 py-0.5 cursor-pointer transition-colors"
-                    // onClick={() => {
-                    //   if (item.orders && item.orders.length > 0) {
-                    //     onQuickView(item.orders[0]);
-                    //   }
-                    // }}
+                  // onClick={() => {
+                  //   if (item.orders && item.orders.length > 0) {
+                  //     onQuickView(item.orders[0]);
+                  //   }
+                  // }}
                   >
                     <div className="flex items-center gap-2 flex-1 min-w-0">
                       <span className={cn(
                         'text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full flex-shrink-0',
-                        idx === 0 ? 'bg-yellow-400 text-yellow-900' : 
-                        idx === 1 ? 'bg-gray-300 text-gray-700' : 
-                        idx === 2 ? 'bg-orange-300 text-orange-900' : 
-                        'bg-blue-100 text-blue-700'
+                        idx === 0 ? 'bg-yellow-400 text-yellow-900' :
+                          idx === 1 ? 'bg-gray-300 text-gray-700' :
+                            idx === 2 ? 'bg-orange-300 text-orange-900' :
+                              'bg-blue-100 text-blue-700'
                       )}>
                         {idx + 1}
                       </span>
@@ -2328,17 +2383,17 @@ const ExpandableSummaryCards = React.memo(({ data, onQuickView, onFilter }) => {
                   {modalData.length} items found • Sorted by value
                 </p>
               </div>
-              <button 
+              <button
                 className="btn btn-ghost btn-sm btn-circle hover:bg-gray-200 text-lg"
                 onClick={() => setShowAllModal(false)}
               >
                 ✕
               </button>
             </div>
-            
+
             <div className="flex-1 overflow-y-auto p-4">
               {modalData.map((item, idx) => (
-                <div 
+                <div
                   key={`modal-${modalTitle}-${idx}`}
                   className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg border-b last:border-b-0 cursor-pointer transition-colors"
                 >
@@ -2359,7 +2414,7 @@ const ExpandableSummaryCards = React.memo(({ data, onQuickView, onFilter }) => {
                         {formatCurrency(item.totalValue)}
                       </div>
                       <div className="text-xs text-gray-500">
-                        {item.totalOrders > 0 
+                        {item.totalOrders > 0
                           ? `${Math.round((item.completedOrders / item.totalOrders) * 100)}% complete`
                           : 'No orders'
                         }
@@ -2369,10 +2424,10 @@ const ExpandableSummaryCards = React.memo(({ data, onQuickView, onFilter }) => {
                 </div>
               ))}
             </div>
-            
+
             <div className="p-3 border-t bg-gray-50 text-xs text-gray-500 flex justify-between">
               <span>Click any item to view order details</span>
-              <button 
+              <button
                 className="btn btn-xs btn-ghost text-red-500"
                 onClick={() => setShowAllModal(false)}
               >
@@ -2392,10 +2447,10 @@ ExpandableSummaryCards.displayName = "ExpandableSummaryCards";
 
 
 
-const PIMatchFilter = React.memo(({ 
-  availablePIs, 
-  selectedPIs, 
-  onToggle, 
+const PIMatchFilter = React.memo(({
+  availablePIs,
+  selectedPIs,
+  onToggle,
   onClear,
   data,
   label = "PI Match",
@@ -2405,12 +2460,12 @@ const PIMatchFilter = React.memo(({
   const [search, setSearch] = useState("");
   const dropdownRef = useRef(null);
   const buttonRef = useRef(null);
-  
+
   const multiPIOrders = useMemo(() => {
     if (!data || data.length === 0) return [];
     return data.filter(order => order.piCount > 1);
   }, [data]);
-  
+
   const allPIs = useMemo(() => {
     const piSet = new Set();
     multiPIOrders.forEach(order => {
@@ -2418,28 +2473,28 @@ const PIMatchFilter = React.memo(({
     });
     return [...piSet];
   }, [multiPIOrders]);
-  
+
   const filteredOrders = useMemo(() => {
     let list = multiPIOrders;
-    
+
     if (selectedPIs && selectedPIs.length > 0) {
-      list = list.filter(order => 
+      list = list.filter(order =>
         selectedPIs.every(pi => order.PIList.some(p => p.piNo === pi))
       );
     }
-    
+
     if (search && search.trim()) {
       const searchLower = search.toLowerCase().trim();
-      list = list.filter(order => 
+      list = list.filter(order =>
         order.WorkOrderNo.toLowerCase().includes(searchLower) ||
         order.CustomerName.toLowerCase().includes(searchLower) ||
         order.PIList.some(pi => pi.piNo.toLowerCase().includes(searchLower))
       );
     }
-    
+
     return list;
   }, [multiPIOrders, selectedPIs, search]);
-  
+
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current?.contains(event.target) || buttonRef.current?.contains(event.target)) return;
@@ -2448,7 +2503,7 @@ const PIMatchFilter = React.memo(({
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
-  
+
   const handleToggle = (pi) => {
     if (Array.isArray(pi)) {
       onToggle(pi);
@@ -2456,20 +2511,20 @@ const PIMatchFilter = React.memo(({
       onToggle(pi);
     }
   };
-  
+
   const handleSelectAll = () => {
     onToggle(allPIs);
   };
-  
+
   const handleClear = () => {
     onClear();
     setIsOpen(false);
   };
-  
+
   const handleClose = () => {
     setIsOpen(false);
   };
-  
+
   const handleAutoSelectMultiPIs = () => {
     const allMultiPIs = new Set();
     multiPIOrders.forEach(order => {
@@ -2479,7 +2534,7 @@ const PIMatchFilter = React.memo(({
     toast.success(`Selected ${allMultiPIs.size} PIs from ${multiPIOrders.length} multi-PI orders`);
     setIsOpen(false);
   };
-  
+
   const getOrderSelectionStatus = (order) => {
     if (!selectedPIs || selectedPIs.length === 0) return 'none';
     const hasAll = selectedPIs.every(pi => order.PIList.some(p => p.piNo === pi));
@@ -2488,13 +2543,13 @@ const PIMatchFilter = React.memo(({
     if (hasSome) return 'some';
     return 'none';
   };
-  
+
   return (
     <div className="relative">
       <button
         ref={buttonRef}
         data-pi-match
-        className={cn('btn btn-xs gap-1 transition-all', 
+        className={cn('btn btn-xs gap-1 transition-all',
           selectedPIs && selectedPIs.length > 0 ? 'btn-warning text-white' : 'btn-ghost bg-white/80 backdrop-blur-sm'
         )}
         onClick={() => setIsOpen(!isOpen)}
@@ -2509,28 +2564,28 @@ const PIMatchFilter = React.memo(({
         )}
         <span>{isOpen ? '▲' : '▼'}</span>
       </button>
-      
+
       {isOpen && (
-        <div 
+        <div
           ref={dropdownRef}
           className="absolute left-0 mt-1 bg-white shadow-xl rounded-xl p-3 w-[500px] z-50 border border-gray-200 max-h-[650px] flex flex-col"
         >
           <div className="flex justify-between items-center mb-2">
             <span className="font-semibold text-sm">📋 Multi-PI Orders</span>
             <div className="flex gap-1">
-              <button 
+              <button
                 className="text-[10px] text-blue-600 hover:text-blue-800 px-2 py-0.5 rounded hover:bg-blue-50"
                 onClick={handleSelectAll}
               >
                 Select All
               </button>
-              <button 
+              <button
                 className="text-[10px] text-red-500 hover:text-red-700 px-2 py-0.5 rounded hover:bg-red-50"
                 onClick={handleClear}
               >
                 Clear
               </button>
-              <button 
+              <button
                 className="text-[10px] text-gray-400 hover:text-gray-600 px-2 py-0.5 rounded hover:bg-gray-50"
                 onClick={handleClose}
               >
@@ -2538,7 +2593,7 @@ const PIMatchFilter = React.memo(({
               </button>
             </div>
           </div>
-          
+
           <div className="bg-blue-50 rounded-lg p-2 mb-2 text-xs">
             <div className="flex justify-between">
               <span>📊 <span className="font-medium">{multiPIOrders.length}</span> orders with multiple PIs</span>
@@ -2548,9 +2603,9 @@ const PIMatchFilter = React.memo(({
               )}
             </div>
           </div>
-          
+
           <div className="flex gap-1 mb-2">
-            <button 
+            <button
               className="btn btn-xs btn-success text-white flex-1"
               onClick={handleAutoSelectMultiPIs}
               disabled={multiPIOrders.length === 0}
@@ -2558,7 +2613,7 @@ const PIMatchFilter = React.memo(({
               ⚡ Auto Select All PIs
             </button>
           </div>
-          
+
           <div className="mb-2">
             <input
               type="text"
@@ -2568,7 +2623,7 @@ const PIMatchFilter = React.memo(({
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
-          
+
           <div className="text-[10px] text-gray-500 mb-2">
             {selectedPIs && selectedPIs.length > 0 ? (
               <span className="text-blue-600">
@@ -2578,14 +2633,14 @@ const PIMatchFilter = React.memo(({
               <span>Select PIs below to filter orders containing ALL selected PIs</span>
             )}
           </div>
-          
+
           {selectedPIs && selectedPIs.length > 0 && (
             <div className="mb-2 p-1.5 bg-gray-50 rounded border border-gray-200 max-h-[60px] overflow-y-auto">
               <div className="flex flex-wrap gap-1">
                 {selectedPIs.map(pi => (
                   <span key={pi} className="badge badge-xs badge-info gap-1">
                     {pi}
-                    <button 
+                    <button
                       className="ml-0.5 hover:text-red-500"
                       onClick={() => handleToggle(pi)}
                     >
@@ -2596,21 +2651,21 @@ const PIMatchFilter = React.memo(({
               </div>
             </div>
           )}
-          
+
           <div className="flex-1 overflow-y-auto max-h-[320px] space-y-2">
             {filteredOrders.length === 0 ? (
               <div className="text-center text-gray-400 text-xs py-8">
-                {selectedPIs && selectedPIs.length > 0 
-                  ? 'No multi-PI orders contain all selected PIs' 
+                {selectedPIs && selectedPIs.length > 0
+                  ? 'No multi-PI orders contain all selected PIs'
                   : 'No multi-PI orders found'}
               </div>
             ) : (
               filteredOrders.map((order, orderIndex) => {
                 const status = getOrderSelectionStatus(order);
                 const isHighlighted = status === 'all' || !selectedPIs || selectedPIs.length === 0;
-                
+
                 return (
-                  <div 
+                  <div
                     key={`${order.WorkOrderNo}-${orderIndex}`}
                     className={cn(
                       'p-3 rounded-lg border-2 transition-all',
@@ -2647,19 +2702,19 @@ const PIMatchFilter = React.memo(({
                         </div>
                       </div>
                     </div>
-                    
+
                     <div className="border-t border-gray-200 my-2"></div>
-                    
+
                     <div className="space-y-1.5">
                       {order.PIList.map((pi, piIndex) => {
                         const isSelected = selectedPIs && selectedPIs.includes(pi.piNo);
                         return (
-                          <div 
+                          <div
                             key={`${order.WorkOrderNo}-${pi.piNo}-${piIndex}`}
                             className={cn(
                               'flex items-center justify-between px-3 py-1.5 rounded-lg text-xs transition-all cursor-pointer',
-                              isSelected 
-                                ? 'bg-blue-200 border-l-4 border-blue-600' 
+                              isSelected
+                                ? 'bg-blue-200 border-l-4 border-blue-600'
                                 : 'bg-gray-100 border-l-4 border-transparent hover:bg-gray-200'
                             )}
                             onClick={() => handleToggle(pi.piNo)}
@@ -2701,7 +2756,7 @@ const PIMatchFilter = React.memo(({
               })
             )}
           </div>
-          
+
           <div className="mt-2 pt-2 border-t text-[10px] text-gray-400 flex justify-between items-center">
             <div>
               {selectedPIs && selectedPIs.length > 0 ? (
@@ -2710,7 +2765,7 @@ const PIMatchFilter = React.memo(({
                 <span>📊 {multiPIOrders.length} total multi-PI orders</span>
               )}
             </div>
-            <button 
+            <button
               className="btn btn-xs btn-ghost text-red-500"
               onClick={handleClose}
             >
@@ -2735,8 +2790,8 @@ const BackgroundGenerator = React.memo(({ children, theme, onBackgroundChange })
 
   const changeBackground = useCallback(() => {
     let newBg;
-    do { 
-      newBg = backgrounds[Math.floor(Math.random() * backgrounds.length)]; 
+    do {
+      newBg = backgrounds[Math.floor(Math.random() * backgrounds.length)];
     } while (newBg === currentBg && backgrounds.length > 1);
     setCurrentBg(newBg);
     onBackgroundChange?.(newBg);
@@ -2758,16 +2813,16 @@ const BackgroundGenerator = React.memo(({ children, theme, onBackgroundChange })
   }, [currentBg]);
 
   return (
-    <div 
+    <div
       className={cn('relative min-h-screen transition-all duration-1000 bg-gradient-to-br', currentBg.gradient, theme === 'dark' ? 'text-gray-100' : 'text-gray-800')}
-      onMouseEnter={() => setIsHovering(true)} 
+      onMouseEnter={() => setIsHovering(true)}
       onMouseLeave={() => setIsHovering(false)}
     >
       <div className={cn('absolute inset-0 opacity-5 pointer-events-none', patternClass)} />
       <div className={cn('fixed bottom-4 right-4 z-50 transition-opacity duration-300', isHovering ? 'opacity-100' : 'opacity-0')}>
-        <button 
+        <button
           className="btn btn-sm btn-primary text-white shadow-lg rounded-full w-12 h-12 flex items-center justify-center hover:scale-110 transition-transform"
-          onClick={changeBackground} 
+          onClick={changeBackground}
           title="Change Background"
         >
           🎨
@@ -2831,8 +2886,8 @@ const CommandPalette = React.memo(({ isOpen, onClose, commands }) => {
   const filteredCommands = useMemo(() => {
     if (!query) return commands;
     const lowerQuery = query.toLowerCase();
-    return commands.filter(c => 
-      c.label.toLowerCase().includes(lowerQuery) || 
+    return commands.filter(c =>
+      c.label.toLowerCase().includes(lowerQuery) ||
       c.category.toLowerCase().includes(lowerQuery) ||
       (c.shortcut && c.shortcut.toLowerCase().includes(lowerQuery))
     );
@@ -2841,18 +2896,18 @@ const CommandPalette = React.memo(({ isOpen, onClose, commands }) => {
   useEffect(() => setSelectedIndex(0), [query]);
 
   const handleKeyDown = useCallback((e) => {
-    if (e.key === 'ArrowDown') { 
-      e.preventDefault(); 
-      setSelectedIndex(i => Math.min(i + 1, filteredCommands.length - 1)); 
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setSelectedIndex(i => Math.min(i + 1, filteredCommands.length - 1));
     }
-    if (e.key === 'ArrowUp') { 
-      e.preventDefault(); 
-      setSelectedIndex(i => Math.max(i - 1, 0)); 
+    if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setSelectedIndex(i => Math.max(i - 1, 0));
     }
-    if (e.key === 'Enter' && filteredCommands[selectedIndex]) { 
-      e.preventDefault(); 
-      filteredCommands[selectedIndex].action(); 
-      onClose(); 
+    if (e.key === 'Enter' && filteredCommands[selectedIndex]) {
+      e.preventDefault();
+      filteredCommands[selectedIndex].action();
+      onClose();
     }
     if (e.key === 'Escape') onClose();
   }, [filteredCommands, selectedIndex, onClose]);
@@ -2864,14 +2919,14 @@ const CommandPalette = React.memo(({ isOpen, onClose, commands }) => {
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden" onClick={e => e.stopPropagation()}>
         <div className="flex items-center gap-2 px-4 py-3 border-b">
           <span className="text-gray-400">🔍</span>
-          <input 
-            ref={inputRef} 
-            type="text" 
-            placeholder="Type a command or search..." 
+          <input
+            ref={inputRef}
+            type="text"
+            placeholder="Type a command or search..."
             value={query}
-            onChange={e => setQuery(e.target.value)} 
+            onChange={e => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
-            className="flex-1 outline-none text-sm bg-transparent" 
+            className="flex-1 outline-none text-sm bg-transparent"
           />
           <kbd className="text-[10px] text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">ESC</kbd>
         </div>
@@ -2880,8 +2935,8 @@ const CommandPalette = React.memo(({ isOpen, onClose, commands }) => {
             <div className="p-8 text-center text-gray-400 text-sm">No commands found</div>
           ) : (
             filteredCommands.map((cmd, i) => (
-              <button 
-                key={i} 
+              <button
+                key={i}
                 className={cn('w-full flex items-center gap-3 px-4 py-2 text-left hover:bg-gray-50 transition-colors',
                   i === selectedIndex && 'bg-blue-50 border-l-4 border-blue-500'
                 )}
@@ -2914,7 +2969,7 @@ CommandPalette.displayName = "CommandPalette";
 
 const KeyboardShortcutsOverlay = React.memo(({ isOpen, onClose }) => {
   if (!isOpen) return null;
-  
+
   const shortcuts = [
     { keys: 'Ctrl+F', desc: 'Focus search bar' },
     { keys: 'Ctrl+K', desc: 'Open command palette' },
@@ -2926,7 +2981,7 @@ const KeyboardShortcutsOverlay = React.memo(({ isOpen, onClose }) => {
     { keys: 'ESC', desc: 'Close dialogs / Clear search' },
     { keys: '?', desc: 'Show this help' },
   ];
-  
+
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[99999] p-4 animate-fadeIn" onClick={onClose}>
       <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6" onClick={e => e.stopPropagation()}>
@@ -2973,23 +3028,23 @@ BulkActionsToolbar.displayName = "BulkActionsToolbar";
 const MultiSearchDropdown = React.memo(({ value, onChange, onClear, onSearch, totalMatches, isActive }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const textareaRef = useRef(null);
-  
-  const handleKeyDown = useCallback((e) => { 
-    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { 
-      e.preventDefault(); 
-      onSearch(); 
-    } 
+
+  const handleKeyDown = useCallback((e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+      e.preventDefault();
+      onSearch();
+    }
   }, [onSearch]);
-  
+
   const matchCount = value ? value.split(/[\n,;|]+/).filter(s => s.trim()).length : 0;
 
   return (
     <div className="relative">
-      <button 
-        className={cn('btn btn-xs gap-1 transition-all', 
+      <button
+        className={cn('btn btn-xs gap-1 transition-all',
           isActive || matchCount > 0 ? 'btn-warning text-white' : 'btn-ghost bg-white/80 backdrop-blur-sm'
         )}
-        onClick={() => setIsExpanded(!isExpanded)} 
+        onClick={() => setIsExpanded(!isExpanded)}
         title="Multi-search orders"
       >
         🔍 Multi-Search
@@ -3002,29 +3057,29 @@ const MultiSearchDropdown = React.memo(({ value, onChange, onClear, onSearch, to
             <span className="font-semibold text-xs">📋 Multi-Order Search</span>
             <div className="flex gap-1">
               {value?.trim() && (
-                <button 
-                  className="text-[10px] text-red-500 hover:text-red-700 px-2 py-0.5 rounded hover:bg-red-50" 
+                <button
+                  className="text-[10px] text-red-500 hover:text-red-700 px-2 py-0.5 rounded hover:bg-red-50"
                   onClick={() => { onChange(''); onClear?.(); }}
                 >
                   Clear
                 </button>
               )}
-              <button 
-                className="text-[10px] text-gray-400 hover:text-gray-600 px-2 py-0.5 rounded hover:bg-gray-50" 
+              <button
+                className="text-[10px] text-gray-400 hover:text-gray-600 px-2 py-0.5 rounded hover:bg-gray-50"
                 onClick={() => setIsExpanded(false)}
               >
                 ✕
               </button>
             </div>
           </div>
-          <textarea 
-            ref={textareaRef} 
-            value={value} 
-            onChange={e => onChange(e.target.value)} 
+          <textarea
+            ref={textareaRef}
+            value={value}
+            onChange={e => onChange(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Paste order numbers (one per line)..." 
-            className="textarea textarea-bordered w-full text-xs font-mono min-h-[120px] max-h-[200px] resize-y" 
-            autoFocus 
+            placeholder="Paste order numbers (one per line)..."
+            className="textarea textarea-bordered w-full text-xs font-mono min-h-[120px] max-h-[200px] resize-y"
+            autoFocus
           />
           <div className="flex justify-between items-center mt-2 text-[10px] text-gray-400">
             <span>{matchCount > 0 ? `${matchCount} items entered` : 'Paste order numbers'}</span>
@@ -3061,44 +3116,44 @@ const DeepThinking = React.memo(({ data, onInsight }) => {
 
   const generateInsights = useCallback(() => {
     if (isThinking || !hasData) return;
-    
+
     setIsThinking(true);
     setProgress(0);
     setCurrentStep('Initializing analysis...');
-    
+
     const controller = new AbortController();
     setAbortController(controller);
-    
+
     const steps = [
       { label: '📊 Analyzing data structure...', weight: 10 },
       { label: '📈 Processing metrics...', weight: 25 },
       { label: '🔍 Identifying patterns...', weight: 35 },
       { label: '🧠 Generating insights...', weight: 30 },
     ];
-    
+
     let stepIdx = 0;
     let currentProgress = 0;
-    
+
     const interval = setInterval(() => {
       if (controller.signal.aborted) {
         clearInterval(interval);
         return;
       }
-      
+
       if (stepIdx < steps.length) {
         const step = steps[stepIdx];
         currentProgress += step.weight;
         setProgress(Math.min(100, currentProgress));
         setCurrentStep(step.label);
         stepIdx++;
-        
+
         if (stepIdx >= steps.length) {
           clearInterval(interval);
           completeAnalysis();
         }
       }
     }, 600);
-    
+
     const completeAnalysis = () => {
       try {
         const insights = [];
@@ -3107,77 +3162,77 @@ const DeepThinking = React.memo(({ data, onInsight }) => {
         const totalQty = data.reduce((s, d) => s + Number(d.TotalQty || 0), 0);
         const totalChallanQty = data.reduce((s, d) => s + Number(d.ChallanQTY || 0), 0);
         const completionRate = totalQty > 0 ? (totalChallanQty / totalQty) * 100 : 0;
-        
+
         if (completionRate < 50) {
-          insights.push({ 
-            icon: '⚠️', 
-            title: 'Low Overall Completion', 
-            description: `Only ${completionRate.toFixed(1)}% delivered. Prioritize pending orders.`, 
-            priority: 'critical' 
+          insights.push({
+            icon: '⚠️',
+            title: 'Low Overall Completion',
+            description: `Only ${completionRate.toFixed(1)}% delivered. Prioritize pending orders.`,
+            priority: 'critical'
           });
         } else if (completionRate < 80) {
-          insights.push({ 
-            icon: '📊', 
-            title: 'Moderate Completion', 
-            description: `${completionRate.toFixed(1)}% completion. Focus on pending orders.`, 
-            priority: 'high' 
+          insights.push({
+            icon: '📊',
+            title: 'Moderate Completion',
+            description: `${completionRate.toFixed(1)}% completion. Focus on pending orders.`,
+            priority: 'high'
           });
         } else {
-          insights.push({ 
-            icon: '✅', 
-            title: 'High Completion Rate', 
-            description: `${completionRate.toFixed(1)}% achieved. Excellent!`, 
-            priority: 'low' 
+          insights.push({
+            icon: '✅',
+            title: 'High Completion Rate',
+            description: `${completionRate.toFixed(1)}% achieved. Excellent!`,
+            priority: 'low'
           });
         }
-        
+
         const multiPIOrders = data.filter(d => d.piCount > 1);
         if (multiPIOrders.length > 0) {
           insights.push({
             icon: '📋',
             title: 'Multi-PI Orders',
-            description: `${multiPIOrders.length} orders with multiple PIs. Avg: ${(multiPIOrders.reduce((s,d) => s + d.piCount, 0) / multiPIOrders.length).toFixed(1)} PIs/order`,
+            description: `${multiPIOrders.length} orders with multiple PIs. Avg: ${(multiPIOrders.reduce((s, d) => s + d.piCount, 0) / multiPIOrders.length).toFixed(1)} PIs/order`,
             priority: 'medium'
           });
         }
-        
+
         const customerMap = new Map();
-        data.forEach(d => { 
-          const n = d.CustomerName || "Unknown"; 
-          customerMap.set(n, { 
-            value: (customerMap.get(n)?.value || 0) + Number(d.TotalValue || 0), 
-            count: (customerMap.get(n)?.count || 0) + 1 
-          }); 
+        data.forEach(d => {
+          const n = d.CustomerName || "Unknown";
+          customerMap.set(n, {
+            value: (customerMap.get(n)?.value || 0) + Number(d.TotalValue || 0),
+            count: (customerMap.get(n)?.count || 0) + 1
+          });
         });
         const topCustomer = [...customerMap.entries()].sort((a, b) => b[1].value - a[1].value)[0];
         if (topCustomer) {
-          insights.push({ 
-            icon: '🏆', 
-            title: 'Top Customer', 
-            description: `${topCustomer[0]}: ${topCustomer[1].count} orders, ${formatCurrency(topCustomer[1].value)}.`, 
-            priority: 'medium' 
+          insights.push({
+            icon: '🏆',
+            title: 'Top Customer',
+            description: `${topCustomer[0]}: ${topCustomer[1].count} orders, ${formatCurrency(topCustomer[1].value)}.`,
+            priority: 'medium'
           });
         }
-        
+
         const pendingOrders = data.filter(d => parseFloat(d.completionRate) < 50);
         if (pendingOrders.length > 0) {
-          insights.push({ 
-            icon: '📋', 
-            title: 'Pending Orders', 
-            description: `${pendingOrders.length} orders <50% completion.`, 
-            priority: 'high' 
+          insights.push({
+            icon: '📋',
+            title: 'Pending Orders',
+            description: `${pendingOrders.length} orders <50% completion.`,
+            priority: 'high'
           });
         }
-        
+
         if (totalValue > 1000000) {
-          insights.push({ 
-            icon: '💰', 
-            title: 'High Value Volume', 
-            description: `Total exceeds $1M (${formatCurrency(totalValue)}).`, 
-            priority: 'high' 
+          insights.push({
+            icon: '💰',
+            title: 'High Value Volume',
+            description: `Total exceeds $1M (${formatCurrency(totalValue)}).`,
+            priority: 'high'
           });
         }
-        
+
         onInsight?.(insights);
         toast.success(`🧠 ${insights.length} insights generated!`);
         setIsThinking(false);
@@ -3201,24 +3256,24 @@ const DeepThinking = React.memo(({ data, onInsight }) => {
     };
   }, [abortController]);
 
-  const status = isThinking 
+  const status = isThinking
     ? { text: '🧠 Thinking...', color: 'btn-warning', disabled: true }
-    : !hasData 
-    ? { text: '🔒 No Data', color: 'btn-disabled', disabled: true }
-    : { text: '🤔 Deep Think', color: 'btn-primary', disabled: false };
+    : !hasData
+      ? { text: '🔒 No Data', color: 'btn-disabled', disabled: true }
+      : { text: '🤔 Deep Think', color: 'btn-primary', disabled: false };
 
   return (
     <div className="relative">
-      <button 
-        ref={buttonRef} 
+      <button
+        ref={buttonRef}
         className={cn('btn btn-xs gap-1 text-white transition-all', status.color, isThinking && 'animate-pulse')}
-        onClick={() => { 
-          if (!isThinking && hasData) { 
-            generateInsights(); 
-          } 
+        onClick={() => {
+          if (!isThinking && hasData) {
+            generateInsights();
+          }
         }}
-        disabled={status.disabled} 
-        title={!hasData ? "No data" : "Deep Think - AI Analysis"} 
+        disabled={status.disabled}
+        title={!hasData ? "No data" : "Deep Think - AI Analysis"}
         data-deep-think
       >
         {status.text}
@@ -3233,7 +3288,7 @@ const DeepThinking = React.memo(({ data, onInsight }) => {
           </span>
         )}
       </button>
-      
+
       {isThinking && currentStep && (
         <div className="absolute left-0 mt-1 bg-white shadow-xl rounded-lg p-2 w-64 z-50 border border-gray-200 text-xs">
           <div className="flex items-center gap-2">
@@ -3241,7 +3296,7 @@ const DeepThinking = React.memo(({ data, onInsight }) => {
             <span className="text-gray-700">{currentStep}</span>
           </div>
           <div className="mt-2 bg-gray-200 rounded-full h-1.5 overflow-hidden">
-            <div 
+            <div
               className="bg-blue-500 h-full transition-all duration-500"
               style={{ width: `${progress}%` }}
             />
@@ -3266,7 +3321,7 @@ const QuickViewModal = React.memo(({ item, isOpen, onClose }) => {
   useEffect(() => setActiveTab('overview'), [item]);
 
   if (!isOpen || !item) return null;
-  
+
   const tabs = [
     { id: 'overview', label: 'Overview', icon: '📋' },
     { id: 'quantities', label: 'Quantities', icon: '📊' },
@@ -3301,10 +3356,10 @@ const QuickViewModal = React.memo(({ item, isOpen, onClose }) => {
             <p className="text-sm opacity-90 truncate">
               {item.CustomerName} • {formatDate(item.OrderReceiveDate)}
               {order.SalesPerson && order.SalesPerson !== 'Unknown' && (
-  <span className="ml-2 inline-flex items-center gap-1 bg-white/20 px-2 py-0.5 rounded-full text-xs">
-    👤 {order.SalesPerson}
-  </span>
-)}
+                <span className="ml-2 inline-flex items-center gap-1 bg-white/20 px-2 py-0.5 rounded-full text-xs">
+                  👤 {order.SalesPerson}
+                </span>
+              )}
               {item.piCount > 1 && (
                 <span className="ml-2 inline-flex items-center gap-1 bg-white/20 px-2 py-0.5 rounded-full text-xs">
                   📋 {item.piCount} PIs
@@ -3317,7 +3372,7 @@ const QuickViewModal = React.memo(({ item, isOpen, onClose }) => {
               )}
             </p>
           </div>
-          <button 
+          <button
             className="ml-4 p-1.5 rounded-lg hover:bg-white/20 transition-colors flex-shrink-0"
             onClick={onClose}
           >
@@ -3330,12 +3385,12 @@ const QuickViewModal = React.memo(({ item, isOpen, onClose }) => {
         {/* Tabs */}
         <div className="flex border-b bg-gray-50/80 overflow-x-auto px-4 gap-1">
           {tabs.map(tab => (
-            <button 
-              key={tab.id} 
+            <button
+              key={tab.id}
               className={cn(
                 'px-4 py-3 text-sm font-medium border-b-2 transition-all whitespace-nowrap flex items-center gap-2',
-                activeTab === tab.id 
-                  ? 'border-blue-500 text-blue-600 bg-white -mb-px rounded-t-lg' 
+                activeTab === tab.id
+                  ? 'border-blue-500 text-blue-600 bg-white -mb-px rounded-t-lg'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               )}
               onClick={() => setActiveTab(tab.id)}
@@ -3368,10 +3423,10 @@ const QuickViewModal = React.memo(({ item, isOpen, onClose }) => {
                   <div className="relative w-20 h-20">
                     <svg className="w-20 h-20 -rotate-90">
                       <circle cx="40" cy="40" r="32" stroke="#e5e7eb" strokeWidth="6" fill="none" />
-                      <circle 
-                        cx="40" cy="40" r="32" 
+                      <circle
+                        cx="40" cy="40" r="32"
                         stroke={parseFloat(item.completionRate) >= 100 ? '#10b981' : parseFloat(item.completionRate) > 50 ? '#f59e0b' : '#ef4444'}
-                        strokeWidth="6" 
+                        strokeWidth="6"
                         fill="none"
                         strokeDasharray={`${2 * Math.PI * 32 * (parseFloat(item.completionRate) / 100)} ${2 * Math.PI * 32}`}
                         strokeLinecap="round"
@@ -3438,7 +3493,7 @@ const QuickViewModal = React.memo(({ item, isOpen, onClose }) => {
                   </div>
                 ))}
               </div>
-              
+
               <div className="bg-white p-4 rounded-xl border">
                 <div className="text-sm font-medium mb-3">Progress Trend</div>
                 <div className="h-16 flex items-end gap-1">
@@ -3447,7 +3502,7 @@ const QuickViewModal = React.memo(({ item, isOpen, onClose }) => {
                     const height = max > 0 ? (val / max) * 100 : 0;
                     return (
                       <div key={idx} className="flex-1 flex flex-col items-center gap-1">
-                        <div 
+                        <div
                           className="w-full bg-blue-500 rounded-sm transition-all duration-500"
                           style={{ height: `${Math.max(5, height)}%`, minHeight: '4px' }}
                         />
@@ -3475,7 +3530,7 @@ const QuickViewModal = React.memo(({ item, isOpen, onClose }) => {
                   </div>
                 ))}
               </div>
-              
+
               <div className="bg-white p-4 rounded-xl border">
                 <div className="text-sm font-medium mb-3">Value Distribution</div>
                 <div className="space-y-3">
@@ -3487,11 +3542,11 @@ const QuickViewModal = React.memo(({ item, isOpen, onClose }) => {
                       </span>
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden flex">
-                      <div 
+                      <div
                         className="bg-green-500 h-full transition-all duration-700"
                         style={{ width: `${(item.ChallanValue / (item.TotalValue || 1)) * 100}%` }}
                       />
-                      <div 
+                      <div
                         className="bg-red-400 h-full transition-all duration-700"
                         style={{ width: `${(item.BalanceValue / (item.TotalValue || 1)) * 100}%` }}
                       />
@@ -3518,10 +3573,10 @@ const QuickViewModal = React.memo(({ item, isOpen, onClose }) => {
                           <span className={cn(
                             'px-2 py-0.5 rounded-full text-[10px] font-medium',
                             ch.status === 'Challan Received' ? 'bg-green-100 text-green-700' :
-                            ch.status === 'Send to Gate' ? 'bg-yellow-100 text-yellow-700' :
-                            ch.status === 'Delivered' ? 'bg-blue-100 text-blue-700' :
-                            ch.status === 'Gate Out' ? 'bg-red-100 text-red-700' :
-                            'bg-gray-100 text-gray-600'
+                              ch.status === 'Send to Gate' ? 'bg-yellow-100 text-yellow-700' :
+                                ch.status === 'Delivered' ? 'bg-blue-100 text-blue-700' :
+                                  ch.status === 'Gate Out' ? 'bg-red-100 text-red-700' :
+                                    'bg-gray-100 text-gray-600'
                           )}>
                             {ch.status || 'Unknown'}
                           </span>
@@ -3656,7 +3711,7 @@ const QuickViewModal = React.memo(({ item, isOpen, onClose }) => {
           <div className="text-xs text-gray-500">
             Order ID: {item.WorkOrderNo}
           </div>
-          <button 
+          <button
             className="btn btn-ghost btn-sm text-gray-500 hover:text-gray-700"
             onClick={onClose}
           >
@@ -3692,10 +3747,10 @@ const ProfessionalFilterDropdown = React.memo(({ label, open, setOpen, items, se
             <span className="font-semibold text-[10px]">{label} Filter</span>
             <div className="flex gap-1">
               <button className="text-[15px] text-blue-600 hover:text-blue-800 font-medium bg-gray-100 px-2 py-0.5 rounded" onClick={handleSelectAll}>{selectAll ? 'Deselect' : 'All'}</button>
-              <button className="text-[15px] text-red-600 hover:text-red-800 font-medium bg-gray-100 px-2 py-0.5 rounded" onClick={() => {onToggle([]); setSearchValue("");}}>Clear</button>
+              <button className="text-[15px] text-red-600 hover:text-red-800 font-medium bg-gray-100 px-2 py-0.5 rounded" onClick={() => { onToggle([]); setSearchValue(""); }}>Clear</button>
             </div>
           </div>
-          <input id="search"  type="text" placeholder={placeholder} className="input input-xs w-full mb-2" value={searchValue} onChange={e => setSearchValue(e.target.value)} />
+          <input id="search" type="text" placeholder={placeholder} className="input input-xs w-full mb-2" value={searchValue} onChange={e => setSearchValue(e.target.value)} />
           <div className="space-y-0.5 max-h-40 overflow-y-auto">
             {items.length === 0 ? <div className="text-gray-400 text-[10px] text-center py-2">No items</div> :
               items.map(item => (
@@ -3716,13 +3771,12 @@ ProfessionalFilterDropdown.displayName = "ProfessionalFilterDropdown";
 // ============================================================
 // COMPONENT: ENHANCED CHALLAN CELL - FIXED STATE CLOSURE
 // ============================================================
-
-const EnhancedChallanCell = React.memo(({ 
-  challanNo, 
-  cndata, 
-  apiKey, 
+const EnhancedChallanCell = React.memo(({
+  challanNo,
+  cndata,
+  apiKey,
   workOrderNo,
-  onChallanClick   
+  onChallanClick
 }) => {
   const [expanded, setExpanded] = useState(false);
   const [attachmentCache, setAttachmentCache] = useState({});
@@ -3730,15 +3784,15 @@ const EnhancedChallanCell = React.memo(({
   const [isLoadingAll, setIsLoadingAll] = useState(false);
   const [isDownloadingAll, setIsDownloadingAll] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState(0);
-  
+
   // Safety check
   if (!challanNo || !Array.isArray(challanNo) || challanNo.length === 0) {
     return <div className="text-gray-400 text-[10px] text-center py-2 opacity-50">No Challan</div>;
   }
-  
+
   const displayed = expanded ? challanNo : challanNo.slice(0, CONFIG.MAX_CHALLAN_DISPLAY);
   const hasMore = challanNo.length > CONFIG.MAX_CHALLAN_DISPLAY;
-  
+
   const statusColors = {
     'Challan Received': 'bg-green-50 text-green-700 border-green-200',
     'Send to Gate': 'bg-yellow-50 text-yellow-700 border-yellow-200',
@@ -3748,43 +3802,50 @@ const EnhancedChallanCell = React.memo(({
     'Pending': 'bg-orange-50 text-orange-700 border-orange-200',
     'Unknown': 'bg-gray-50 text-gray-600 border-gray-200'
   };
-  
+
   const handleCopy = () => {
-    const textToCopy = challanNo.map(function(c) { 
-      return (c.challanNo || 'N/A') + ' (' + (c.status || 'Unknown') + ')' + (c.hasAttachments ? ' 📎' : ''); 
+    const textToCopy = challanNo.map(function (c) {
+      const details = getChallanDetails(c.challanNo);
+      let text = (c.challanNo || 'N/A') + ' (' + (c.status || 'Unknown') + ')';
+      if (details.qty > 0) {
+        text += ' || Challan QTY (' + details.qty + ')';
+      }
+      if (details.value > 0) {
+        text += ' || Challan Value ($' + details.value.toFixed(2) + ')';
+      }
+      return text;
     }).join("\n");
-    
+
     navigator.clipboard.writeText(textToCopy)
-      .then(function() { toast.success("Challans copied!"); })
-      .catch(function() { toast.error("Copy failed"); });
+      .then(function () { toast.success("Challans copied!"); })
+      .catch(function () { toast.error("Copy failed"); });
   };
 
   // ===== FETCH ATTACHMENTS FOR A SPECIFIC CHALLAN =====
-  const fetchAttachmentsForChallan = useCallback(async function(challanId, deliveryChallanID) {
+  const fetchAttachmentsForChallan = useCallback(async function (challanId, deliveryChallanID) {
     if (!deliveryChallanID) return [];
     if (attachmentCache[challanId]) return attachmentCache[challanId];
-    
-    setLoadingAttachments(function(prev) {
+
+    setLoadingAttachments(function (prev) {
       var newState = Object.assign({}, prev);
       newState[challanId] = true;
       return newState;
     });
-    
+
     try {
       var response = await axios.get(
         'https://tpl-api.ebs365.info/api/File?ReferenceDocNameID=52&ReferenceDocID=' + deliveryChallanID,
         { headers: { Authorization: apiKey } }
       );
-      
+
       var attachments = response.data || [];
-      
-      // Update cache with new attachments
-      setAttachmentCache(function(prev) {
+
+      setAttachmentCache(function (prev) {
         var newState = Object.assign({}, prev);
         newState[challanId] = attachments;
         return newState;
       });
-      
+
       if (attachments.length > 0) {
         console.log('✅ Found ' + attachments.length + ' attachments for challan ' + challanId);
       }
@@ -3793,7 +3854,7 @@ const EnhancedChallanCell = React.memo(({
       console.error('Error fetching attachments for ' + challanId + ':', error);
       return [];
     } finally {
-      setLoadingAttachments(function(prev) {
+      setLoadingAttachments(function (prev) {
         var newState = Object.assign({}, prev);
         newState[challanId] = false;
         return newState;
@@ -3801,31 +3862,148 @@ const EnhancedChallanCell = React.memo(({
     }
   }, [apiKey, attachmentCache]);
 
-  // ===== CHECK ALL CHALLANS FOR ATTACHMENTS - FIXED =====
-  const checkAllChallansForAttachments = useCallback(async function() {
+  // ===== GET CHALLAN DETAILS (QTY & VALUE) - FIXED =====
+  const getChallanDetails = useCallback((challanId) => {
+    // ===== FIRST CHECK MERGED CHALLAN MAP =====
+    const mergedChallanMap = cndata?.mergedChallanMap || {};
+
+    console.log('🔍 Looking for challan:', challanId);
+    console.log('📊 mergedChallanMap keys:', Object.keys(mergedChallanMap));
+
+    let challanData = mergedChallanMap[challanId];
+
+    // Try case-insensitive match in mergedChallanMap
+    if (!challanData) {
+      const lowerChallanId = challanId.toLowerCase();
+      const matchedKey = Object.keys(mergedChallanMap).find(key =>
+        key.toLowerCase() === lowerChallanId
+      );
+      if (matchedKey) {
+        challanData = mergedChallanMap[matchedKey];
+        console.log('✅ Found challan data via case-insensitive match in mergedChallanMap:', challanData);
+      }
+    }
+
+    // Try partial match in mergedChallanMap
+    if (!challanData) {
+      const matchedKey = Object.keys(mergedChallanMap).find(key =>
+        key.includes(challanId) || challanId.includes(key)
+      );
+      if (matchedKey) {
+        challanData = mergedChallanMap[matchedKey];
+        console.log('✅ Found challan data via partial match in mergedChallanMap:', challanData);
+      }
+    }
+
+    // If found in merged map, return immediately
+    if (challanData) {
+      console.log('✅ Found challan data in mergedChallanMap:', challanData);
+      return {
+        qty: challanData?.challanQty || 0,
+        value: challanData?.totalChallanValue || 0,
+        status: challanData?.statusDesc || 'Unknown'
+      };
+    }
+
+    // ===== FALLBACK: Try challanReceiveMap =====
+    const challanReceiveMap = cndata?.challanReceiveMap || {};
+    console.log('📊 challanReceiveMap keys:', Object.keys(challanReceiveMap));
+
+    // Try direct match
+    challanData = challanReceiveMap[challanId];
+
+    // If not found, try case-insensitive match
+    if (!challanData) {
+      const lowerChallanId = challanId.toLowerCase();
+      const matchedKey = Object.keys(challanReceiveMap).find(key =>
+        key.toLowerCase() === lowerChallanId
+      );
+      if (matchedKey) {
+        challanData = challanReceiveMap[matchedKey];
+        console.log('✅ Found challan data via case-insensitive match in challanReceiveMap:', challanData);
+      }
+    }
+
+    // If still not found, try partial match
+    if (!challanData) {
+      const matchedKey = Object.keys(challanReceiveMap).find(key =>
+        key.includes(challanId) || challanId.includes(key)
+      );
+      if (matchedKey) {
+        challanData = challanReceiveMap[matchedKey];
+        console.log('✅ Found challan data via partial match in challanReceiveMap:', challanData);
+      }
+    }
+
+    // ===== FALLBACK: Try grupChallan =====
+    if (!challanData && cndata?.grupChallan) {
+      console.log('📊 Checking grupChallan for:', challanId);
+      const found = cndata.grupChallan.find(c =>
+        c.challanNo === challanId || c.challanNo?.includes(challanId)
+      );
+      if (found) {
+        challanData = found;
+        console.log('✅ Found challan data from grupChallan:', found);
+      }
+    }
+
+    // ===== FINAL FALLBACK: Check if this challan exists in the order data =====
+    if (!challanData) {
+      console.log('📊 Searching in apiData for challan:', challanId);
+      const apiData = cndata?.apiData || [];
+      for (const item of apiData) {
+        if (item.ChallanNo) {
+          const challans = item.ChallanNo.split(",").map(c => c.trim());
+          if (challans.includes(challanId)) {
+            // Found the challan in order data, use its qty and value
+            challanData = {
+              challanQty: Number(item.ChallanQTY) || 0,
+              totalChallanValue: Number(item.ChallanValue) || 0,
+              statusDesc: ch.status || 'Unknown'
+            };
+            console.log('✅ Found challan data from apiData:', challanData);
+            break;
+          }
+        }
+      }
+    }
+
+    // If still no data, log warning
+    if (!challanData) {
+      console.warn('⚠️ No data found for challan:', challanId);
+    }
+
+    return {
+      qty: challanData?.challanQty || 0,
+      value: challanData?.totalChallanValue || 0,
+      status: challanData?.statusDesc || 'Unknown'
+    };
+  }, [cndata]);
+
+  // ===== CHECK ALL CHALLANS FOR ATTACHMENTS =====
+  const checkAllChallansForAttachments = useCallback(async function () {
     var challanReceiveMap = cndata?.challanReceiveMap || {};
     var foundAny = false;
     var allAttachments = {};
-    
+
     setIsLoadingAll(true);
-    
+
     for (var idx = 0; idx < challanNo.length; idx++) {
       var ch = challanNo[idx];
       var challanId = ch.challanNo;
-      
+
       if (!challanId) continue;
-      
-      // Check if already have attachments cached
+
       var cached = attachmentCache[challanId];
       if (cached && Array.isArray(cached) && cached.length > 0) {
         foundAny = true;
         allAttachments[challanId] = cached;
         continue;
       }
-      
+
       var challanData = challanReceiveMap[challanId];
       var deliveryChallanID = challanData?.deliveryChallanID || ch.deliveryChallanID;
-      
+
       if (deliveryChallanID) {
         var attachments = await fetchAttachmentsForChallan(challanId, deliveryChallanID);
         if (attachments && Array.isArray(attachments) && attachments.length > 0) {
@@ -3835,20 +4013,20 @@ const EnhancedChallanCell = React.memo(({
         }
       }
     }
-    
+
     setIsLoadingAll(false);
     return { found: foundAny, attachments: allAttachments };
   }, [challanNo, cndata, attachmentCache, fetchAttachmentsForChallan]);
 
   // ===== DOWNLOAD SINGLE ATTACHMENT =====
-  const downloadAttachment = useCallback(async function(attachment, e) {
+  const downloadAttachment = useCallback(async function (attachment, e) {
     e.stopPropagation();
-    
+
     if (!attachment || !attachment.documentPath) {
       toast.error('No document path available');
       return;
     }
-    
+
     try {
       var response = await fetch(attachment.documentPath, {
         method: 'GET',
@@ -3872,11 +4050,11 @@ const EnhancedChallanCell = React.memo(({
       link.download = finalFileName;
       document.body.appendChild(link);
       link.click();
-      setTimeout(function() {
+      setTimeout(function () {
         document.body.removeChild(link);
         window.URL.revokeObjectURL(url);
       }, 100);
-      
+
       toast.success('Downloaded: ' + fileName);
     } catch (error) {
       console.error('Download error:', error);
@@ -3890,16 +4068,16 @@ const EnhancedChallanCell = React.memo(({
   }, [apiKey, workOrderNo]);
 
   // ===== DOWNLOAD ALL ATTACHMENTS FOR A CHALLAN =====
-  const downloadAllAttachmentsForChallan = useCallback(async function(challanId, attachments, e) {
+  const downloadAllAttachmentsForChallan = useCallback(async function (challanId, attachments, e) {
     e.stopPropagation();
-    
+
     if (!attachments || !Array.isArray(attachments) || attachments.length === 0) {
       toast.warning('No attachments to download for ' + challanId);
       return;
     }
-    
+
     toast.info('Downloading ' + attachments.length + ' attachment(s) for ' + challanId + '...');
-    
+
     var successCount = 0;
     for (var i = 0; i < attachments.length; i++) {
       var attachment = attachments[i];
@@ -3926,11 +4104,11 @@ const EnhancedChallanCell = React.memo(({
         link.download = finalFileName;
         document.body.appendChild(link);
         link.click();
-        setTimeout(function() {
+        setTimeout(function () {
           document.body.removeChild(link);
           window.URL.revokeObjectURL(url);
         }, 100);
-        
+
         successCount++;
         toast.info('Downloaded ' + (i + 1) + '/' + attachments.length + ': ' + fileName);
       } catch (error) {
@@ -3941,10 +4119,10 @@ const EnhancedChallanCell = React.memo(({
           successCount++;
         }
       }
-      
-      await new Promise(function(resolve) { setTimeout(resolve, 500); });
+
+      await new Promise(function (resolve) { setTimeout(resolve, 500); });
     }
-    
+
     if (successCount > 0) {
       toast.success('✅ Downloaded ' + successCount + '/' + attachments.length + ' attachments for ' + challanId);
     } else {
@@ -3952,92 +4130,85 @@ const EnhancedChallanCell = React.memo(({
     }
   }, [apiKey, workOrderNo]);
 
-  // ===== HANDLE "ALL" BUTTON - FIXED =====
-  const handleDownloadAll = useCallback(async function(e) {
+  // ===== HANDLE "ALL" BUTTON =====
+  const handleDownloadAll = useCallback(async function (e) {
     e.stopPropagation();
     setIsDownloadingAll(true);
     setDownloadProgress(0);
-    
-    // Safety check
+
     if (!challanNo || !Array.isArray(challanNo) || challanNo.length === 0) {
       toast.warning('No challans to download');
       setIsDownloadingAll(false);
       return;
     }
-    
+
     toast.info('Checking all challans for attachments...');
-    
-    // Check all challans and get attachments
+
     var result = await checkAllChallansForAttachments();
-    
+
     if (!result.found) {
       toast.warning('No attachments found for any challan');
       setIsDownloadingAll(false);
       return;
     }
-    
-    // Get all attachments from the result
+
     var allAttachments = [];
     var totalFiles = 0;
     var attachmentKeys = Object.keys(result.attachments);
-    
+
     for (var idx = 0; idx < attachmentKeys.length; idx++) {
       var challanId = attachmentKeys[idx];
       var attachments = result.attachments[challanId];
       if (attachments && Array.isArray(attachments) && attachments.length > 0) {
-        allAttachments.push({ 
-          challanNo: challanId, 
-          attachments: attachments 
+        allAttachments.push({
+          challanNo: challanId,
+          attachments: attachments
         });
         totalFiles += attachments.length;
       }
     }
-    
-    // Also check the current attachmentCache for any attachments that might have been loaded
-    // but not returned in the result (this handles the case where attachments were already cached)
+
     for (var cIdx = 0; cIdx < challanNo.length; cIdx++) {
       var ch = challanNo[cIdx];
       var challanId = ch.challanNo;
       if (!challanId) continue;
-      
-      // Check if this challan has attachments in cache but wasn't in the result
+
       var cached = attachmentCache[challanId];
       if (cached && Array.isArray(cached) && cached.length > 0) {
-        // Check if already added
-        var alreadyAdded = allAttachments.some(function(item) { 
-          return item.challanNo === challanId; 
+        var alreadyAdded = allAttachments.some(function (item) {
+          return item.challanNo === challanId;
         });
         if (!alreadyAdded) {
-          allAttachments.push({ 
-            challanNo: challanId, 
-            attachments: cached 
+          allAttachments.push({
+            challanNo: challanId,
+            attachments: cached
           });
           totalFiles += cached.length;
         }
       }
     }
-    
+
     if (totalFiles === 0) {
       toast.warning('No attachments found for any challan');
       setIsDownloadingAll(false);
       return;
     }
-    
+
     toast.info('Downloading ' + totalFiles + ' attachments from ' + allAttachments.length + ' challans...');
-    
+
     var successCount = 0;
     var fileIndex = 0;
-    
+
     for (var aIdx = 0; aIdx < allAttachments.length; aIdx++) {
       var item = allAttachments[aIdx];
       var challanId = item.challanNo;
       var attachments = item.attachments;
-      
+
       for (var fIdx = 0; fIdx < attachments.length; fIdx++) {
         var attachment = attachments[fIdx];
         fileIndex++;
         setDownloadProgress(Math.round((fileIndex / totalFiles) * 100));
-        
+
         try {
           var response = await fetch(attachment.documentPath, {
             method: 'GET',
@@ -4061,11 +4232,11 @@ const EnhancedChallanCell = React.memo(({
           link.download = finalFileName;
           document.body.appendChild(link);
           link.click();
-          setTimeout(function() {
+          setTimeout(function () {
             document.body.removeChild(link);
             window.URL.revokeObjectURL(url);
           }, 100);
-          
+
           successCount++;
           toast.info('Downloaded ' + fileIndex + '/' + totalFiles + ': ' + fileName);
         } catch (error) {
@@ -4076,14 +4247,14 @@ const EnhancedChallanCell = React.memo(({
             successCount++;
           }
         }
-        
-        await new Promise(function(resolve) { setTimeout(resolve, 400); });
+
+        await new Promise(function (resolve) { setTimeout(resolve, 400); });
       }
     }
-    
+
     setIsDownloadingAll(false);
     setDownloadProgress(100);
-    
+
     if (successCount > 0) {
       toast.success('✅ Downloaded ' + successCount + '/' + totalFiles + ' attachments successfully!');
     } else {
@@ -4091,25 +4262,24 @@ const EnhancedChallanCell = React.memo(({
     }
   }, [challanNo, attachmentCache, checkAllChallansForAttachments, apiKey, workOrderNo]);
 
-  const handleExpand = useCallback(function() {
+  const handleExpand = useCallback(function () {
     setExpanded(!expanded);
-    
     if (!expanded) {
       checkAllChallansForAttachments();
     }
   }, [expanded, checkAllChallansForAttachments]);
 
   // Count challans with attachments
-  var challansWithAttachments = challanNo.filter(function(ch) {
+  var challansWithAttachments = challanNo.filter(function (ch) {
     var challanId = ch.challanNo;
     if (!challanId) return false;
     var cached = attachmentCache[challanId];
     return (cached && Array.isArray(cached) && cached.length > 0) || ch.hasAttachments;
   });
-  
+
   var hasAttachments = challansWithAttachments.length > 0;
   var totalChallansWithAttachments = challansWithAttachments.length;
-  
+
   return (
     <div className="border rounded-lg bg-white shadow-sm hover:shadow-md transition-shadow">
       <div className="flex justify-between items-center bg-gray-50 px-2 py-1 rounded-t-lg border-b">
@@ -4118,7 +4288,7 @@ const EnhancedChallanCell = React.memo(({
         </span>
         <div className="flex gap-1">
           {hasAttachments && (
-            <button 
+            <button
               className="text-[10px] bg-blue-500 hover:bg-blue-600 text-white px-1.5 py-0.5 rounded flex items-center gap-1"
               onClick={handleDownloadAll}
               disabled={isDownloadingAll || isLoadingAll}
@@ -4140,68 +4310,87 @@ const EnhancedChallanCell = React.memo(({
             </button>
           )}
           {hasMore && (
-            <button 
-              className="text-[10px] text-blue-600 hover:text-blue-800 px-1 py-0.5 rounded hover:bg-blue-50" 
+            <button
+              className="text-[10px] text-blue-600 hover:text-blue-800 px-1 py-0.5 rounded hover:bg-blue-50"
               onClick={handleExpand}
             >
               {expanded ? 'Less' : '+' + (challanNo.length - CONFIG.MAX_CHALLAN_DISPLAY)}
             </button>
           )}
-          <button 
-            className="text-[10px] bg-green-500 hover:bg-green-600 text-white px-1.5 py-0.5 rounded" 
+          <button
+            className="text-[10px] bg-green-500 hover:bg-green-600 text-white px-1.5 py-0.5 rounded"
             onClick={handleCopy}
           >
             Copy
           </button>
         </div>
       </div>
-      
-      <div 
-        className="overflow-y-auto p-1.5 space-y-0.5" 
+
+      <div
+        className="overflow-y-auto p-1.5 space-y-0.5"
         style={{ maxHeight: expanded ? "200px" : "100px" }}
       >
-        {displayed.map(function(ch, i) {
+        {displayed.map(function (ch, i) {
           var challanId = ch.challanNo;
           if (!challanId) return null;
-          
+
           var deliveryChallanID = ch.deliveryChallanID || null;
           var challanReceiveMap = cndata?.challanReceiveMap || {};
           var challanData = challanReceiveMap[challanId];
           var effectiveDeliveryChallanID = deliveryChallanID || (challanData ? challanData.deliveryChallanID : null);
-          
+
           var attachments = attachmentCache[challanId] || [];
           var hasAttachmentsLoaded = attachments && Array.isArray(attachments) && attachments.length > 0;
           var isLoading = loadingAttachments[challanId] || false;
           var status = ch.status || 'Unknown';
-          
+          var details = getChallanDetails(challanId);
+
+          if (details.status && details.status !== 'Unknown') {
+            status = details.status;
+          }
+
           var statusColorClass = statusColors[status] || statusColors['Unknown'];
-          
+
+          // Build the display text with QTY and Value
+          var displayText = challanId;
+          if (status) {
+            displayText += ' (' + status + ')';
+          }
+          if (details.qty > 0) {
+            displayText += ' || Challan QTY (' + details.qty + ')';
+          }
+          if (details.value > 0) {
+            displayText += ' || Challan Value ($' + details.value.toFixed(2) + ')';
+          }
+
           return (
-            <div 
+            <div
               key={i}
               className={'flex justify-between items-center text-[10px] px-2 py-0.5 rounded border hover:shadow-md transition-all ' + statusColorClass}
             >
-              <span className="font-medium">{i + 1}. {challanId}</span>
-              <div className="flex items-center gap-1">
+              <span className="font-medium truncate max-w-[200px]" title={displayText}>
+                {i + 1}. {displayText}
+              </span>
+              <div className="flex items-center gap-1 flex-shrink-0">
                 <span className={'px-1 py-0.5 rounded text-[8px] font-medium ' + (
                   status === 'Challan Received' ? 'bg-green-200 text-green-800' :
-                  status === 'Send to Gate' ? 'bg-yellow-200 text-yellow-800' :
-                  status === 'Delivered' ? 'bg-blue-200 text-blue-800' :
-                  status === 'Gate Out' ? 'bg-red-200 text-red-800' :
-                  status === 'Unknown' ? 'bg-gray-200 text-gray-700' :
-                  'bg-gray-200 text-gray-700'
+                    status === 'Send to Gate' ? 'bg-yellow-200 text-yellow-800' :
+                      status === 'Delivered' ? 'bg-blue-200 text-blue-800' :
+                        status === 'Gate Out' ? 'bg-red-200 text-red-800' :
+                          status === 'Unknown' ? 'bg-gray-200 text-gray-700' :
+                            'bg-gray-200 text-gray-700'
                 )}>
                   {status}
                 </span>
-                
+
                 {hasAttachmentsLoaded && attachments.length > 0 && (
                   <div className="flex items-center gap-0.5">
                     <span className="text-[8px] text-gray-500">📎{attachments.length}</span>
-                    <button 
+                    <button
                       className="text-[8px] text-blue-500 hover:text-blue-700 px-1"
-                      onClick={function(e) { 
+                      onClick={function (e) {
                         e.stopPropagation();
-                        downloadAllAttachmentsForChallan(challanId, attachments, e); 
+                        downloadAllAttachmentsForChallan(challanId, attachments, e);
                       }}
                       title={'Download ' + attachments.length + ' attachments for this challan'}
                     >
@@ -4209,15 +4398,15 @@ const EnhancedChallanCell = React.memo(({
                     </button>
                   </div>
                 )}
-                
+
                 {isLoading && (
                   <span className="text-[8px] text-gray-400 animate-pulse">⏳</span>
                 )}
-                
+
                 {effectiveDeliveryChallanID && !hasAttachmentsLoaded && !isLoading && (
-                  <button 
+                  <button
                     className="text-[8px] text-blue-500 hover:text-blue-700"
-                    onClick={function(e) {
+                    onClick={function (e) {
                       e.stopPropagation();
                       fetchAttachmentsForChallan(challanId, effectiveDeliveryChallanID);
                     }}
@@ -4233,22 +4422,19 @@ const EnhancedChallanCell = React.memo(({
     </div>
   );
 });
-
 EnhancedChallanCell.displayName = "EnhancedChallanCell";
-
 // ============================================================
 // COMPONENT: PROFESSIONAL SUMMARY TABLE - WITH ATTACHMENT COLUMN
 // ============================================================
 
-const ProfessionalSummaryTable = React.memo(({ 
-  data, columns, totalData, onRowClick, onRowSelect, onQuickView, 
+const ProfessionalSummaryTable = React.memo(({
+  data, columns, totalData, onRowClick, onRowSelect, onQuickView,
   onFavoriteToggle, selectedRows, favorites, loading, currentPage = 0,
-  onOrderClick, onChallanClick, // Add this
+  onOrderClick, onChallanClick,
   apiKey,
   cndata
 }) => {
-  
-  // ===== MOVE THIS FUNCTION INSIDE THE COMPONENT (BEFORE THE RETURN) =====
+
   const handleChallanClickInternal = (ch) => {
     if (onChallanClick && ch.deliveryChallanID) {
       onChallanClick({
@@ -4283,7 +4469,7 @@ const ProfessionalSummaryTable = React.memo(({
   );
 
   const totalColSpan = 12 + (columns.includes("PI") ? 1 : 0) + (columns.includes("PICompany") ? 1 : 0) + (columns.includes("LC") ? 1 : 0) + (columns.includes("Invoice") ? 1 : 0);
-  
+
   return (
     <div className="max-h-[500px] overflow-auto border rounded-xl shadow-sm bg-white/95 backdrop-blur-sm">
       <table className="table table-xs table-zebra min-w-[1800px]">
@@ -4304,6 +4490,11 @@ const ProfessionalSummaryTable = React.memo(({
             {columns.includes("LC") && <th className="py-2">LC</th>}
             {columns.includes("Invoice") && <th className="py-2">Invoice</th>}
             <th className="py-2">Section</th>
+            {/* NEW COLUMN HEADERS */}
+            {columns.includes("Style") && <th className="py-2">Style</th>}
+            {columns.includes("Color") && <th className="py-2">Color</th>}
+            {columns.includes("PO") && <th className="py-2">PO</th>}
+            {columns.includes("CustomerPO") && <th className="py-2">Customer PO</th>}
             <th className="py-2 text-right">Order Qty</th>
             <th className="py-2 text-right">Challan Qty</th>
             <th className="py-2 text-right">Balance Qty</th>
@@ -4338,7 +4529,7 @@ const ProfessionalSummaryTable = React.memo(({
                 )}
                 {columns.includes("Order") && (
                   <td className="px-2 py-1 whitespace-nowrap font-medium text-xs">
-                    <button 
+                    <button
                       className="text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
                       onClick={(e) => {
                         e.stopPropagation();
@@ -4363,10 +4554,10 @@ const ProfessionalSummaryTable = React.memo(({
                   </td>
                 )}
                 <td className="px-2 py-1 whitespace-nowrap font-medium text-xs" title={item.CustomerName}>
-                  {item.CustomerName.length > 12 ? item.CustomerName.slice(0, 12) + "...": item.CustomerName}
+                  {item.CustomerName.length > 12 ? item.CustomerName.slice(0, 12) + "..." : item.CustomerName}
                 </td>
                 <td className="px-2 py-1 whitespace-nowrap text-xs" title={item.DeliverName}>
-                  {item.DeliverName.length > 12 ? item.DeliverName.slice(0, 12) + "...": item.DeliverName}
+                  {item.DeliverName.length > 12 ? item.DeliverName.slice(0, 12) + "..." : item.DeliverName}
                 </td>
                 <td className="px-2 py-1 whitespace-nowrap text-xs" title={item.Buyer}>
                   {item.Buyer.length > 10 ? item.Buyer.slice(0, 10) + "..." : item.Buyer}
@@ -4426,7 +4617,7 @@ const ProfessionalSummaryTable = React.memo(({
                     )}
                   </td>
                 )}
-                
+
                 {columns.includes("PICompany") && (
                   <td className="px-2 py-1 text-xs">
                     {item.PICompany && item.PICompany !== 'N/A' ? (
@@ -4436,10 +4627,18 @@ const ProfessionalSummaryTable = React.memo(({
                     )}
                   </td>
                 )}
-                
+
                 {columns.includes("LC") && <td className="px-2 py-1 whitespace-nowrap text-[11px] font-mono">{(item.LCList || []).map(l => l.lcNo).join(", ") || "-"}</td>}
                 {columns.includes("Invoice") && <td className="px-2 py-1 whitespace-nowrap text-[11px] font-mono">{(item.InvoiceList || []).map(i => i.invoiceNo).join(", ") || "-"}</td>}
+
                 <td className="px-2 py-1 whitespace-nowrap text-xs">{item.Section}</td>
+
+                {/* NEW COLUMN DATA CELLS - THESE MUST BE IN tbody */}
+                {columns.includes("Style") && <td className="px-2 py-1 text-xs">{item.Style || '-'}</td>}
+                {columns.includes("Color") && <td className="px-2 py-1 text-xs">{item.Color || '-'}</td>}
+                {columns.includes("PO") && <td className="px-2 py-1 text-xs">{item.PO || '-'}</td>}
+                {columns.includes("CustomerPO") && <td className="px-2 py-1 text-xs">{item.CustomerPO || '-'}</td>}
+
                 <td className="px-2 py-1 whitespace-nowrap text-right font-medium text-xs">{formatNumber(item.TotalQty)}</td>
                 <td className="px-2 py-1 whitespace-nowrap text-right font-medium text-xs">{formatNumber(item.ChallanQTY)}</td>
                 <td className="px-2 py-1 whitespace-nowrap text-right text-red-600 font-medium text-xs">{formatNumber(item.BalanceQty)}</td>
@@ -4448,15 +4647,16 @@ const ProfessionalSummaryTable = React.memo(({
                 <td className="px-2 py-1 whitespace-nowrap text-right text-red-600 font-semibold text-xs">{formatCurrency(item.BalanceValue)}</td>
                 <td className="px-2 py-1 min-w-[100px]"><ProgressBar value={item.completionRate} showLabel /></td>
                 <td className="px-2 py-1"><Sparkline data={item.history || [item.TotalQty, item.ChallanQTY]} /></td>
-                {/* ===== FIX: Use the internal function here ===== */}
                 <td className="px-2 py-1 min-w-[180px]">
                   {item.ChallanNo && item.ChallanNo.length > 0 ? (
-                    <EnhancedChallanCell 
-                      challanNo={item.ChallanNo} 
-                      cndata={cndata} 
+                    <EnhancedChallanCell
+                      challanNo={item.ChallanNo}
+                      cndata={cndata}
                       apiKey={apiKey}
                       workOrderNo={item.WorkOrderNo}
-                      onChallanClick={handleChallanClickInternal} // Use internal function
+                      onChallanClick={handleChallanClickInternal}
+                    // showChallanQty={columns.includes("ChallanQtyDetail")}
+                    // showChallanValue={columns.includes("ChallanValueDetail")}
                     />
                   ) : (
                     <span className="text-gray-400 text-[10px]">No Challan</span>
@@ -4472,7 +4672,7 @@ const ProfessionalSummaryTable = React.memo(({
                 </td>
                 <td className="px-2 py-1 text-center" onClick={e => e.stopPropagation()}>
                   <div className="flex items-center justify-center gap-1">
-                    <AttachmentDownloader 
+                    <AttachmentDownloader
                       referenceDocNameID={51}
                       referenceDocID={item.WorkOrderID}
                       folderName={item.WorkOrderNo}
@@ -4562,10 +4762,10 @@ const TopItemsAnalytics = React.memo(({ data, onQuickView }) => {
     data.forEach(d => {
       const key = d[field] || "Unknown";
       if (!m.has(key)) {
-        m.set(key, { 
-          value: 0, 
-          orders: 0, 
-          qty: 0, 
+        m.set(key, {
+          value: 0,
+          orders: 0,
+          qty: 0,
           completion: 0,
           orderRefs: []
         });
@@ -4592,20 +4792,20 @@ const TopItemsAnalytics = React.memo(({ data, onQuickView }) => {
         challanNo: d.ChallanNo || []
       });
     });
-    
+
     const results = [...m.entries()]
       .sort((a, b) => b[1].value - a[1].value)
       .map(([name, v]) => ({
         name,
         ...v,
         avgCompletion: v.orders > 0 ? (v.completion / v.orders) : 0,
-        representativeOrder: v.orderRefs?.length > 0 
-          ? v.orderRefs.reduce((best, current) => 
-              current.totalValue > best.totalValue ? current : best
-            )
+        representativeOrder: v.orderRefs?.length > 0
+          ? v.orderRefs.reduce((best, current) =>
+            current.totalValue > best.totalValue ? current : best
+          )
           : null
       }));
-    
+
     return limit ? results.slice(0, limit) : results;
   }, [data]);
 
@@ -4656,18 +4856,18 @@ const TopItemsAnalytics = React.memo(({ data, onQuickView }) => {
 
   const renderCard = (title, items, allItemsList, icon, showCompletion = false) => {
     if (!items?.length) return null;
-    
+
     return (
       <div className="bg-white/95 backdrop-blur-sm rounded-xl shadow-sm p-3 border transition-all hover:shadow-md">
         <div className="flex justify-between items-center">
           <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-            {icon} {title} 
+            {icon} {title}
             <span className="ml-1 text-[10px] font-normal text-gray-400">
               ({items.length})
             </span>
           </h4>
           {allItemsList && allItemsList.length > CONFIG.TOP_ITEMS_COUNT && (
-            <button 
+            <button
               className="text-[10px] text-blue-500 font-medium hover:text-blue-700"
               onClick={() => handleViewAll(title, allItemsList, icon)}
             >
@@ -4675,40 +4875,40 @@ const TopItemsAnalytics = React.memo(({ data, onQuickView }) => {
             </button>
           )}
         </div>
-        
+
         <div className="mt-1.5 space-y-1.5">
           {items.map((item, i) => (
-            <div 
-              key={`${title}-${item.name}-${i}`} 
+            <div
+              key={`${title}-${item.name}-${i}`}
               className="flex items-center justify-between group hover:bg-gray-50 rounded px-1 py-0.5 cursor-pointer transition-colors"
-              // onClick={() => {
-              //   if (item.representativeOrder) {
-              //     const actualOrder = data.find(d => 
-              //       d.WorkOrderNo === item.representativeOrder.workOrderNo
-              //     );
-              //     if (actualOrder) {
-              //       onQuickView(actualOrder);
-              //     } else {
-              //       const fallbackOrder = data.find(d => {
-              //         if (title === 'Top Customers') return d.CustomerName === item.name;
-              //         if (title === 'Top Buyers') return d.Buyer === item.name;
-              //         if (title === 'Top Deliveries') return d.DeliverName === item.name;
-              //         if (title === 'Top Sections') return d.Section === item.name;
-              //         if (title === 'Top PI Companies') return d.PICompany === item.name;
-              //         return false;
-              //       });
-              //       if (fallbackOrder) onQuickView(fallbackOrder);
-              //     }
-              //   }
-              // }}
+            // onClick={() => {
+            //   if (item.representativeOrder) {
+            //     const actualOrder = data.find(d => 
+            //       d.WorkOrderNo === item.representativeOrder.workOrderNo
+            //     );
+            //     if (actualOrder) {
+            //       onQuickView(actualOrder);
+            //     } else {
+            //       const fallbackOrder = data.find(d => {
+            //         if (title === 'Top Customers') return d.CustomerName === item.name;
+            //         if (title === 'Top Buyers') return d.Buyer === item.name;
+            //         if (title === 'Top Deliveries') return d.DeliverName === item.name;
+            //         if (title === 'Top Sections') return d.Section === item.name;
+            //         if (title === 'Top PI Companies') return d.PICompany === item.name;
+            //         return false;
+            //       });
+            //       if (fallbackOrder) onQuickView(fallbackOrder);
+            //     }
+            //   }
+            // }}
             >
               <div className="flex items-center gap-2 flex-1 min-w-0">
                 <span className={cn(
                   'text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full flex-shrink-0',
-                  i === 0 ? 'bg-yellow-400 text-yellow-900' : 
-                  i === 1 ? 'bg-gray-300 text-gray-700' : 
-                  i === 2 ? 'bg-orange-300 text-orange-900' : 
-                  'bg-blue-100 text-blue-700'
+                  i === 0 ? 'bg-yellow-400 text-yellow-900' :
+                    i === 1 ? 'bg-gray-300 text-gray-700' :
+                      i === 2 ? 'bg-orange-300 text-orange-900' :
+                        'bg-blue-100 text-blue-700'
                 )}>
                   {i + 1}
                 </span>
@@ -4729,8 +4929,8 @@ const TopItemsAnalytics = React.memo(({ data, onQuickView }) => {
                   <span className={cn(
                     'px-1.5 py-0.5 rounded',
                     item.avgCompletion >= 100 ? 'bg-green-100 text-green-700' :
-                    item.avgCompletion > 50 ? 'bg-yellow-100 text-yellow-700' : 
-                    'bg-red-100 text-red-700'
+                      item.avgCompletion > 50 ? 'bg-yellow-100 text-yellow-700' :
+                        'bg-red-100 text-red-700'
                   )}>
                     {Math.round(item.avgCompletion)}%
                   </span>
@@ -4751,7 +4951,7 @@ const TopItemsAnalytics = React.memo(({ data, onQuickView }) => {
   const { topCustomers, topBuyers, topDeliveries, topSections, topPICompanies } = topItems;
   const { customers, buyers, deliveries, sections, piCompanies } = allItems;
 
- 
+
 });
 TopItemsAnalytics.displayName = "TopItemsAnalytics";
 
@@ -4895,7 +5095,7 @@ const NotificationCenter = React.memo(({ data }) => {
     if (complete.length === data.length && data.length > 0) n.push({ id: 3, type: 'success', icon: '✅', message: 'All orders complete!', details: `${data.length} delivered` });
     else if (complete.length) n.push({ id: 4, type: 'info', icon: '📊', message: `${complete.length} orders complete`, details: `${((complete.length / data.length) * 100).toFixed(1)}% rate` });
     const multiPI = data.filter(d => d.piCount > 1);
-    if (multiPI.length > 0) n.push({ id: 5, type: 'info', icon: '📋', message: `${multiPI.length} multi-PI orders`, details: `Avg ${(multiPI.reduce((s,d) => s + d.piCount, 0) / multiPI.length).toFixed(1)} PIs/order` });
+    if (multiPI.length > 0) n.push({ id: 5, type: 'info', icon: '📋', message: `${multiPI.length} multi-PI orders`, details: `Avg ${(multiPI.reduce((s, d) => s + d.piCount, 0) / multiPI.length).toFixed(1)} PIs/order` });
     return n;
   }, [data]);
   const visible = notifications.filter(n => !dismissed.has(n.id));
@@ -4915,8 +5115,8 @@ const NotificationCenter = React.memo(({ data }) => {
             {visible.map(n => (
               <div key={n.id} className={cn('p-3 rounded-lg flex items-start gap-2',
                 n.type === 'success' ? 'bg-green-50 border-green-200' :
-                n.type === 'warning' ? 'bg-yellow-50 border-yellow-200' :
-                n.type === 'error' ? 'bg-red-50 border-red-200' : 'bg-blue-50 border-blue-200')} style={{ border: '1px solid' }}>
+                  n.type === 'warning' ? 'bg-yellow-50 border-yellow-200' :
+                    n.type === 'error' ? 'bg-red-50 border-red-200' : 'bg-blue-50 border-blue-200')} style={{ border: '1px solid' }}>
                 <span className="text-lg">{n.icon}</span>
                 <div className="flex-1"><div className="text-sm font-medium">{n.message}</div>{n.details && <div className="text-xs opacity-70 mt-0.5">{n.details}</div>}</div>
                 <button className="text-xs opacity-50 hover:opacity-100" onClick={e => { e.stopPropagation(); setDismissed(p => new Set([...p, n.id])); }}>✕</button>
@@ -5005,20 +5205,20 @@ const DashboardView = React.memo(({ data, grandTotal, onQuickView, onFavoriteTog
       m.get(n).orders += 1;
       m.get(n).qty += +d.TotalQty || 0;
     });
-    return [...m.entries()].map(([name, v]) => ({ name, ...v })).sort((a,b) => b.value - a.value).slice(0, 7);
+    return [...m.entries()].map(([name, v]) => ({ name, ...v })).sort((a, b) => b.value - a.value).slice(0, 7);
   }, [data]);
-const salesPersonStats = useMemo(() => {
-  const m = new Map();
-  data.forEach(d => {
-    const n = d.SalesPerson || "Unknown";
-    if (n === 'Unknown') return;
-    if (!m.has(n)) m.set(n, { value: 0, orders: 0, qty: 0 });
-    m.get(n).value += +d.TotalValue || 0;
-    m.get(n).orders += 1;
-    m.get(n).qty += +d.TotalQty || 0;
-  });
-  return [...m.entries()].map(([name, v]) => ({ name, ...v })).sort((a,b) => b.value - a.value).slice(0, 7);
-}, [data]);
+  const salesPersonStats = useMemo(() => {
+    const m = new Map();
+    data.forEach(d => {
+      const n = d.SalesPerson || "Unknown";
+      if (n === 'Unknown') return;
+      if (!m.has(n)) m.set(n, { value: 0, orders: 0, qty: 0 });
+      m.get(n).value += +d.TotalValue || 0;
+      m.get(n).orders += 1;
+      m.get(n).qty += +d.TotalQty || 0;
+    });
+    return [...m.entries()].map(([name, v]) => ({ name, ...v })).sort((a, b) => b.value - a.value).slice(0, 7);
+  }, [data]);
   const piCompanyStats = useMemo(() => {
     const m = new Map();
     data.forEach(d => {
@@ -5029,7 +5229,7 @@ const salesPersonStats = useMemo(() => {
       m.get(n).orders += 1;
       m.get(n).qty += +d.TotalQty || 0;
     });
-    return [...m.entries()].map(([name, v]) => ({ name, ...v })).sort((a,b) => b.value - a.value).slice(0, 7);
+    return [...m.entries()].map(([name, v]) => ({ name, ...v })).sort((a, b) => b.value - a.value).slice(0, 7);
   }, [data]);
 
   const sectionStats = useMemo(() => {
@@ -5074,10 +5274,10 @@ const salesPersonStats = useMemo(() => {
           <div className="text-xs opacity-80 mt-1">across {customerStats.length} customers</div>
         </div>
         <div className="bg-gradient-to-br from-indigo-500 to-indigo-600 text-white rounded-xl p-4 shadow-lg">
-  <div className="text-xs opacity-80">Sales Persons</div>
-  <div className="text-2xl font-bold mt-1">{salesPersonStats.length}</div>
-  <div className="text-xs opacity-80 mt-1">Active sellers</div>
-</div>
+          <div className="text-xs opacity-80">Sales Persons</div>
+          <div className="text-2xl font-bold mt-1">{salesPersonStats.length}</div>
+          <div className="text-xs opacity-80 mt-1">Active sellers</div>
+        </div>
         <div className="bg-gradient-to-br from-green-500 to-emerald-600 text-white rounded-xl p-4 shadow-lg">
           <div className="text-xs opacity-80">Total Value</div>
           <div className="text-2xl font-bold mt-1">{formatCurrency(grandTotal.TotalValue)}</div>
@@ -5111,9 +5311,9 @@ const salesPersonStats = useMemo(() => {
           <BarChartMini data={customerStats.map(c => ({ label: c.name, value: Math.round(c.value) }))} width={400} height={180} />
         </div>
         <div className="bg-white/95 backdrop-blur-sm rounded-xl p-4 shadow-sm border">
-  <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">👤 Top Sales Persons by Value</h3>
-  <BarChartMini data={salesPersonStats.map(c => ({ label: c.name, value: Math.round(c.value) }))} width={400} height={180} />
-</div>
+          <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">👤 Top Sales Persons by Value</h3>
+          <BarChartMini data={salesPersonStats.map(c => ({ label: c.name, value: Math.round(c.value) }))} width={400} height={180} />
+        </div>
         <div className="bg-white/95 backdrop-blur-sm rounded-xl p-4 shadow-sm border">
           <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">🏢 Top PI Companies by Value</h3>
           <BarChartMini data={piCompanyStats.map(c => ({ label: c.name, value: Math.round(c.value) }))} width={400} height={180} />
@@ -5139,12 +5339,12 @@ const salesPersonStats = useMemo(() => {
         <div className="bg-white/95 backdrop-blur-sm rounded-xl p-4 shadow-sm border">
           <h3 className="text-sm font-semibold mb-3">⚡ Top Value Orders</h3>
           <div className="space-y-2">
-            {[...data].sort((a,b) => b.TotalValue - a.TotalValue).slice(0, 5).map((item, i) => (
+            {[...data].sort((a, b) => b.TotalValue - a.TotalValue).slice(0, 5).map((item, i) => (
               <div key={i} className="flex items-center justify-between p-2 hover:bg-gray-50 rounded cursor-pointer transition-colors"
                 onClick={() => onQuickView(item)}>
                 <div className="flex items-center gap-2 flex-1 min-w-0">
                   <span className={cn('w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold',
-                    i === 0 ? 'bg-yellow-400 text-yellow-900' : i === 1 ? 'bg-gray-300' : i === 2 ? 'bg-orange-300' : 'bg-blue-100')}>{i+1}</span>
+                    i === 0 ? 'bg-yellow-400 text-yellow-900' : i === 1 ? 'bg-gray-300' : i === 2 ? 'bg-orange-300' : 'bg-blue-100')}>{i + 1}</span>
                   <div className="min-w-0">
                     <div className="text-xs font-medium truncate">{item.WorkOrderNo}</div>
                     <div className="text-[10px] text-gray-500 truncate">{item.CustomerName}</div>
@@ -5179,17 +5379,21 @@ DashboardView.displayName = "DashboardView";
 
 function BalanceSummary() {
   // const { cndata, setcndata, setLoading, apiKey } = useContext(GetDataContext);
-   const { cndata, loading, apiKey } = useContext(GetDataContext);
+  const { cndata, loading, apiKey } = useContext(GetDataContext);
   const { theme, toggleTheme } = useTheme();
   // const apiKey = localStorage.getItem("apiKey");
-  
+
   // State
   const [selectedPI, setSelectedPI] = useLocalStorage('bs_pi', []);
   const [selectedOrder, setSelectedOrder] = useLocalStorage('bs_order', []);
-const [selectedSalesPerson, setSelectedSalesPerson] = useLocalStorage('bs_sales_person', []);
-const [salesPersonSearch, setSalesPersonSearch] = useState("");
-const [salesPersonOpen, setSalesPersonOpen] = useState(false);
-const salesPersonRef = useRef(null);
+  const [selectedSalesPerson, setSelectedSalesPerson] = useLocalStorage('bs_sales_person', []);
+  const [salesPersonSearch, setSalesPersonSearch] = useState("");
+  const [salesPersonOpen, setSalesPersonOpen] = useState(false);
+  const salesPersonRef = useRef(null);
+  const [selectedStyle, setSelectedStyle] = useLocalStorage('bs_style', []);
+  const [styleSearch, setStyleSearch] = useState("");
+  const [styleOpen, setStyleOpen] = useState(false);
+  const styleRef = useRef(null);
   const [selectedLC, setSelectedLC] = useLocalStorage('bs_lc', []);
   const [selectedInvoice, setSelectedInvoice] = useLocalStorage('bs_inv', []);
   const [selectedCustomer, setSelectedCustomer] = useLocalStorage('bs_cust', []);
@@ -5203,7 +5407,7 @@ const salesPersonRef = useRef(null);
   const [selectedPIMultiOrder, setSelectedPIMultiOrder] = useLocalStorage('bs_pi_multi', []);
   const [challanStatusSearch, setChallanStatusSearch] = useState("");
   const [challanStatusOpen, setChallanStatusOpen] = useState(false);
-  const challanStatusRef = useRef(null);  
+  const challanStatusRef = useRef(null);
   // UI State
   const [search, setSearch] = useState("");
   const [multiSearch, setMultiSearch] = useState("");
@@ -5215,7 +5419,7 @@ const salesPersonRef = useRef(null);
   const [showQuickView, setShowQuickView] = useState(false);
   const [deepInsights, setDeepInsights] = useState([]);
   const [currentBg, setCurrentBg] = useState(null);
-  
+
   // Order Detail View State
   const [selectedOrderDetail, setSelectedOrderDetail] = useState(null);
   const [showOrderDetail, setShowOrderDetail] = useState(false);
@@ -5247,6 +5451,12 @@ const salesPersonRef = useRef(null);
   const [statusFilter, setStatusFilter] = useState("");
   const [sectionFilter, setSectionFilter] = useState("");
 
+
+
+
+
+
+
   const [selectedChallan, setSelectedChallan] = useLocalStorage('bs_challan', []);
   const [challanSearch, setChallanSearch] = useState("");
   const [challanOpen, setChallanOpen] = useState(false);
@@ -5265,7 +5475,7 @@ const salesPersonRef = useRef(null);
 
   const maps = useDataMaps(cndata, cndata?.piCompanyData);
   const summarizedData = useSummarizedData(cndata, maps);
-  
+
   const uniqueSections = useMemo(() => [...new Set(summarizedData.map(d => d.Section).filter(Boolean))], [summarizedData]);
   const uniquePI = useMemo(() => {
     const allPIs = [];
@@ -5275,14 +5485,14 @@ const salesPersonRef = useRef(null);
     return [...new Set(allPIs)].filter(Boolean).sort();
   }, [summarizedData]);
   const uniqueSalesPersons = useMemo(() => {
-  const persons = new Set();
-  summarizedData.forEach(d => {
-    if (d.SalesPerson && d.SalesPerson !== 'Unknown') {
-      persons.add(d.SalesPerson);
-    }
-  });
-  return [...persons].sort();
-}, [summarizedData]);
+    const persons = new Set();
+    summarizedData.forEach(d => {
+      if (d.SalesPerson && d.SalesPerson !== 'Unknown') {
+        persons.add(d.SalesPerson);
+      }
+    });
+    return [...persons].sort();
+  }, [summarizedData]);
   const uniqueOrder = useMemo(() => [...new Set(summarizedData.map(d => String(d.WorkOrderNo).trim()).filter(Boolean))], [summarizedData]);
   const uniqueLC = useMemo(() => [...new Set(summarizedData.flatMap(d => d.LCList.map(l => l.lcNo || "No LC")))], [summarizedData]);
   const uniqueInvoice = useMemo(() => [...new Set(summarizedData.flatMap(d => d.InvoiceList.map(i => i.invoiceNo || "No Invoice")))], [summarizedData]);
@@ -5298,28 +5508,28 @@ const salesPersonRef = useRef(null);
     });
     return [...companies].sort();
   }, [summarizedData]);
-  
+
   const uniqueChallans = useMemo(() => {
-  const challanSet = new Set();
-  summarizedData.forEach(item => {
-    if (item.ChallanNo && Array.isArray(item.ChallanNo)) {
-      item.ChallanNo.forEach(ch => {
-        if (ch.challanNo) {
-          challanSet.add(ch.challanNo);
-        }
-      });
-    }
-  });
-  return [...challanSet].sort();
-}, [summarizedData]);
-const filteredChallans = useMemo(() => 
-  uniqueChallans.filter(c => c.toLowerCase().includes(challanSearch.toLowerCase())),
-  [uniqueChallans, challanSearch]
-);
-const filteredSalesPersons = useMemo(() => 
-  uniqueSalesPersons.filter(p => p.toLowerCase().includes(salesPersonSearch.toLowerCase())), 
-  [uniqueSalesPersons, salesPersonSearch]
-);
+    const challanSet = new Set();
+    summarizedData.forEach(item => {
+      if (item.ChallanNo && Array.isArray(item.ChallanNo)) {
+        item.ChallanNo.forEach(ch => {
+          if (ch.challanNo) {
+            challanSet.add(ch.challanNo);
+          }
+        });
+      }
+    });
+    return [...challanSet].sort();
+  }, [summarizedData]);
+  const filteredChallans = useMemo(() =>
+    uniqueChallans.filter(c => c.toLowerCase().includes(challanSearch.toLowerCase())),
+    [uniqueChallans, challanSearch]
+  );
+  const filteredSalesPersons = useMemo(() =>
+    uniqueSalesPersons.filter(p => p.toLowerCase().includes(salesPersonSearch.toLowerCase())),
+    [uniqueSalesPersons, salesPersonSearch]
+  );
 
   const filteredPI = useMemo(() => uniquePI.filter(p => p.toLowerCase().includes(piSearch.toLowerCase())), [uniquePI, piSearch]);
   const filteredOrder = useMemo(() => uniqueOrder.filter(o => o.includes(orderSearch)), [uniqueOrder, orderSearch]);
@@ -5337,8 +5547,8 @@ const filteredSalesPersons = useMemo(() =>
     selectedPICompany
   }), [selectedPI, selectedOrder, selectedLC, selectedInvoice, selectedCustomer, selectedSalesPerson,
     selectedBuyer, selectedDelivery, selectedChallan, dateRange, minValue, maxValue,
-     statusFilter, sectionFilter, favorites, 
-    showFavoritesOnly, multiSearch, selectedPIMultiOrder, minQty, maxQty, 
+    statusFilter, sectionFilter, favorites,
+    showFavoritesOnly, multiSearch, selectedPIMultiOrder, minQty, maxQty,
     orderStatusFilter, deliveryStatusFilter, selectedPICompany]);
 
   const filteredData = useFilters(summarizedData, filters, debouncedSearch, maps);
@@ -5346,12 +5556,12 @@ const filteredSalesPersons = useMemo(() =>
 
 
 
-const logHistory = useCallback((action, data) => {
+  const logHistory = useCallback((action, data) => {
     try {
       const h = JSON.parse(localStorage.getItem('dataHistory') || '[]');
       const newH = [{ timestamp: new Date().toISOString(), action, data: typeof data === 'string' ? data : JSON.stringify(data) }, ...h].slice(0, CONFIG.MAX_HISTORY_ITEMS);
       localStorage.setItem('dataHistory', JSON.stringify(newH));
-    } catch {}
+    } catch { }
   }, []);
 
   // ===== HANDLE ORDER CLICK - KEEP THIS ONE =====
@@ -5370,59 +5580,59 @@ const logHistory = useCallback((action, data) => {
     toast.success(`Opening ${order.WorkOrderNo} in TPL...`);
   }, [logHistory]);
 
-// ===== HANDLE CHALLAN CLICK - COMPLETE FIX =====
-const handleChallanClick = useCallback((challan) => {
-  if (!challan || !challan.deliveryChallanID) {
-    toast.error("Cannot open: Challan ID is missing");
-    return;
-  }
-  
-  const deliveryChallanId = challan.deliveryChallanID;
-  const encryptedId = encryptDeliveryChallanId(deliveryChallanId);
-  
-  // Try multiple authentication sources
-  let authToken = localStorage.getItem("token");
-  
-  // If no token, try apiKey
-  if (!authToken || authToken === 'undefined' || authToken === 'null') {
-    authToken = localStorage.getItem("apiKey");
-    console.log("Using apiKey as authentication token");
-  }
-  
-  // If still no token, try other common keys
-  if (!authToken || authToken === 'undefined' || authToken === 'null') {
-    const possibleKeys = ['authToken', 'accessToken', 'jwtToken', 'apiToken', 'auth'];
-    for (const key of possibleKeys) {
-      const value = localStorage.getItem(key);
-      if (value && value !== 'undefined' && value !== 'null') {
-        authToken = value;
-        console.log(`Found auth token in localStorage key: ${key}`);
-        break;
+  // ===== HANDLE CHALLAN CLICK - COMPLETE FIX =====
+  const handleChallanClick = useCallback((challan) => {
+    if (!challan || !challan.deliveryChallanID) {
+      toast.error("Cannot open: Challan ID is missing");
+      return;
+    }
+
+    const deliveryChallanId = challan.deliveryChallanID;
+    const encryptedId = encryptDeliveryChallanId(deliveryChallanId);
+
+    // Try multiple authentication sources
+    let authToken = localStorage.getItem("token");
+
+    // If no token, try apiKey
+    if (!authToken || authToken === 'undefined' || authToken === 'null') {
+      authToken = localStorage.getItem("apiKey");
+      console.log("Using apiKey as authentication token");
+    }
+
+    // If still no token, try other common keys
+    if (!authToken || authToken === 'undefined' || authToken === 'null') {
+      const possibleKeys = ['authToken', 'accessToken', 'jwtToken', 'apiToken', 'auth'];
+      for (const key of possibleKeys) {
+        const value = localStorage.getItem(key);
+        if (value && value !== 'undefined' && value !== 'null') {
+          authToken = value;
+          console.log(`Found auth token in localStorage key: ${key}`);
+          break;
+        }
       }
     }
-  }
-  
-  // Build URL
-  let url;
-  if (authToken && authToken !== 'undefined' && authToken !== 'null') {
-    url = `https://tpl-rpt.ebs365.info/#/delivery-challan-report?DeliveryChallanID=${encryptedId}&t=${encodeURIComponent(authToken)}`;
-  } else {
-    // If no token found, try without it
-    url = `https://tpl-rpt.ebs365.info/#/delivery-challan-report?DeliveryChallanID=${encryptedId}`;
-    console.warn("⚠️ No authentication token found, opening without t parameter");
-  }
-  
-  console.log(`Opening challan: ${challan.challanNo} (ID: ${deliveryChallanId})`);
-  console.log(`URL: ${url}`);
-  
-  window.open(url, '_blank');
-  logHistory('Opened delivery challan report', challan.challanNo);
-  toast.success(`Opening ${challan.challanNo} in TPL...`);
-}, [logHistory]);
+
+    // Build URL
+    let url;
+    if (authToken && authToken !== 'undefined' && authToken !== 'null') {
+      url = `https://tpl-rpt.ebs365.info/#/delivery-challan-report?DeliveryChallanID=${encryptedId}&t=${encodeURIComponent(authToken)}`;
+    } else {
+      // If no token found, try without it
+      url = `https://tpl-rpt.ebs365.info/#/delivery-challan-report?DeliveryChallanID=${encryptedId}`;
+      console.warn("⚠️ No authentication token found, opening without t parameter");
+    }
+
+    console.log(`Opening challan: ${challan.challanNo} (ID: ${deliveryChallanId})`);
+    console.log(`URL: ${url}`);
+
+    window.open(url, '_blank');
+    logHistory('Opened delivery challan report', challan.challanNo);
+    toast.success(`Opening ${challan.challanNo} in TPL...`);
+  }, [logHistory]);
 
 
-// ===== HANDLE DEEP THINK (ADD THIS) =====
- const handleDeepThink = useCallback((insights) => {
+  // ===== HANDLE DEEP THINK (ADD THIS) =====
+  const handleDeepThink = useCallback((insights) => {
     setDeepInsights(insights || []);
     if (insights?.length) toast.success(`🧠 ${insights.length} insights generated!`);
   }, []);
@@ -5434,6 +5644,30 @@ const handleChallanClick = useCallback((challan) => {
     else setter(prev => prev.includes(value) ? prev.filter(x => x !== value) : [...prev, value]);
     setCurrentPage(0);
   }, [setter, setCurrentPage]);
+  const uniqueStyles = useMemo(() => {
+    const styles = new Set();
+    summarizedData.forEach(d => {
+      if (d.Style && d.Style.trim()) {
+        styles.add(d.Style.trim());
+      }
+    });
+    return [...styles].sort();
+  }, [summarizedData]);
+
+  const filteredStyles = useMemo(() =>
+    uniqueStyles.filter(s => s.toLowerCase().includes(styleSearch.toLowerCase())),
+    [uniqueStyles, styleSearch]
+  );
+
+  // const uniqueSections = useMemo(() => [...new Set(summarizedData.map(d => d.Section).filter(Boolean))], [summarizedData]);
+  // const uniquePI = useMemo(() => {
+  //   const allPIs = [];
+  //   summarizedData.forEach(d => {
+  //     if (d.PINOList) allPIs.push(...d.PINOList);
+  //   });
+  //   return [...new Set(allPIs)].filter(Boolean).sort();
+  // }, [summarizedData]);
+  const toggleStyle = makeToggle(setSelectedStyle);
   const toggleChallan = makeToggle(setSelectedChallan);
   const togglePI = makeToggle(setSelectedPI);
   const toggleOrder = makeToggle(setSelectedOrder);
@@ -5448,7 +5682,7 @@ const handleChallanClick = useCallback((challan) => {
     if (Array.isArray(value)) {
       setSelectedPIMultiOrder(value);
     } else {
-      setSelectedPIMultiOrder(prev => 
+      setSelectedPIMultiOrder(prev =>
         prev.includes(value) ? prev.filter(x => x !== value) : [...prev, value]
       );
     }
@@ -5460,8 +5694,8 @@ const handleChallanClick = useCallback((challan) => {
 
   const resetFilters = useCallback(() => {
     setSelectedPI([]); setSelectedOrder([]); setSelectedLC([]); setSelectedInvoice([]);
-    setSelectedCustomer([]); setSelectedBuyer([]); setSelectedDelivery([]);setSelectedChallan([]);
-    setSelectedPIMultiOrder([]); setSelectedPICompany([]);setSelectedSalesPerson([]);
+    setSelectedCustomer([]); setSelectedBuyer([]); setSelectedDelivery([]); setSelectedChallan([]);
+    setSelectedPIMultiOrder([]); setSelectedPICompany([]); setSelectedSalesPerson([]);
     setSearch(""); setMultiSearch(""); setDateRange({ start: "", end: "" });
     setMinValue(""); setMaxValue(""); setStatusFilter(""); setSectionFilter("");
     setMinQty(""); setMaxQty(""); setOrderStatusFilter(""); setDeliveryStatusFilter("");
@@ -5470,10 +5704,10 @@ const handleChallanClick = useCallback((challan) => {
   }, [setSelectedPI, setSelectedOrder, setSelectedLC, setSelectedInvoice, setSelectedCustomer, setSelectedChallan, setSelectedBuyer, setSelectedDelivery, setSelectedPIMultiOrder, setSelectedPICompany, setCurrentPage]);
 
   const handleFilterChange = useCallback((key, value) => {
-    const setters = { 
-      dateRange: setDateRange, minValue: setMinValue, maxValue: setMaxValue, 
-      statusFilter: setStatusFilter, sectionFilter: setSectionFilter, 
-      showFavoritesOnly: setShowFavoritesOnly, minQty: setMinQty, 
+    const setters = {
+      dateRange: setDateRange, minValue: setMinValue, maxValue: setMaxValue,
+      statusFilter: setStatusFilter, sectionFilter: setSectionFilter,
+      showFavoritesOnly: setShowFavoritesOnly, minQty: setMinQty,
       maxQty: setMaxQty, orderStatusFilter: setOrderStatusFilter,
       deliveryStatusFilter: setDeliveryStatusFilter,
     };
@@ -5524,15 +5758,16 @@ const handleChallanClick = useCallback((challan) => {
   }, [apiKey]);
 
   const getMultiSearchCount = useCallback(() => multiSearch?.trim() ? multiSearch.split(/[\n,;|]+/).filter(s => s.trim()).length : 0, [multiSearch]);
-// In BalanceSummary, after the context is updated
+  // In BalanceSummary, after the context is updated
+// Add this to verify mergedChallanMap is available
 useEffect(() => {
-  if (cndata?.grupChallan) {
-    // console.log("grupChallan data:", cndata.grupChallan);
-    // console.log("grupChallan sample:", cndata.grupChallan[0]);
-    // console.log("grupChallan statuses:", cndata.grupChallan.map(c => ({ 
-    //   challanNo: c.challanNo, 
-    //   status: c.statusDesc 
-    // })));
+  if (cndata && cndata.mergedChallanMap) {
+    console.log('✅ mergedChallanMap has', Object.keys(cndata.mergedChallanMap).length, 'entries');
+    // Log a sample to verify
+    const sampleKey = Object.keys(cndata.mergedChallanMap)[0];
+    if (sampleKey) {
+      console.log('✅ Sample mergedChallanMap entry:', sampleKey, cndata.mergedChallanMap[sampleKey]);
+    }
   }
 }, [cndata]);
   // Keyboard shortcuts
@@ -5582,7 +5817,7 @@ useEffect(() => {
 
 
 
-const exportToExcel = useCallback(async (options = {}) => {
+  const exportToExcel = useCallback(async (options = {}) => {
     const { format = 'excel', includeSummary = true, includeCharts = false, emailReport = false } = options;
     try {
       if (filteredData.length === 0) { toast.warning("No data to export"); return; }
@@ -5609,7 +5844,13 @@ const exportToExcel = useCallback(async (options = {}) => {
         'ChallanValue': 'Challan Value',
         'BalanceValue': 'Balance Value',
         'Challan': 'Challan',
-        'Progress': 'Progress %'
+        'Progress': 'Progress %',
+        'Style': 'Style',
+        'Color': 'Color',
+        'PO': 'PO',
+        'CustomerPO': 'Customer PO',
+        'ChallanQtyDetail': 'Challan Qty (Detail)',
+        'ChallanValueDetail': 'Challan Value (Detail)'
       };
 
       const essentialColumns = ['Order', 'Date', 'Customer', 'Delivery', 'SalesPerson', 'Buyer', 'Section'];
@@ -5658,8 +5899,57 @@ const exportToExcel = useCallback(async (options = {}) => {
           'OrderValue': +(item.TotalValue?.toFixed(2) || 0),
           'ChallanValue': +(item.ChallanValue?.toFixed(2) || 0),
           'BalanceValue': +(item.BalanceValue?.toFixed(2) || 0),
-          'Challan': (item.ChallanNo || []).map((c, idx) => `${idx + 1}. ${c.challanNo} (${c.status || 'Unknown'})`).join("\n"),
-          'Progress': `${item.completionRate?.toFixed(1) || 0}%`
+          'Challan': (item.ChallanNo || []).map((c, idx) => {
+  // Try mergedChallanMap first
+  let mergedChallanMap = cndata?.mergedChallanMap || {};
+  let details = mergedChallanMap[c.challanNo] || {};
+  
+  // If not found, try challanReceiveMap as fallback
+  if (!details.challanQty && !details.totalChallanValue) {
+    const challanReceiveMap = cndata?.challanReceiveMap || {};
+    const receiveData = challanReceiveMap[c.challanNo] || {};
+    details = {
+      challanQty: receiveData.challanQty || 0,
+      totalChallanValue: receiveData.totalChallanValue || 0
+    };
+  }
+  
+  // If still not found, try to get from the item's own data
+  if (!details.challanQty && !details.totalChallanValue) {
+    // Try to find the challan in the order data
+    const challanEntry = item.ChallanNo?.find(ch => ch.challanNo === c.challanNo);
+    if (challanEntry && challanEntry.challanQty !== undefined) {
+      details = {
+        challanQty: challanEntry.challanQty || 0,
+        totalChallanValue: challanEntry.totalChallanValue || 0
+      };
+    }
+  }
+  
+  let text = `${idx + 1}. ${c.challanNo} (${c.status || 'Unknown'})`;
+  if (details.challanQty > 0) {
+    text += ` || Challan QTY (${details.challanQty})`;
+  }
+  if (details.totalChallanValue > 0) {
+    text += ` || Challan Value ($${details.totalChallanValue.toFixed(2)})`;
+  }
+  return text;
+}).join("\n"),
+          'Progress': `${item.completionRate?.toFixed(1) || 0}%`,
+          'Style': item.Style || '',
+          'Color': item.Color || '',
+          'PO': item.PO || '',
+          'CustomerPO': item.CustomerPO || '',
+          'ChallanQtyDetail': (item.ChallanNo || []).map(ch => {
+            const mergedChallanMap = cndata?.mergedChallanMap || {};
+            const details = mergedChallanMap[ch.challanNo] || {};
+            return details.challanQty || 0;
+          }).filter(q => q > 0).join('; ') || '-',
+          'ChallanValueDetail': (item.ChallanNo || []).reduce((sum, ch) => {
+            const mergedChallanMap = cndata?.mergedChallanMap || {};
+            const details = mergedChallanMap[ch.challanNo] || {};
+            return sum + (details.totalChallanValue || 0);
+          }, 0)
         };
         return finalColumns.map(col => valueMap[col] !== undefined ? valueMap[col] : '');
       };
@@ -5692,10 +5982,10 @@ const exportToExcel = useCallback(async (options = {}) => {
       }
 
       // --- PDF EXPORT ---
-if (format === 'pdf') {
-  const headers = getHeaders();
-  const win = window.open('', '_blank');
-  win.document.write(`<html><head><title>Order Summary Report</title><style>
+      if (format === 'pdf') {
+        const headers = getHeaders();
+        const win = window.open('', '_blank');
+        win.document.write(`<html><head><title>Order Summary Report</title><style>
     body{font-family:Arial;padding:20px} 
     h1{color:#000000;border-bottom:2px solid #000;padding-bottom:10px}
     table{width:100%;border-collapse:collapse;font-size:10px}
@@ -5711,28 +6001,28 @@ if (format === 'pdf') {
   <p>Generated: ${new Date().toLocaleString()} • Total Orders: ${filteredData.length}</p></div>
   <table><thead><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr></thead><tbody>
   ${filteredData.map((item, index) => {
-    const rowData = getRowData(item, index + 1);
-    const challanData = rowData[headers.indexOf('Challan')] || '';
-    
-    let hasNonReceived = false;
-    if (challanData) {
-      const lines = challanData.split('\n');
-      lines.forEach(line => {
-        const trimmed = line.trim();
-        if (trimmed && !trimmed.includes('Challan Received')) {
-          hasNonReceived = true;
-        }
-      });
-    }
-    
-    return `<tr>${rowData.map((d, idx) => {
-      const header = headers[idx];
-      if (header === 'Challan' && hasNonReceived) {
-        return `<td style="color:#ff0000;font-weight:bold;">${d}</td>`;
-      }
-      return `<td>${d}</td>`;
-    }).join('')}</tr>`;
-  }).join('')}
+          const rowData = getRowData(item, index + 1);
+          const challanData = rowData[headers.indexOf('Challan')] || '';
+
+          let hasNonReceived = false;
+          if (challanData) {
+            const lines = challanData.split('\n');
+            lines.forEach(line => {
+              const trimmed = line.trim();
+              if (trimmed && !trimmed.includes('Challan Received')) {
+                hasNonReceived = true;
+              }
+            });
+          }
+
+          return `<tr>${rowData.map((d, idx) => {
+            const header = headers[idx];
+            if (header === 'Challan' && hasNonReceived) {
+              return `<td style="color:#ff0000;font-weight:bold;">${d}</td>`;
+            }
+            return `<td>${d}</td>`;
+          }).join('')}</tr>`;
+        }).join('')}
   </tbody>
   <tfoot>
     <tr class="grand-total">
@@ -5746,255 +6036,286 @@ if (format === 'pdf') {
       <td colspan="${headers.length - headers.indexOf('Progress %') - 1}" style="border:1px solid #000;"></td>
     </tr>
   </tfoot></body></html>`);
-  win.document.close(); setTimeout(() => win.print(), 500);
-  toast.success("PDF opened for print!"); return;
-}
+        win.document.close(); setTimeout(() => win.print(), 500);
+        toast.success("PDF opened for print!"); return;
+      }
       // ============================================================
       // EXCEL EXPORT WITH EXCELJS - PER-LINE COLORING & AUTO-WIDTH
       // ============================================================
-      
+
       const workbook = new ExcelJS.Workbook();
       workbook.creator = 'Order Summary Report';
       workbook.created = new Date();
-      
+
       const headers = getHeaders();
-      
+
       // ===== HELPER FUNCTION: Create a sheet with rich text =====
-      const createSheetWithRichText = (dataItems, sheetName) => {
-        if (!dataItems || dataItems.length === 0) {
-          return null;
-        }
+// ===== HELPER FUNCTION: Create a sheet with rich text =====
+// ===== HELPER FUNCTION: Create a sheet with rich text =====
+const createSheetWithRichText = (dataItems, sheetName) => {
+  if (!dataItems || dataItems.length === 0) {
+    return null;
+  }
 
-        const worksheet = workbook.addWorksheet(sheetName);
-        
-        // ===== AUTO-WIDTH CALCULATION =====
-        const columnWidths = {};
-        
-        // Initialize with header widths
-        headers.forEach((header, index) => {
-          columnWidths[index] = (header?.length || 10) + 4;
-        });
-        
-        // Check data rows for max content width
-        dataItems.forEach((item) => {
-          const rowData = getRowData(item, 0);
-          headers.forEach((header, colIndex) => {
-            let cellValue = rowData[colIndex] || '';
-            
-            // For Challan column with rich text, check the raw data
-            if (header === 'Challan' && item.ChallanNo && item.ChallanNo.length > 0) {
-              const challanText = item.ChallanNo.map((ch, idx) => 
-                `${idx + 1}. ${ch.challanNo} (${ch.status || 'Unknown'})`
-              ).join('\n');
-              cellValue = challanText;
-            }
-            
-            const cellLength = String(cellValue).length;
-            const headerLength = header?.length || 10;
-            const maxLength = Math.max(cellLength + 2, headerLength + 4);
-            
-            columnWidths[colIndex] = Math.max(columnWidths[colIndex] || 10, Math.min(maxLength, 60));
-          });
-        });
-        
-        // Apply column widths
-        headers.forEach((header, index) => {
-          const col = worksheet.getColumn(index + 1);
-          col.width = Math.max(columnWidths[index] || 15, 10);
-          col.alignment = { vertical: 'middle', horizontal: 'center' };
-        });
-        // =====  - ALL PI Page ======
-        // =====  - ADD HEADER ROW - 16px Bold Black =====
-        const headerRow = worksheet.addRow(headers);
-        headerRow.eachCell((cell) => {
-          cell.font = { bold: true, size: 18, color: { argb: 'FF000000' }, name: 'Calibri' };
-          cell.fill = {
-            type: 'pattern',
-            pattern: 'solid',
-           fgColor: { argb: 'FFDDD9C4' }
-          };
-          cell.alignment = { horizontal: 'center', vertical: 'middle' };
-          cell.border = {
-            top: { style: 'thin', color: { argb: 'FF000000' } },
-            bottom: { style: 'thin', color: { argb: 'FF000000' } },
-            left: { style: 'thin', color: { argb: 'FF000000' } },
-            right: { style: 'thin', color: { argb: 'FF000000' } }
-          };
-        });
+  const worksheet = workbook.addWorksheet(sheetName);
 
-        // Add data rows with rich text for Challan column
-        dataItems.forEach((item, index) => {
-          const rowData = getRowData(item, index + 1);
-          const rowValues = [];
-          
-          headers.forEach((header, colIndex) => {
-            if (header === 'Challan' && item.ChallanNo && item.ChallanNo.length > 0) {
-              const richText = [];
-              item.ChallanNo.forEach((ch, idx) => {
-                const isReceived = ch.status === 'Challan Received';
-                const text = `${idx + 1}. ${ch.challanNo} (${ch.status || 'Unknown'})`;
-                
-                richText.push({
-                  text: text,
-                  font: {
-                    color: { argb: isReceived ? 'FF000000' : 'FFFF0000' },
-                    bold: !isReceived,
-                    size: 16,
-                    name: 'Calibri'
-                  }
-                });
-                
-                if (idx < item.ChallanNo.length - 1) {
-                  richText.push({ text: '\n' });
-                }
-              });
-              
-              rowValues.push({ richText });
-            } else {
-              const val = rowData[colIndex];
-              if (typeof val === 'number' && !isNaN(val)) {
-                rowValues.push(val);
-              } else {
-                rowValues.push(val || '');
-              }
-            }
-          });
-          
-          const row = worksheet.addRow(rowValues);
-          row.height = Math.max(30, (item.ChallanNo?.length || 1) * 25);
-          
-          row.eachCell((cell, colNumber) => {
-            const header = headers[colNumber - 1];
-            const isChallanCol = header === 'Challan';
-            const isNumericCol = ['Order Qty', 'Challan Qty', 'Balance Qty', 'Order Value', 'Challan Value', 'Balance Value'].includes(header);
-            const isBalanceCol = ['Balance Qty', 'Balance Value'].includes(header);
-            const isValueCol = ['Order Value', 'Challan Value', 'Balance Value'].includes(header);
-            
-            if (cell.value && typeof cell.value === 'object' && cell.value.richText) {
-              cell.alignment = { wrapText: true, vertical: 'middle', horizontal: 'left' };
-              cell.border = {
-                top: { style: 'thin', color: { argb: 'FF000000' } },
-                bottom: { style: 'thin', color: { argb: 'FF000000' } },
-                left: { style: 'thin', color: { argb: 'FF000000' } },
-                right: { style: 'thin', color: { argb: 'FF000000' } }
-              };
-              return;
-            }
-            
-            cell.font = { size: 16, name: 'Calibri' };
-            
-            if (isNumericCol) {
-              cell.numFmt = isValueCol ? '"$"#,##0.00' : '#,##0.00';
-              cell.alignment = { horizontal: 'right', vertical: 'middle' };
-              
-              if (isBalanceCol && cell.value > 0) {
-                cell.font = { bold: true, color: { argb: 'FFFF0000' }, size: 16, name: 'Calibri' };
-              }
-            }
-            
-            if (header === '#') {
-              cell.alignment = { horizontal: 'center', vertical: 'middle' };
-            }
-            
-            cell.border = {
-              top: { style: 'thin', color: { argb: 'FF000000' } },
-              bottom: { style: 'thin', color: { argb: 'FF000000' } },
-              left: { style: 'thin', color: { argb: 'FF000000' } },
-              right: { style: 'thin', color: { argb: 'FF000000' } }
-            };
-          });
-        });
+  // ===== AUTO-WIDTH CALCULATION =====
+  const columnWidths = {};
 
-        // ===== ADD SUBTOTAL ROW WITH PROPER MERGING =====
-        if (dataItems.length > 0) {
-          const subtotal = dataItems.reduce((acc, item) => ({
-            totalQty: acc.totalQty + (+item.TotalQty || 0),
-            challanQty: acc.challanQty + (+item.ChallanQTY || 0),
-            balanceQty: acc.balanceQty + (+item.BalanceQty || 0),
-            totalValue: acc.totalValue + (+item.TotalValue || 0),
-            challanValue: acc.challanValue + (+item.ChallanValue || 0),
-            balanceValue: acc.balanceValue + (+item.BalanceValue || 0)
-          }), { totalQty: 0, challanQty: 0, balanceQty: 0, totalValue: 0, challanValue: 0, balanceValue: 0 });
+  // Initialize with header widths
+  headers.forEach((header, index) => {
+    columnWidths[index] = (header?.length || 10) + 4;
+  });
 
-          // Find where numeric columns start
-          let startIndex = 0;
-          for (let i = 0; i < headers.length; i++) {
-            if (['Order Qty', 'Challan Qty', 'Balance Qty', 'Order Value', 'Challan Value', 'Balance Value'].includes(headers[i])) {
-              startIndex = i;
-              break;
-            }
+  // Check data rows for max content width
+  dataItems.forEach((item) => {
+    const rowData = getRowData(item, 0);
+    headers.forEach((header, colIndex) => {
+      let cellValue = rowData[colIndex] || '';
+
+      if (header === 'Challan' && item.ChallanNo && item.ChallanNo.length > 0) {
+        const mergedChallanMap = cndata?.mergedChallanMap || {};
+        const challanText = item.ChallanNo.map((ch, idx) => {
+          const details = mergedChallanMap[ch.challanNo] || {};
+          let text = `${idx + 1}. ${ch.challanNo} (${ch.status || 'Unknown'})`;
+          if (details.challanQty > 0) {
+            text += ` || Challan QTY (${details.challanQty})`;
           }
-
-          const subtotalRow = [];
-          headers.forEach((header, idx) => {
-            if (idx === 0) {
-              subtotalRow.push('Subtotal');
-            } else if (idx < startIndex) {
-              subtotalRow.push('');
-            } else if (header === 'Order Qty') {
-              subtotalRow.push(subtotal.totalQty);
-            } else if (header === 'Challan Qty') {
-              subtotalRow.push(subtotal.challanQty);
-            } else if (header === 'Balance Qty') {
-              subtotalRow.push(subtotal.balanceQty);
-            } else if (header === 'Order Value') {
-              subtotalRow.push(subtotal.totalValue);
-            } else if (header === 'Challan Value') {
-              subtotalRow.push(subtotal.challanValue);
-            } else if (header === 'Balance Value') {
-              subtotalRow.push(subtotal.balanceValue);
-            } else {
-              subtotalRow.push('');
-            }
-          });
-
-          const subRow = worksheet.addRow(subtotalRow);
-          
-          // Merge cells for "Subtotal" text from column 1 to column before numeric columns
-          if (startIndex > 1) {
-            const rowNumber = subRow.number;
-            worksheet.mergeCells(rowNumber, 1, rowNumber, startIndex);
+          if (details.totalChallanValue > 0) {
+            text += ` || Challan Value ($${details.totalChallanValue.toFixed(2)})`;
           }
-          
-          subRow.eachCell((cell, colNumber) => {
-            const header = headers[colNumber - 1];
-            const isNumericCol = ['Order Qty', 'Challan Qty', 'Balance Qty', 'Order Value', 'Challan Value', 'Balance Value'].includes(header);
-            const isValueCol = ['Order Value', 'Challan Value', 'Balance Value'].includes(header);
-            const isBalanceCol = ['Balance Qty', 'Balance Value'].includes(header);
-            
-            cell.font = { bold: true, size: 16, color: { argb: 'FF1E3A5F' }, name: 'Calibri' };
-            cell.fill = {
-              type: 'pattern',
-              pattern: 'solid',
-              fgColor: { argb: 'FFD9E1F2' }
-            };
-            cell.alignment = { horizontal: 'center', vertical: 'middle' };
-            
-            if (isNumericCol) {
-              cell.alignment = { horizontal: 'right', vertical: 'middle' };
-              cell.numFmt = isValueCol ? '"$"#,##0.00' : '#,##0.00';
-              
-              if (isBalanceCol && cell.value > 0) {
-                cell.font = { bold: true, size: 16, color: { argb: 'FFFF0000' }, name: 'Calibri' };
-              }
-            }
-            
-            if (colNumber === 1 && cell.value === 'Subtotal') {
-              cell.alignment = { horizontal: 'center', vertical: 'middle' };
-            }
-            
-            cell.border = {
-              top: { style: 'medium', color: { argb: 'FF000000' } },
-              bottom: { style: 'medium', color: { argb: 'FF000000' } },
-              left: { style: 'thin', color: { argb: 'FF000000' } },
-              right: { style: 'thin', color: { argb: 'FF000000' } }
-            };
-          });
-        }
+          return text;
+        }).join('\n');
+        cellValue = challanText;
+      }
 
-        return worksheet;
+      const cellLength = String(cellValue).length;
+      const headerLength = header?.length || 10;
+      const maxLength = Math.max(cellLength + 2, headerLength + 4);
+
+      columnWidths[colIndex] = Math.max(columnWidths[colIndex] || 10, Math.min(maxLength, 60));
+    });
+  });
+
+  // Apply column widths
+  headers.forEach((header, index) => {
+    const col = worksheet.getColumn(index + 1);
+    col.width = Math.max(columnWidths[index] || 15, 10);
+    col.alignment = { vertical: 'middle', horizontal: 'center' };
+  });
+
+  // ===== ADD HEADER ROW =====
+  const headerRow = worksheet.addRow(headers);
+  headerRow.eachCell((cell) => {
+    cell.font = { bold: true, size: 18, color: { argb: 'FF000000' }, name: 'Calibri' };
+    cell.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFDDD9C4' }
+    };
+    cell.alignment = { horizontal: 'center', vertical: 'middle' };
+    cell.border = {
+      top: { style: 'thin', color: { argb: 'FF000000' } },
+      bottom: { style: 'thin', color: { argb: 'FF000000' } },
+      left: { style: 'thin', color: { argb: 'FF000000' } },
+      right: { style: 'thin', color: { argb: 'FF000000' } }
+    };
+  });
+
+  // ===== Add data rows with rich text for Challan column =====
+  dataItems.forEach((item, index) => {
+    const rowData = getRowData(item, index + 1);
+    const rowValues = [];
+
+    headers.forEach((header, colIndex) => {
+      if (header === 'Challan' && item.ChallanNo && item.ChallanNo.length > 0) {
+  const mergedChallanMap = cndata?.mergedChallanMap || {};
+  const richText = [];
+  item.ChallanNo.forEach((ch, idx) => {
+    const isReceived = ch.status === 'Challan Received';
+    let details = mergedChallanMap[ch.challanNo] || {};
+    
+    // Fallback to challanReceiveMap
+    if (!details.challanQty && !details.totalChallanValue) {
+      const challanReceiveMap = cndata?.challanReceiveMap || {};
+      const receiveData = challanReceiveMap[ch.challanNo] || {};
+      details = {
+        challanQty: receiveData.challanQty || 0,
+        totalChallanValue: receiveData.totalChallanValue || 0
       };
+    }
+    
+    const qty = details.challanQty || 0;
+    const value = details.totalChallanValue || 0;
+    
+    let text = `${idx + 1}. ${ch.challanNo} (${ch.status || 'Unknown'})`;
+    if (qty > 0) {
+      text += ` || Challan QTY (${qty})`;
+    }
+    if (value > 0) {
+      text += ` || Challan Value ($${value.toFixed(2)})`;
+    }
 
+    richText.push({
+      text: text,
+      font: {
+        color: { argb: isReceived ? 'FF000000' : 'FFFF0000' },
+        bold: !isReceived,
+        size: 16,
+        name: 'Calibri'
+      }
+    });
+
+    if (idx < item.ChallanNo.length - 1) {
+      richText.push({ text: '\n' });
+    }
+  });
+
+  rowValues.push({ richText });
+} else {
+        const val = rowData[colIndex];
+        if (typeof val === 'number' && !isNaN(val)) {
+          rowValues.push(val);
+        } else {
+          rowValues.push(val || '');
+        }
+      }
+    });
+
+    const row = worksheet.addRow(rowValues);
+    row.height = Math.max(30, (item.ChallanNo?.length || 1) * 25);
+
+    row.eachCell((cell, colNumber) => {
+      const header = headers[colNumber - 1];
+      const isChallanCol = header === 'Challan';
+      const isNumericCol = ['Order Qty', 'Challan Qty', 'Balance Qty', 'Order Value', 'Challan Value', 'Balance Value'].includes(header);
+      const isBalanceCol = ['Balance Qty', 'Balance Value'].includes(header);
+      const isValueCol = ['Order Value', 'Challan Value', 'Balance Value'].includes(header);
+
+      if (cell.value && typeof cell.value === 'object' && cell.value.richText) {
+        cell.alignment = { wrapText: true, vertical: 'middle', horizontal: 'left' };
+        cell.border = {
+          top: { style: 'thin', color: { argb: 'FF000000' } },
+          bottom: { style: 'thin', color: { argb: 'FF000000' } },
+          left: { style: 'thin', color: { argb: 'FF000000' } },
+          right: { style: 'thin', color: { argb: 'FF000000' } }
+        };
+        return;
+      }
+
+      cell.font = { size: 16, name: 'Calibri' };
+
+      if (isNumericCol) {
+        cell.numFmt = isValueCol ? '"$"#,##0.00' : '#,##0.00';
+        cell.alignment = { horizontal: 'right', vertical: 'middle' };
+
+        if (isBalanceCol && cell.value > 0) {
+          cell.font = { bold: true, color: { argb: 'FFFF0000' }, size: 16, name: 'Calibri' };
+        }
+      }
+
+      if (header === '#') {
+        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+      }
+
+      cell.border = {
+        top: { style: 'thin', color: { argb: 'FF000000' } },
+        bottom: { style: 'thin', color: { argb: 'FF000000' } },
+        left: { style: 'thin', color: { argb: 'FF000000' } },
+        right: { style: 'thin', color: { argb: 'FF000000' } }
+      };
+    });
+  });
+
+  // ===== ADD SUBTOTAL ROW WITH PROPER MERGING =====
+  if (dataItems.length > 0) {
+    const subtotal = dataItems.reduce((acc, item) => ({
+      totalQty: acc.totalQty + (+item.TotalQty || 0),
+      challanQty: acc.challanQty + (+item.ChallanQTY || 0),
+      balanceQty: acc.balanceQty + (+item.BalanceQty || 0),
+      totalValue: acc.totalValue + (+item.TotalValue || 0),
+      challanValue: acc.challanValue + (+item.ChallanValue || 0),
+      balanceValue: acc.balanceValue + (+item.BalanceValue || 0)
+    }), { totalQty: 0, challanQty: 0, balanceQty: 0, totalValue: 0, challanValue: 0, balanceValue: 0 });
+
+    // Find where numeric columns start
+    let startIndex = 0;
+    for (let i = 0; i < headers.length; i++) {
+      if (['Order Qty', 'Challan Qty', 'Balance Qty', 'Order Value', 'Challan Value', 'Balance Value'].includes(headers[i])) {
+        startIndex = i;
+        break;
+      }
+    }
+
+    const subtotalRow = [];
+    headers.forEach((header, idx) => {
+      if (idx === 0) {
+        subtotalRow.push('Subtotal');
+      } else if (idx < startIndex) {
+        subtotalRow.push('');
+      } else if (header === 'Order Qty') {
+        subtotalRow.push(subtotal.totalQty);
+      } else if (header === 'Challan Qty') {
+        subtotalRow.push(subtotal.challanQty);
+      } else if (header === 'Balance Qty') {
+        subtotalRow.push(subtotal.balanceQty);
+      } else if (header === 'Order Value') {
+        subtotalRow.push(subtotal.totalValue);
+      } else if (header === 'Challan Value') {
+        subtotalRow.push(subtotal.challanValue);
+      } else if (header === 'Balance Value') {
+        subtotalRow.push(subtotal.balanceValue);
+      } else {
+        subtotalRow.push('');
+      }
+    });
+
+    const subRow = worksheet.addRow(subtotalRow);
+
+    // Merge cells for "Subtotal" text from column 1 to column before numeric columns
+    if (startIndex > 1) {
+      const rowNumber = subRow.number;
+      worksheet.mergeCells(rowNumber, 1, rowNumber, startIndex);
+    }
+
+    subRow.eachCell((cell, colNumber) => {
+      const header = headers[colNumber - 1];
+      const isNumericCol = ['Order Qty', 'Challan Qty', 'Balance Qty', 'Order Value', 'Challan Value', 'Balance Value'].includes(header);
+      const isValueCol = ['Order Value', 'Challan Value', 'Balance Value'].includes(header);
+      const isBalanceCol = ['Balance Qty', 'Balance Value'].includes(header);
+
+      cell.font = { bold: true, size: 16, color: { argb: 'FF1E3A5F' }, name: 'Calibri' };
+      cell.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FFD9E1F2' }
+      };
+      cell.alignment = { horizontal: 'center', vertical: 'middle' };
+
+      if (isNumericCol) {
+        cell.alignment = { horizontal: 'right', vertical: 'middle' };
+        cell.numFmt = isValueCol ? '"$"#,##0.00' : '#,##0.00';
+
+        if (isBalanceCol && cell.value > 0) {
+          cell.font = { bold: true, size: 16, color: { argb: 'FFFF0000' }, name: 'Calibri' };
+        }
+      }
+
+      if (colNumber === 1 && cell.value === 'Subtotal') {
+        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+      }
+
+      cell.border = {
+        top: { style: 'medium', color: { argb: 'FF000000' } },
+        bottom: { style: 'medium', color: { argb: 'FF000000' } },
+        left: { style: 'thin', color: { argb: 'FF000000' } },
+        right: { style: 'thin', color: { argb: 'FF000000' } }
+      };
+    });
+  }
+
+  return worksheet;
+};
       // ============================================================
       // CREATE SHEETS
       // ============================================================
@@ -6026,18 +6347,18 @@ if (format === 'pdf') {
         const rowData = getRowData(item, 0);
         headers.forEach((header, colIndex) => {
           let cellValue = rowData[colIndex] || '';
-          
+
           if (header === 'Challan' && item.ChallanNo && item.ChallanNo.length > 0) {
-            const challanText = item.ChallanNo.map((ch, idx) => 
+            const challanText = item.ChallanNo.map((ch, idx) =>
               `${idx + 1}. ${ch.challanNo} (${ch.status || 'Unknown'})`
             ).join('\n');
             cellValue = challanText;
           }
-          
+
           const cellLength = String(cellValue).length;
           const headerLength = header?.length || 10;
           const maxLength = Math.max(cellLength + 2, headerLength + 4);
-          
+
           mainColumnWidths[colIndex] = Math.max(mainColumnWidths[colIndex] || 10, Math.min(maxLength, 60));
         });
       });
@@ -6091,14 +6412,14 @@ if (format === 'pdf') {
         items.forEach((item, idx) => {
           const rowData = getRowData(item, idx + 1);
           const rowValues = [];
-          
+
           headers.forEach((header, colIndex) => {
             if (header === 'Challan' && item.ChallanNo && item.ChallanNo.length > 0) {
               const richText = [];
               item.ChallanNo.forEach((ch, chIdx) => {
                 const isReceived = ch.status === 'Challan Received';
                 const text = `${chIdx + 1}. ${ch.challanNo} (${ch.status || 'Unknown'})`;
-                
+
                 richText.push({
                   text: text,
                   font: {
@@ -6108,12 +6429,12 @@ if (format === 'pdf') {
                     name: 'Calibri'
                   }
                 });
-                
+
                 if (chIdx < item.ChallanNo.length - 1) {
                   richText.push({ text: '\n' });
                 }
               });
-              
+
               rowValues.push({ richText });
             } else {
               const val = rowData[colIndex];
@@ -6124,10 +6445,10 @@ if (format === 'pdf') {
               }
             }
           });
-          
+
           const row = mainSheet.addRow(rowValues);
           row.height = Math.max(30, (item.ChallanNo?.length || 1) * 25);
-          
+
           // Style each cell - ALL FONT SIZE 16
           row.eachCell((cell, colNumber) => {
             const header = headers[colNumber - 1];
@@ -6135,7 +6456,7 @@ if (format === 'pdf') {
             const isNumericCol = ['Order Qty', 'Challan Qty', 'Balance Qty', 'Order Value', 'Challan Value', 'Balance Value'].includes(header);
             const isBalanceCol = ['Balance Qty', 'Balance Value'].includes(header);
             const isValueCol = ['Order Value', 'Challan Value', 'Balance Value'].includes(header);
-            
+
             if (cell.value && typeof cell.value === 'object' && cell.value.richText) {
               cell.alignment = { wrapText: true, vertical: 'middle', horizontal: 'left' };
               cell.border = {
@@ -6146,9 +6467,9 @@ if (format === 'pdf') {
               };
               return;
             }
-            
+
             cell.font = { size: 16, name: 'Calibri' };
-            
+
             if (isNumericCol) {
               cell.numFmt = isValueCol ? '"$"#,##0.00' : '#,##0.00';
               cell.alignment = { horizontal: 'right', vertical: 'middle' };
@@ -6156,11 +6477,11 @@ if (format === 'pdf') {
                 cell.font = { bold: true, color: { argb: 'FFFF0000' }, size: 16, name: 'Calibri' };
               }
             }
-            
+
             if (header === '#') {
               cell.alignment = { horizontal: 'center', vertical: 'middle' };
             }
-            
+
             cell.border = {
               top: { style: 'thin', color: { argb: 'FF000000' } },
               bottom: { style: 'thin', color: { argb: 'FF000000' } },
@@ -6168,7 +6489,7 @@ if (format === 'pdf') {
               right: { style: 'thin', color: { argb: 'FF000000' } }
             };
           });
-          
+
           currentRow++;
         });
 
@@ -6215,19 +6536,19 @@ if (format === 'pdf') {
         });
 
         const subRowMain = mainSheet.addRow(subtotalRowMain);
-        
+
         // Merge cells for "Subtotal" text
         if (startIndexMain > 1) {
           const rowNumber = subRowMain.number;
           mainSheet.mergeCells(rowNumber, 1, rowNumber, startIndexMain);
         }
-        
+
         subRowMain.eachCell((cell, colNumber) => {
           const header = headers[colNumber - 1];
           const isNumericCol = ['Order Qty', 'Challan Qty', 'Balance Qty', 'Order Value', 'Challan Value', 'Balance Value'].includes(header);
           const isValueCol = ['Order Value', 'Challan Value', 'Balance Value'].includes(header);
           const isBalanceCol = ['Balance Qty', 'Balance Value'].includes(header);
-          
+
           cell.font = { bold: true, size: 16, color: { argb: 'FF1E3A5F' }, name: 'Calibri' };
           cell.fill = {
             type: 'pattern',
@@ -6235,20 +6556,20 @@ if (format === 'pdf') {
             fgColor: { argb: 'FFD9E1F2' }
           };
           cell.alignment = { horizontal: 'center', vertical: 'middle' };
-          
+
           if (isNumericCol) {
             cell.alignment = { horizontal: 'right', vertical: 'middle' };
             cell.numFmt = isValueCol ? '"$"#,##0.00' : '#,##0.00';
-            
+
             if (isBalanceCol && cell.value > 0) {
               cell.font = { bold: true, size: 16, color: { argb: 'FFFF0000' }, name: 'Calibri' };
             }
           }
-          
+
           if (colNumber === 1 && cell.value === 'Subtotal') {
             cell.alignment = { horizontal: 'center', vertical: 'middle' };
           }
-          
+
           cell.border = {
             top: { style: 'medium', color: { argb: 'FF000000' } },
             bottom: { style: 'medium', color: { argb: 'FF000000' } },
@@ -6288,16 +6609,16 @@ if (format === 'pdf') {
       // ============================================================
       // SHEET 4: SUMMARY PI
       // ============================================================
-      
+
       const summaryPISheet = workbook.addWorksheet('Summary PI');
-      
+
       // Header
       summaryPISheet.addRow(['SUMMARY PI REPORT']);
       summaryPISheet.mergeCells('A1:J1');
       summaryPISheet.getCell('A1').font = { bold: true, size: 18, color: { argb: 'FF1E3A5F' }, name: 'Calibri' };
       summaryPISheet.getCell('A1').alignment = { horizontal: 'center', vertical: 'middle' };
       summaryPISheet.addRow([]);
-      
+
       // Table headers - 16px Bold Black
       const piHeaders = ['S.No', 'PI No', 'PI Company', 'Order Count', 'Total Qty', 'Total Value', 'Total Challan Qty', 'Total Challan Value', 'Total Balance Qty', 'Total Balance Value'];
       const piHeaderRow = summaryPISheet.addRow(piHeaders);
@@ -6316,7 +6637,7 @@ if (format === 'pdf') {
           right: { style: 'thin', color: { argb: 'FF000000' } }
         };
       });
-      
+
       // Set column widths (fixed for Summary PI)
       [8, 25, 30, 15, 18, 20, 18, 20, 18, 20].forEach((width, index) => {
         summaryPISheet.getColumn(index + 1).width = width;
@@ -6371,7 +6692,7 @@ if (format === 'pdf') {
           pi.totalBalanceQty,
           pi.totalBalanceValue
         ]);
-        
+
         row.eachCell((cell, colNumber) => {
           cell.font = { size: 16, name: 'Calibri' };
           cell.border = {
@@ -6381,7 +6702,7 @@ if (format === 'pdf') {
             right: { style: 'thin' }
           };
           cell.alignment = { horizontal: colNumber === 1 ? 'left' : 'right', vertical: 'middle' };
-          
+
           if (colNumber >= 5 && colNumber <= 10) {
             cell.numFmt = (colNumber === 6 || colNumber === 8 || colNumber === 10) ? '"$"#,##0.00' : '#,##0.00';
           }
@@ -6412,7 +6733,7 @@ if (format === 'pdf') {
         summaryPITotals.totalBalanceQty,
         summaryPITotals.totalBalanceValue
       ]);
-      
+
       totalRow.eachCell((cell) => {
         cell.font = { bold: true, size: 16, color: { argb: 'FF1E3A5F' }, name: 'Calibri' };
         cell.fill = {
@@ -6434,7 +6755,7 @@ if (format === 'pdf') {
       // ============================================================
       if (includeSummary) {
         const summarySheet = workbook.addWorksheet('Summary');
-        
+
         // Add summary content
         const summaryRows = [];
         summaryRows.push(['ORDER SUMMARY REPORT']);
@@ -6444,7 +6765,7 @@ if (format === 'pdf') {
         summaryRows.push(['Orders with PI:', allPIData.length]);
         summaryRows.push(['Orders without PI:', noPIData.length]);
         summaryRows.push([]);
-        
+
         const uniquePIs = new Set();
         allPIData.forEach(item => {
           if (item.PINO) {
@@ -6452,7 +6773,7 @@ if (format === 'pdf') {
           }
         });
         summaryRows.push(['Unique PIs:', uniquePIs.size]);
-        
+
         const uniquePICompanies = new Set();
         allPIData.forEach(item => {
           if (item.PICompany && item.PICompany !== 'N/A') {
@@ -6461,23 +6782,23 @@ if (format === 'pdf') {
         });
         summaryRows.push(['Unique PI Companies:', uniquePICompanies.size]);
         summaryRows.push([]);
-        
+
         summaryRows.push(['QUANTITY SUMMARY']);
         summaryRows.push(['Total Quantity:', grandTotal.TotalQty]);
         summaryRows.push(['Total Challan Qty:', grandTotal.ChallanQTY]);
         summaryRows.push(['Total Balance Qty:', grandTotal.BalanceQty]);
         summaryRows.push([]);
-        
+
         summaryRows.push(['VALUE SUMMARY']);
         summaryRows.push(['Total Value:', `$${grandTotal.TotalValue.toFixed(2)}`]);
         summaryRows.push(['Total Challan Value:', `$${grandTotal.ChallanValue.toFixed(2)}`]);
         summaryRows.push(['Total Balance Value:', `$${grandTotal.BalanceValue.toFixed(2)}`]);
         summaryRows.push([]);
-        
+
         const overallCompletion = grandTotal.TotalQty > 0 ? ((grandTotal.ChallanQTY / grandTotal.TotalQty) * 100) : 0;
         summaryRows.push(['COMPLETION SUMMARY']);
         summaryRows.push(['Overall Completion Rate:', `${overallCompletion.toFixed(1)}%`]);
-        
+
         // Write summary rows
         summaryRows.forEach((row, index) => {
           const sheetRow = summarySheet.addRow(row);
@@ -6494,7 +6815,7 @@ if (format === 'pdf') {
             sheetRow.getCell(2).numFmt = '"$"#,##0.00';
           }
         });
-        
+
         summarySheet.getColumn(1).width = 30;
         summarySheet.getColumn(2).width = 25;
       }
@@ -6516,7 +6837,7 @@ if (format === 'pdf') {
       toast.success(`Exported ${filteredData.length} rows with per-line coloring!`);
       if (emailReport) toast.info('📧 Report scheduled for email');
       logHistory('Exported data', { format, count: filteredData.length });
-      
+
     } catch (error) {
       console.error("Export error:", error);
       toast.error(`Export failed: ${error.message}`);
@@ -6599,12 +6920,12 @@ if (format === 'pdf') {
             <span className="text-sm font-medium text-blue-700">
               {selectedRows.length} orders selected
             </span>
-            <BulkAttachmentDownloader 
+            <BulkAttachmentDownloader
               selectedOrders={selectedRows.map(id => displayedData.find(d => d.WorkOrderNo === id)).filter(Boolean)}
               apiKey={apiKey}
-              onComplete={() => {}}
+              onComplete={() => { }}
             />
-            <button 
+            <button
               className="btn btn-xs btn-ghost text-gray-500"
               onClick={() => setSelectedRows([])}
             >
@@ -6627,7 +6948,7 @@ if (format === 'pdf') {
             <input id="global-search" type="text" placeholder="🔍 Search... (Ctrl+F)" className="input input-bordered input-xs w-full bg-white/90 backdrop-blur-sm" value={search} onChange={e => { setSearch(e.target.value); setCurrentPage(0); }} />
           </div>
           <MultiSearchDropdown value={multiSearch} onChange={setMultiSearch} onClear={() => setMultiSearch('')} onSearch={() => { if (multiSearch?.trim()) { toast.info(`🔍 Searching ${getMultiSearchCount()} items...`); setCurrentPage(0); } }} totalMatches={filteredData.length} isActive={multiSearch?.trim()?.length > 0} />
-          
+
           <PIMatchFilter
             availablePIs={uniquePI}
             selectedPIs={selectedPIMultiOrder}
@@ -6637,34 +6958,34 @@ if (format === 'pdf') {
             label="PI Match"
             icon="📋"
           />
-          
-          <ProfessionalFilterDropdown 
-            label="PI Company" 
-            open={piCompanyOpen} 
-            setOpen={setPiCompanyOpen} 
-            items={filteredPICompanies} 
-            selectedItems={selectedPICompany} 
-            onToggle={togglePICompany} 
-            searchValue={piCompanySearch} 
-            setSearchValue={setPiCompanySearch} 
-            ref={piCompanyRef} 
-            color="teal" 
+
+          <ProfessionalFilterDropdown
+            label="PI Company"
+            open={piCompanyOpen}
+            setOpen={setPiCompanyOpen}
+            items={filteredPICompanies}
+            selectedItems={selectedPICompany}
+            onToggle={togglePICompany}
+            searchValue={piCompanySearch}
+            setSearchValue={setPiCompanySearch}
+            ref={piCompanyRef}
+            color="teal"
             icon="🏢"
           />
-          <ProfessionalFilterDropdown 
-  label="Sales Person" 
-  open={salesPersonOpen} 
-  setOpen={setSalesPersonOpen} 
-  items={filteredSalesPersons} 
-  selectedItems={selectedSalesPerson} 
-  onToggle={toggleSalesPerson} 
-  searchValue={salesPersonSearch} 
-  setSearchValue={setSalesPersonSearch} 
-  ref={salesPersonRef} 
-  color="indigo" 
-  icon="👤"
-/>
-          
+          <ProfessionalFilterDropdown
+            label="Sales Person"
+            open={salesPersonOpen}
+            setOpen={setSalesPersonOpen}
+            items={filteredSalesPersons}
+            selectedItems={selectedSalesPerson}
+            onToggle={toggleSalesPerson}
+            searchValue={salesPersonSearch}
+            setSearchValue={setSalesPersonSearch}
+            ref={salesPersonRef}
+            color="indigo"
+            icon="👤"
+          />
+
           <ProfessionalFilterDropdown label="Order" open={orderOpen} setOpen={setOrderOpen} items={filteredOrder} selectedItems={selectedOrder} onToggle={toggleOrder} searchValue={orderSearch} setSearchValue={setOrderSearch} ref={orderRef} color="primary" />
           <ProfessionalFilterDropdown label="PI" open={piOpen} setOpen={setPiOpen} items={filteredPI} selectedItems={selectedPI} onToggle={togglePI} searchValue={piSearch} setSearchValue={setPiSearch} ref={piRef} color="secondary" />
           <ProfessionalFilterDropdown label="LC" open={lcOpen} setOpen={setLcOpen} items={filteredLC} selectedItems={selectedLC} onToggle={toggleLC} searchValue={lcSearch} setSearchValue={setLcSearch} ref={lcRef} color="info" />
@@ -6672,19 +6993,32 @@ if (format === 'pdf') {
           <ProfessionalFilterDropdown label="Customer" open={customerOpen} setOpen={setCustomerOpen} items={filteredCustomers} selectedItems={selectedCustomer} onToggle={toggleCustomer} searchValue={customerSearch} setSearchValue={setCustomerSearch} ref={customerRef} color="purple" icon="👤" />
           <ProfessionalFilterDropdown label="Buyer" open={buyerOpen} setOpen={setBuyerOpen} items={filteredBuyers} selectedItems={selectedBuyer} onToggle={toggleBuyer} searchValue={buyerSearch} setSearchValue={setBuyerSearch} ref={buyerRef} color="pink" icon="💼" />
           <ProfessionalFilterDropdown label="Delivery" open={deliveryOpen} setOpen={setDeliveryOpen} items={filteredDeliveries} selectedItems={selectedDelivery} onToggle={toggleDelivery} searchValue={deliverySearch} setSearchValue={setDeliverySearch} ref={deliveryRef} color="orange" icon="🚚" />
-          <ProfessionalFilterDropdown 
-          label="Challan" 
-          open={challanOpen} 
-          setOpen={setChallanOpen} 
-          items={filteredChallans} 
-          selectedItems={selectedChallan} 
-          onToggle={toggleChallan} 
-          searchValue={challanSearch} 
-          setSearchValue={setChallanSearch} 
-          ref={challanRef} 
-          color="cyan" 
-          icon="🚚"
-        />
+          <ProfessionalFilterDropdown
+            label="Challan"
+            open={challanOpen}
+            setOpen={setChallanOpen}
+            items={filteredChallans}
+            selectedItems={selectedChallan}
+            onToggle={toggleChallan}
+            searchValue={challanSearch}
+            setSearchValue={setChallanSearch}
+            ref={challanRef}
+            color="cyan"
+            icon="🚚"
+          />
+          <ProfessionalFilterDropdown
+            label="Style"
+            open={styleOpen}
+            setOpen={setStyleOpen}
+            items={filteredStyles}
+            selectedItems={selectedStyle}
+            onToggle={toggleStyle}
+            searchValue={styleSearch}
+            setSearchValue={setStyleSearch}
+            ref={styleRef}
+            color="purple"
+            icon="🎨"
+          />
           <button className={cn('btn btn-xs', showFavoritesOnly ? 'btn-warning' : 'btn-ghost bg-white/80')} onClick={() => setShowFavoritesOnly(p => !p)} title="Toggle Favorites">{showFavoritesOnly ? '⭐' : '☆'}</button>
           {(selectedPI.length || selectedOrder.length || selectedLC.length || selectedInvoice.length || selectedCustomer.length || selectedBuyer.length || selectedDelivery.length || selectedChallan.length || selectedPIMultiOrder.length || selectedPICompany.length || search || multiSearch || dateRange.start || dateRange.end || minValue || maxValue || minQty || maxQty || statusFilter || sectionFilter || orderStatusFilter || deliveryStatusFilter || showFavoritesOnly) ? (
             <button className="btn btn-ghost btn-xs bg-white/80" onClick={resetFilters}>Clear All</button>
@@ -6694,22 +7028,23 @@ if (format === 'pdf') {
         {viewMode === 'dashboard' ? (
           <DashboardView data={filteredData} grandTotal={grandTotal} onQuickView={handleQuickView} onFavoriteToggle={toggleFavorite} favorites={favorites} />
         ) : (
-       <ProfessionalSummaryTable
-  data={displayedData}
-  columns={selectedColumns}
-  totalData={totalData}
-  onRowSelect={setSelectedRows}
-  onQuickView={handleQuickView}
-  onFavoriteToggle={toggleFavorite}
-  onOrderClick={handleOrderClick}  
-  onChallanClick={handleChallanClick}
-  selectedRows={selectedRows}
-  favorites={favorites}
-  loading={loading}
-  currentPage={currentPage}
-  apiKey={apiKey}
-  cndata={cndata} 
-/>
+          <ProfessionalSummaryTable
+            data={displayedData}
+            columns={selectedColumns}
+            totalData={totalData}
+            onRowSelect={setSelectedRows}
+            onQuickView={handleQuickView}
+            onFavoriteToggle={toggleFavorite}
+            onOrderClick={handleOrderClick}
+            onChallanClick={handleChallanClick}
+            selectedRows={selectedRows}
+            favorites={favorites}
+            loading={loading}
+            currentPage={currentPage}
+            apiKey={apiKey}
+            cndata={cndata}
+          />
+
         )}
 
         {pageCount > 1 && viewMode === 'table' && (
@@ -6745,7 +7080,7 @@ if (format === 'pdf') {
 
         <QuickViewModal item={quickViewItem} isOpen={showQuickView} onClose={() => setShowQuickView(false)} />
 
-        <OrderDetailViewModal 
+        <OrderDetailViewModal
           order={selectedOrderDetail}
           isOpen={showOrderDetail}
           onClose={() => {
@@ -6769,8 +7104,8 @@ if (format === 'pdf') {
                   {deepInsights.map((insight, i) => (
                     <div key={i} className={cn('p-2 rounded-lg text-xs',
                       insight.priority === 'critical' ? 'bg-red-100 text-red-700' :
-                      insight.priority === 'high' ? 'bg-orange-100 text-orange-700' :
-                      insight.priority === 'medium' ? 'bg-yellow-100 text-yellow-700' : 'bg-blue-100 text-blue-700')}>
+                        insight.priority === 'high' ? 'bg-orange-100 text-orange-700' :
+                          insight.priority === 'medium' ? 'bg-yellow-100 text-yellow-700' : 'bg-blue-100 text-blue-700')}>
                       <span className="mr-1">{insight.icon}</span>
                       <span className="font-medium">{insight.title}:</span>
                       <span className="ml-1">{insight.description}</span>
@@ -6796,7 +7131,7 @@ if (format === 'pdf') {
         </div>
       </div>
 
-      
+
     </BackgroundGenerator>
   );
 }
