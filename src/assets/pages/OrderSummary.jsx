@@ -4,479 +4,538 @@ import { FourSquare } from "react-loading-indicators";
 import OrderForm from "../OrderReport/OrderForm";
 import * as XLSX from "xlsx-js-style";
 import ReactPaginate from "react-paginate";
-// import FixedSizeList from 'react-window/dist/react-window.development.js';
 
+// Custom hook for outside click detection
+const useOutsideClick = (ref, setState) => {
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (ref.current && !ref.current.contains(event.target)) {
+        setState(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [ref, setState]);
+};
+
+// Date formatter utility
+const formatDate = (dateStr) => {
+  if (!dateStr) return "";
+  return new Date(dateStr).toLocaleDateString("en-GB");
+};
+
+// Main Order Summary Component
 function OrderSummary() {
-  const { cndata, loading } = useContext(GetDataContext);
+  // const { cndata, loading } = useContext(GetDataContext);
+  const { cndata, loading, apiKey } = useContext(GetDataContext);
 
+  // State management
   const [search, setSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(0);
-
   const [selectedPI, setSelectedPI] = useState([]);
   const [selectedOrder, setSelectedOrder] = useState([]);
-
   const [piSearch, setPiSearch] = useState("");
   const [orderSearch, setOrderSearch] = useState("");
   const [piOpen, setPiOpen] = useState(false);
   const [orderOpen, setOrderOpen] = useState(false);
+  const [viewMode, setViewMode] = useState("summary"); // "summary" or "detail"
 
   const piRef = useRef(null);
   const orderRef = useRef(null);
   const itemsPerPage = 50;
 
-  /* ---------------- DATE FORMAT ---------------- */
+  // Outside click handlers
+  useOutsideClick(piRef, setPiOpen);
+  useOutsideClick(orderRef, setOrderOpen);
 
-  const formatDate = (dateStr) => {
-    if (!dateStr) return "";
-    return new Date(dateStr).toLocaleDateString("en-GB");
+  // Data processing with memoization
+  const processedData = useMemo(() => {
+    // Debug: Log what we're receiving
+    console.log("cndata received:", cndata);
+    
+    // Check if cndata exists and has data
+    if (!cndata || cndata.length === 0) {
+      console.log("No cndata available");
+      return [];
+    }
+
+    // Try to get data from different possible locations
+    const firstItem = cndata[0] || {};
+    const apidata = firstItem.apiData || [];
+    const challandata = firstItem.grupChallan || [];
+    const groupedData = firstItem.groupedData || [];
+
+    console.log("apiData:", apidata);
+    console.log("groupedData:", groupedData);
+
+    // If both are empty, try to use cndata directly
+    if (apidata.length === 0 && groupedData.length === 0) {
+      // Try to use cndata as is
+      if (Array.isArray(cndata)) {
+        // Check if cndata has the expected structure
+        const possibleData = cndata.find(item => 
+          item.apiData || item.groupedData || item.WorkOrderNo
+        );
+        
+        if (possibleData) {
+          // Use the found data
+          if (possibleData.apiData) {
+            return processSummaryData(possibleData.apiData, possibleData.grupChallan || []);
+          } else if (possibleData.groupedData) {
+            return processDetailData(possibleData.groupedData);
+          } else if (possibleData.WorkOrderNo) {
+            // If it's already the data we need
+            return processSummaryData(cndata, []);
+          }
+        }
+      }
+      return [];
+    }
+
+    // Process based on view mode
+    if (viewMode === "summary" && apidata.length > 0) {
+      return processSummaryData(apidata, challandata);
+    } else if (viewMode === "detail" && groupedData.length > 0) {
+      return processDetailData(groupedData);
+    }
+
+    // Fallback: try to use whichever has data
+    if (apidata.length > 0) {
+      return processSummaryData(apidata, challandata);
+    } else if (groupedData.length > 0) {
+      return processDetailData(groupedData);
+    }
+
+    return [];
+  }, [cndata, viewMode]);
+
+  // Helper function to process summary data
+  const processSummaryData = (apidata, challandata) => {
+    const challanMap = new Map();
+    challandata.forEach((c) => {
+      challanMap.set(`${c.workOrderNo}-${c.challanNo}`, c.statusDesc);
+    });
+
+    const grouped = {};
+    apidata.forEach((item) => {
+      const key = item.WorkOrderNo;
+      if (!grouped[key]) {
+        grouped[key] = {
+          WorkOrderNo: key,
+          OrderReceiveDate: item.OrderReceiveDate,
+          DeliverName: item.FName || item.DeliverName,
+          CustomerName: item.CName || item.CustomerName,
+          PINO: item.CustomerPINo || item.PINO,
+          Section: item.ProductCategoryName || item.Section,
+          Buyer: item.BuyerName || item.Buyer,
+          TotalQty: 0,
+          TotalValue: 0,
+          ChallanQTY: 0,
+          ChallanValue: 0,
+          BalanceQty: 0,
+          BalanceValue: 0,
+          ChallanNo: new Set(),
+        };
+      }
+
+      const row = grouped[key];
+      row.TotalQty += Number(item.BreakDownQTY || item.TotalQty || 0);
+      row.ChallanQTY += Number(item.ChallanQTY || 0);
+      row.BalanceQty += Number(item.BalanceQTY || 0);
+      row.TotalValue += Number(item.TotalOrderValue || item.TotalValue || 0);
+      row.ChallanValue += Number(item.ChallanValue || 0);
+      row.BalanceValue += Number(item.BalanceValue || 0);
+
+      if (item.ChallanNo) {
+        item.ChallanNo.split(",")
+          .map((c) => c.trim())
+          .filter(Boolean)
+          .forEach((cn) => row.ChallanNo.add(cn));
+      }
+    });
+
+    return Object.values(grouped).map((item) => ({
+      ...item,
+      ChallanNo: Array.from(item.ChallanNo).map((cn) => ({
+        challanNo: cn,
+        status: challanMap.get(`${item.WorkOrderNo}-${cn}`) || "",
+      })),
+    }));
   };
 
-  /* ---------------- SUMMARIZED DATA ---------------- */
+  // Helper function to process detail data
+  const processDetailData = (groupedData) => {
+    return groupedData.map((item) => ({
+      ...item,
+      deliveryPercent: item.BreakDownQTY 
+        ? ((item.challanqty / item.BreakDownQTY) * 100).toFixed(0)
+        : 0
+    }));
+  };
 
-const summarizedData = useMemo(() => {
-  const apidata = cndata?.[0]?.apiData || [];
-  const challandata = cndata?.[0]?.grupChallan || [];
-
-  // 🔹 challan status map
-  const challanMap = new Map();
-  challandata.forEach((c) => {
-    challanMap.set(`${c.workOrderNo}-${c.challanNo}`, c.statusDesc);
-  });
-
-  // 🔹 grouped data
-  const grouped = {};
-
-  apidata.forEach((item) => {
-    const key = item.WorkOrderNo;
-
-    if (!grouped[key]) {
-      grouped[key] = {
-        WorkOrderNo: key,
-        OrderReceiveDate: item.OrderReceiveDate,
-        DeliverName: item.FName,
-        CustomerName: item.CName,
-        PINO: item.CustomerPINo,
-        Section: item.ProductCategoryName,
-        Buyer: item.BuyerName,
-
-        TotalQty: 0,
-        TotalValue: 0,
-        ChallanQTY: 0,
-        ChallanValue: 0,
-        BalanceQty: 0,
-        BalanceValue: 0,
-
-        ChallanNo: new Set(), // 🔥 use Set directly
-      };
-    }
-
-    const row = grouped[key];
-
-    // 🔹 numeric calculation
-    row.TotalQty += Number(item.BreakDownQTY) || 0;
-    row.ChallanQTY += Number(item.ChallanQTY) || 0;
-    row.BalanceQty += Number(item.BalanceQTY) || 0;
-
-    row.TotalValue += Number(item.TotalOrderValue) || 0;
-    row.ChallanValue += Number(item.ChallanValue) || 0;
-    row.BalanceValue += Number(item.BalanceValue) || 0;
-
-    // 🔹 split challan safely
-    if (item.ChallanNo) {
-      item.ChallanNo.split(",")
-        .map((c) => c.trim())
-        .filter(Boolean) // remove empty
-        .forEach((cn) => row.ChallanNo.add(cn));
-    }
-  });
-
-  // 🔹 final format
-  return Object.values(grouped).map((item) => ({
-    ...item,
-    ChallanNo: Array.from(item.ChallanNo).map((cn) => ({
-      challanNo: cn,
-      status: challanMap.get(`${item.WorkOrderNo}-${cn}`) || "",
-    })),
-  }));
-}, [cndata]);
-
-  console.log("Summarize data", summarizedData);
-  
-  /* ---------------- UNIQUE FILTER LIST ---------------- */
-
+  // Filter options - only if data exists
   const uniquePI = useMemo(() => {
-    return [...new Set(summarizedData.map((d) => d.PINO).filter(Boolean))];
-  }, [summarizedData]);
+    if (!processedData || processedData.length === 0) return [];
+    return [...new Set(processedData.map((d) => d.PINO).filter(Boolean))];
+  }, [processedData]);
 
   const uniqueOrder = useMemo(() => {
-    return [...new Set(summarizedData.map((d) => d.WorkOrderNo))];
-  }, [summarizedData]);
+    if (!processedData || processedData.length === 0) return [];
+    return [...new Set(processedData.map((d) => d.WorkOrderNo))];
+  }, [processedData]);
 
-  /* ---------------- SEARCHABLE FILTER LIST ---------------- */
-
+  // Filtered lists
   const filteredPI = uniquePI.filter((pi) =>
-    pi.toLowerCase().includes(piSearch.toLowerCase()),
+    pi.toLowerCase().includes(piSearch.toLowerCase())
   );
 
   const filteredOrder = uniqueOrder.filter((order) =>
-    order.toString().includes(orderSearch),
+    order.toString().includes(orderSearch)
   );
 
-  /* ---------------- FILTER TOGGLE ---------------- */
-
+  // Toggle functions
   const togglePI = (pi) => {
     setSelectedPI((prev) =>
-      prev.includes(pi) ? prev.filter((p) => p !== pi) : [...prev, pi],
+      prev.includes(pi) ? prev.filter((p) => p !== pi) : [...prev, pi]
     );
   };
 
   const toggleOrder = (order) => {
     setSelectedOrder((prev) =>
-      prev.includes(order) ? prev.filter((o) => o !== order) : [...prev, order],
+      prev.includes(order) ? prev.filter((o) => o !== order) : [...prev, order]
     );
   };
 
-  /* ---------------- FILTER DATA ---------------- */
+  // Filter data based on selections
+  const filteredData = useMemo(() => {
+    if (!processedData || processedData.length === 0) return [];
+    
+    return processedData
+      .filter((item) => {
+        const searchMatch = !search ||
+          (item.WorkOrderNo && item.WorkOrderNo.toString().includes(search)) ||
+          (item.CustomerName && item.CustomerName.toLowerCase().includes(search.toLowerCase())) ||
+          (item.DeliverName && item.DeliverName.toLowerCase().includes(search.toLowerCase())) ||
+          (item.PINO && item.PINO.toLowerCase().includes(search.toLowerCase())) ||
+          (item.Buyer && item.Buyer.toLowerCase().includes(search.toLowerCase()));
 
-const filteredData = useMemo(() => {
-  return summarizedData
-    .filter((item) => {
-      const searchMatch =
-        !search ||
-        item.WorkOrderNo.toString().includes(search) ||
-        item.CustomerName?.toLowerCase().includes(search.toLowerCase()) ||
-        item.DeliverName?.toLowerCase().includes(search.toLowerCase()) ||
-        item.PINO?.toLowerCase().includes(search.toLowerCase()) ||
-        item.Buyer?.toLowerCase().includes(search.toLowerCase());
+        const piMatch = selectedPI.length === 0 || (item.PINO && selectedPI.includes(item.PINO));
+        const orderMatch = selectedOrder.length === 0 || (item.WorkOrderNo && selectedOrder.includes(item.WorkOrderNo));
 
-      const piMatch =
-        selectedPI.length === 0 || selectedPI.includes(item.PINO);
+        return searchMatch && piMatch && orderMatch;
+      })
+      .sort((a, b) => {
+        if (!a.WorkOrderNo || !b.WorkOrderNo) return 0;
+        const getParts = (val) => {
+          if (!val) return { num: 0, year: 0 };
+          const parts = val.split("-");
+          return { num: Number(parts[1]) || 0, year: Number(parts[2]) || 0 };
+        };
+        const A = getParts(a.WorkOrderNo);
+        const B = getParts(b.WorkOrderNo);
+        if (B.year !== A.year) return B.year - A.year;
+        return B.num - A.num;
+      });
+  }, [processedData, search, selectedPI, selectedOrder]);
 
-      const orderMatch =
-        selectedOrder.length === 0 ||
-        selectedOrder.includes(item.WorkOrderNo);
-
-      return searchMatch && piMatch && orderMatch;
-    })
-    .sort((a, b) => {
-  const getParts = (val) => {
-    const parts = val.split("-");
-    return {
-      num: Number(parts[1]) || 0,
-      year: Number(parts[2]) || 0,
-    };
-  };
-
-  const A = getParts(a.WorkOrderNo);
-  const B = getParts(b.WorkOrderNo);
-
-  // 🔥 First sort by YEAR (descending)
-  if (B.year !== A.year) {
-    return B.year - A.year;
-  }
-
-  // 🔥 Then sort by NUMBER (descending)
-  return B.num - A.num;
-});
-}, [summarizedData, search, selectedPI, selectedOrder]);
-
-//full grand total for all filtered data without pagination
-const grandTotal = useMemo(() => {
-  return filteredData.reduce((acc, item) => {
-    acc.TotalQty += Number(item.TotalQty || 0);
-    acc.ChallanQTY += Number(item.ChallanQTY || 0);
-    acc.BalanceQty += Number(item.BalanceQty || 0);
-    acc.TotalValue += Number(item.TotalValue || 0);
-    acc.ChallanValue += Number(item.ChallanValue || 0);
-    acc.BalanceValue += Number(item.BalanceValue || 0);
-
-    return acc;
-  }, {
-    TotalQty: 0,
-    ChallanQTY: 0,
-    BalanceQty: 0,
-    TotalValue: 0,
-    ChallanValue: 0,
-    BalanceValue: 0
-  });
-}, [filteredData]);
-
-  /* ---------------- PAGINATION ---------------- */
-
-  const pageCount = Math.ceil(filteredData.length / itemsPerPage);
-  const displayedData = filteredData.slice(
-    currentPage * itemsPerPage,
-    currentPage * itemsPerPage + itemsPerPage,
-  );
-    const totalData = displayedData.reduce((acc, item) => {
-  acc.TotalQty += Number(item.TotalQty || 0);
-  acc.ChallanQTY += Number(item.ChallanQTY || 0);
-  acc.BalanceQty += Number(item.BalanceQty || 0);
-  acc.TotalValue += Number(item.TotalValue || 0);
-  acc.ChallanValue += Number(item.ChallanValue || 0);
-  acc.BalanceValue += Number(item.BalanceValue || 0);
-
-  return acc; 
-}, {
-  TotalQty: 0,
-  ChallanQTY: 0,
-  BalanceQty: 0,
-  TotalValue: 0,
-  ChallanValue: 0,
-  BalanceValue: 0
-}); 
-console.log(displayedData);
-
-
-  const handlePageClick = (event) => {
-    setCurrentPage(event.selected);
-  };
-
-  /* ---------------- STATUS COLOR ---------------- */
-
-  const getStatusColor = (status) => {
-    if (status === "Challan Received") return "text-green-600 font-semibold";
-    if (status === "Send to Gate") return "text-yellow-600 font-semibold";
-    if (status === "Delivered") return "text-blue-600 font-semibold";
-    if (status === "Gate Out") return "text-red-600 font-semibold";
-
-    return "text-gray-500";
-  };
-
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (piRef.current && !piRef.current.contains(event.target)) {
-        setPiOpen(false);
-      }
-
-      if (orderRef.current && !orderRef.current.contains(event.target)) {
-        setOrderOpen(false);
-      }
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, []);
-
-  /* ---------------- EXPORT EXCEL ---------------- */
-
-const exportToExcel = () => {
-
-  // UI filtered data use directly
-  const dataToExport = filteredData;
-
-  // Group data by PI
-  const groupedByPI = {};
-  dataToExport.forEach((item) => {
-    const key = item.PINO || "No PI";
-    if (!groupedByPI[key]) groupedByPI[key] = [];
-    groupedByPI[key].push(item);
-  });
-
-  let data = [];
-
-  // Build data array
-  for (const [pi, items] of Object.entries(groupedByPI)) {
-
-    // PI title
-    data.push([`PI: ${pi}`]);
-    data.push([]);
-
-    // Header
-    data.push([
-      "Order No",
-      "Order Date",
-      "Customer",
-      "Delivery",
-      "PI No",
-      "Section",
-      "Order Qty",
-      "Challan Qty",
-      "Balance Qty",
-      "Order Value",
-      "Challan Value",
-      "Balance Value",
-      "Challan No",
-    ]);
-
-    // Rows
-    items.forEach((item) => {
-      data.push([
-        item.WorkOrderNo,
-        item.OrderReceiveDate
-          ? new Date(item.OrderReceiveDate).toLocaleDateString("en-GB")
-          : "",
-        item.CustomerName,
-        item.DeliverName,
-        item.PINO,
-        item.Section,
-        item.TotalQty,
-        item.ChallanQTY,
-        item.BalanceQty,
-        item.TotalValue,
-        item.ChallanValue,
-        item.BalanceValue,
-        item.ChallanNo.map(
-          (ch) => `${ch.challanNo} (${ch.status})`
-        ).join(", "),
-      ]);
-    });
-
-    // Subtotal
-    data.push([
-      "Subtotal",
-      "",
-      "",
-      "",
-      "",
-      "",
-      items.reduce((a, b) => a + Number(b.TotalQty), 0),
-      items.reduce((a, b) => a + Number(b.ChallanQTY), 0),
-      items.reduce((a, b) => a + Number(b.BalanceQty), 0),
-      items.reduce((a, b) => a + Number(b.TotalValue), 0),
-      items.reduce((a, b) => a + Number(b.ChallanValue), 0),
-      items.reduce((a, b) => a + Number(b.BalanceValue), 0),
-      "",
-    ]);
-
-    data.push([]);
-  }
-
-  const ws = XLSX.utils.aoa_to_sheet(data);
-
-  /* -------- PI TITLE MERGE -------- */
-
-  let rowPointer = 0;
-  for (const items of Object.values(groupedByPI)) {
-
-    if (!ws["!merges"]) ws["!merges"] = [];
-
-    ws["!merges"].push({
-      s: { r: rowPointer, c: 0 },
-      e: { r: rowPointer, c: 12 },
-    });
-
-    rowPointer += 3 + items.length + 2;
-  }
-
-  /* -------- COLUMN WIDTH AUTO -------- */
-
-  const colWidths = [];
-
-  for (let c = 0; c <= 12; c++) {
-
-    let maxLength = 10;
-
-    for (let r = 0; r < data.length; r++) {
-
-      const cellValue = data[r][c];
-
-      if (cellValue) {
-        const len = cellValue.toString().length;
-        if (len > maxLength) maxLength = len + 2;
-      }
+  // Grand totals
+  const grandTotal = useMemo(() => {
+    if (!filteredData || filteredData.length === 0) {
+      return { TotalQty: 0, ChallanQTY: 0, BalanceQty: 0, TotalValue: 0, ChallanValue: 0, BalanceValue: 0 };
     }
 
-    colWidths.push({ wch: maxLength });
-  }
+    return filteredData.reduce((acc, item) => {
+      if (viewMode === "summary") {
+        acc.TotalQty += Number(item.TotalQty || 0);
+        acc.ChallanQTY += Number(item.ChallanQTY || 0);
+        acc.BalanceQty += Number(item.BalanceQty || 0);
+        acc.TotalValue += Number(item.TotalValue || 0);
+        acc.ChallanValue += Number(item.ChallanValue || 0);
+        acc.BalanceValue += Number(item.BalanceValue || 0);
+      } else {
+        acc.TotalQty += Number(item.BreakDownQTY || 0);
+        acc.ChallanQTY += Number(item.challanqty || 0);
+        acc.BalanceQty = acc.TotalQty - acc.ChallanQTY;
+        acc.TotalValue = acc.TotalQty;
+        acc.ChallanValue = acc.ChallanQTY;
+        acc.BalanceValue = acc.BalanceQty;
+      }
+      return acc;
+    }, { TotalQty: 0, ChallanQTY: 0, BalanceQty: 0, TotalValue: 0, ChallanValue: 0, BalanceValue: 0 });
+  }, [filteredData, viewMode]);
 
-  ws["!cols"] = colWidths;
+  // Pagination
+  const pageCount = Math.ceil((filteredData?.length || 0) / itemsPerPage);
+  const displayedData = (filteredData || []).slice(
+    currentPage * itemsPerPage,
+    currentPage * itemsPerPage + itemsPerPage
+  );
 
-  /* -------- ROW HEIGHT AUTO -------- */
+  const totalData = useMemo(() => {
+    if (!displayedData || displayedData.length === 0) {
+      return { TotalQty: 0, ChallanQTY: 0, BalanceQty: 0, TotalValue: 0, ChallanValue: 0, BalanceValue: 0 };
+    }
 
-  ws["!rows"] = data.map((row) => {
+    return displayedData.reduce((acc, item) => {
+      if (viewMode === "summary") {
+        acc.TotalQty += Number(item.TotalQty || 0);
+        acc.ChallanQTY += Number(item.ChallanQTY || 0);
+        acc.BalanceQty += Number(item.BalanceQty || 0);
+        acc.TotalValue += Number(item.TotalValue || 0);
+        acc.ChallanValue += Number(item.ChallanValue || 0);
+        acc.BalanceValue += Number(item.BalanceValue || 0);
+      } else {
+        acc.TotalQty += Number(item.BreakDownQTY || 0);
+        acc.ChallanQTY += Number(item.challanqty || 0);
+        acc.BalanceQty = acc.TotalQty - acc.ChallanQTY;
+      }
+      return acc;
+    }, { TotalQty: 0, ChallanQTY: 0, BalanceQty: 0, TotalValue: 0, ChallanValue: 0, BalanceValue: 0 });
+  }, [displayedData, viewMode]);
 
-    let maxLines = 1;
+  // Status color helper
+  const getStatusColor = (status) => {
+    const statusMap = {
+      "Challan Received": "text-green-600 font-semibold",
+      "Send to Gate": "text-yellow-600 font-semibold",
+      "Delivered": "text-blue-600 font-semibold",
+      "Gate Out": "text-red-600 font-semibold"
+    };
+    return statusMap[status] || "text-gray-500";
+  };
 
-    row.forEach((cell) => {
-      if (!cell) return;
+  // Excel export with styling
+  const exportToExcel = () => {
+    const dataToExport = filteredData;
+    
+    if (!dataToExport || dataToExport.length === 0) {
+      alert("No data to export!");
+      return;
+    }
+    
+    if (viewMode === "summary") {
+      // Summary view export
+      const groupedByPI = {};
+      dataToExport.forEach((item) => {
+        const key = item.PINO || "No PI";
+        if (!groupedByPI[key]) groupedByPI[key] = [];
+        groupedByPI[key].push(item);
+      });
 
-      const lines = cell.toString().split("\n").length;
-      if (lines > maxLines) maxLines = lines;
+      let data = [];
+      for (const [pi, items] of Object.entries(groupedByPI)) {
+        data.push([`PI: ${pi}`], []);
+        data.push([
+          "Order No", "Order Date", "Customer", "Delivery", "PI No", "Section",
+          "Order Qty", "Challan Qty", "Balance Qty", "Order Value", 
+          "Challan Value", "Balance Value", "Challan No"
+        ]);
+        
+        items.forEach((item) => {
+          data.push([
+            item.WorkOrderNo || "",
+            formatDate(item.OrderReceiveDate),
+            item.CustomerName || "",
+            item.DeliverName || "",
+            item.PINO || "",
+            item.Section || "",
+            item.TotalQty || 0,
+            item.ChallanQTY || 0,
+            item.BalanceQty || 0,
+            item.TotalValue || 0,
+            item.ChallanValue || 0,
+            item.BalanceValue || 0,
+            (item.ChallanNo || []).map(ch => `${ch.challanNo} (${ch.status})`).join(", ")
+          ]);
+        });
+
+        data.push([
+          "Subtotal", "", "", "", "", "",
+          items.reduce((a, b) => a + Number(b.TotalQty || 0), 0),
+          items.reduce((a, b) => a + Number(b.ChallanQTY || 0), 0),
+          items.reduce((a, b) => a + Number(b.BalanceQty || 0), 0),
+          items.reduce((a, b) => a + Number(b.TotalValue || 0), 0),
+          items.reduce((a, b) => a + Number(b.ChallanValue || 0), 0),
+          items.reduce((a, b) => a + Number(b.BalanceValue || 0), 0),
+          ""
+        ]);
+        data.push([]);
+      }
+
+      const ws = XLSX.utils.aoa_to_sheet(data);
+      
+      // Apply simple styling
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Order Summary");
+      XLSX.writeFile(wb, "OrderSummaryReport.xlsx");
+    } else {
+      // Detail view export
+      const exportData = dataToExport.map((item, index) => ({
+        SL: index + 1,
+        "Order No": item.WorkOrderNo || "",
+        "Order Date": formatDate(item.OrderReceiveDate),
+        Customer: item.CustomerName || "",
+        Category: item.Category || item.Section || "",
+        "PI No": item.PINO || "",
+        "Order Qty": item.BreakDownQTY || item.TotalQty || 0,
+        "Delivery Qty": item.challanqty || item.ChallanQTY || 0,
+        "Delivery Complete": item.deliveryPercent ? `${item.deliveryPercent}%` : 
+          (item.TotalQty ? ((item.ChallanQTY / item.TotalQty) * 100).toFixed(0) + "%" : "0%")
+      }));
+
+      const ws = XLSX.utils.json_to_sheet(exportData);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Order Detail");
+      XLSX.writeFile(wb, "OrderDetailReport.xlsx");
+    }
+  };
+
+  // Render filter dropdown
+  const renderFilterDropdown = (
+    ref, 
+    isOpen, 
+    setIsOpen, 
+    selectedItems, 
+    setSelectedItems, 
+    allItems, 
+    searchValue, 
+    setSearchValue, 
+    filteredItems, 
+    toggleItem,
+    label
+  ) => (
+    <div className="relative" ref={ref}>
+      <button
+        className="btn btn-outline w-32"
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        {label} {selectedItems.length ? `(${selectedItems.length})` : ""}
+      </button>
+      {isOpen && (
+        <div className="absolute bg-base-100 shadow p-3 rounded w-64 max-h-60 overflow-y-auto z-50 mt-2">
+          <div className="flex justify-between mb-2">
+            <button
+              className="text-blue-600 text-sm hover:underline"
+              onClick={() => setSelectedItems(allItems)}
+            >
+              Select All
+            </button>
+            <button
+              className="text-red-600 text-sm hover:underline"
+              onClick={() => setSelectedItems([])}
+            >
+              Uncheck All
+            </button>
+          </div>
+          <input
+            type="text"
+            placeholder={`Search ${label}`}
+            className="input input-sm w-full mb-2"
+            value={searchValue}
+            onChange={(e) => setSearchValue(e.target.value)}
+          />
+          {filteredItems.length > 0 ? (
+            filteredItems.map((item) => (
+              <label key={item} className="flex gap-2 py-1 items-center hover:bg-blue-100 rounded cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={selectedItems.includes(item)}
+                  onChange={() => toggleItem(item)}
+                />
+                <span className="select-none">{item}</span>
+              </label>
+            ))
+          ) : (
+            <div className="text-gray-500 text-sm py-2">No items found</div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+
+  // Render table rows based on view mode
+  const renderTableRows = () => {
+    if (loading) {
+      return (
+        <tr>
+          <td colSpan="14" className="text-center py-10">
+            <FourSquare color="#32cd32" size="large" />
+          </td>
+        </tr>
+      );
+    }
+
+    if (!displayedData || displayedData.length === 0) {
+      return (
+        <tr>
+          <td colSpan="14" className="text-center text-red-500 text-2xl font-bold py-10">
+            No data found
+          </td>
+        </tr>
+      );
+    }
+
+    return displayedData.map((data, index) => {
+      if (viewMode === "summary") {
+        // Summary view row
+        return (
+          <tr key={data.WorkOrderNo || index} className="hover:bg-gray-300 cursor-pointer text-center">
+            <td className="w-xl">{data.WorkOrderNo || "N/A"}</td>
+            <td className="w-sm">{formatDate(data.OrderReceiveDate)}</td>
+            <td className="w-sm">{data.CustomerName || "N/A"}</td>
+            <td className="w-sm">{data.DeliverName || "N/A"}</td>
+            <td className="w-sm">{data.Buyer || "N/A"}</td>
+            <td className="w-lg">{data.PINO || "N/A"}</td>
+            <td className="w-sm">{data.Section || "N/A"}</td>
+            <td className="w-sm">{(data.TotalQty || 0).toFixed(2)}</td>
+            <td className="w-sm">{(data.ChallanQTY || 0).toFixed(2)}</td>
+            <td className="w-sm">{(data.BalanceQty || 0).toFixed(2)}</td>
+            <td className="text-blue-600">$ {(data.TotalValue || 0).toFixed(2)}</td>
+            <td className="text-green-600">$ {(data.ChallanValue || 0).toFixed(2)}</td>
+            <td className="text-red-600">$ {(data.BalanceValue || 0).toFixed(2)}</td>
+            <td className="w-xl text-left">
+              {data.ChallanNo && data.ChallanNo.length > 0 ? (
+                data.ChallanNo.map((ch, i) => (
+                  <div key={i} className={getStatusColor(ch.status)}>
+                    {i + 1}. {ch.challanNo} ({ch.status})
+                  </div>
+                ))
+              ) : (
+                <div className="text-gray-400">No Challan</div>
+              )}
+            </td>
+          </tr>
+        );
+      } else {
+        // Detail view row
+        const deliveryPercent = data.deliveryPercent || 
+          (data.TotalQty ? ((data.ChallanQTY || 0) / (data.TotalQty || 0) * 100).toFixed(0) : 0);
+        
+        return (
+          <tr key={data.WorkOrderNo || index} className="hover:bg-gray-300 cursor-pointer text-center">
+            <td className="w-xl">{index + 1 + currentPage * itemsPerPage}</td>
+            <td className="w-xl">{data.WorkOrderNo || "N/A"}</td>
+            <td className="w-sm">{formatDate(data.OrderReceiveDate)}</td>
+            <td className="w-sm">{data.CustomerName || "N/A"}</td>
+            <td className="w-sm">{data.Section || data.Category || "N/A"}</td>
+            <td className="w-lg">{data.PINO || "N/A"}</td>
+            <td className="w-sm text-right">{data.BreakDownQTY || data.TotalQty || 0}</td>
+            <td className="w-sm text-right">{data.challanqty || data.ChallanQTY || 0}</td>
+            <td className="text-center">{deliveryPercent}%</td>
+          </tr>
+        );
+      }
     });
-
-    return { hpt: maxLines * 20 };
-
-  });
-
-  /* -------- STYLING -------- */
-
-  data.forEach((row, r) => {
-
-    row.forEach((_, c) => {
-
-      const cell = XLSX.utils.encode_cell({ r, c });
-
-      if (!ws[cell]) return;
-
-      ws[cell].s = {
-        font: { sz: 16, name: "Calibri" },
-        alignment: {
-          horizontal: c === 12 ? "left" : "center",
-          vertical: "center",
-          wrapText: true,
-        },
-        border: {
-          top: { style: "thin", color: { rgb: "000000" } },
-          bottom: { style: "thin", color: { rgb: "000000" } },
-          left: { style: "thin", color: { rgb: "000000" } },
-          right: { style: "thin", color: { rgb: "000000" } },
-        },
-      };
-
-      // PI title
-      if (ws["!merges"]?.some((m) => m.s.r === r)) {
-
-        ws[cell].s.font = {
-          bold: true,
-          sz: 26,
-          color: { rgb: "FFFFFF" },
-        };
-
-        ws[cell].s.fill = { fgColor: { rgb: "2F75B5" } };
-
-        ws[cell].s.alignment = {
-          horizontal: "center",
-          vertical: "center",
-        };
-      }
-
-      // Currency
-      if (c === 9 || c === 10 || c === 11) {
-
-        ws[cell].s.numFmt = '"$"#,##0';
-
-        ws[cell].s.alignment.horizontal = "right";
-      }
-
-      // Subtotal style
-      if (row[0] === "Subtotal") {
-
-        ws[cell].s.fill = { fgColor: { rgb: "D9E1F2" } };
-
-        ws[cell].s.font.bold = true;
-      }
-    });
-  });
-
-  const wb = XLSX.utils.book_new();
-
-  XLSX.utils.book_append_sheet(wb, ws, "Order Summary");
-
-  XLSX.writeFile(wb, "OrderSummaryReport.xlsx");
-};
-  /* ---------------- UI ---------------- */
+  };
 
   return (
     <>
       <OrderForm />
-
-      <div className="flex justify-between px-9 my-5">
-        <div className="flex gap-4">
-          {/* GLOBAL SEARCH */}
+      
+      {/* Controls Section */}
+      <div className="flex justify-between px-9 my-5 flex-wrap gap-4">
+        <div className="flex gap-4 flex-wrap">
+          {/* Search */}
           <input
             type="text"
             placeholder="Search..."
@@ -488,248 +547,148 @@ const exportToExcel = () => {
             }}
           />
 
-          {/* PI FILTER */}
-          <div className="relative" ref={piRef}>
+          {/* View Mode Toggle */}
+          <div className="btn-group">
             <button
-              className="btn btn-outline w-32"
-              onClick={() => setPiOpen(!piOpen)}
+              className={`btn ${viewMode === 'summary' ? 'btn-active' : ''}`}
+              onClick={() => setViewMode('summary')}
             >
-              Filter PI {selectedPI.length ? `(${selectedPI.length})` : ""}
+              Summary
             </button>
-
-            {piOpen && (
-              <div className="absolute bg-base-100 shadow p-3 rounded w-64 max-h-60 overflow-y-auto z-50 mt-2">
-                {/* Select / Uncheck All */}
-                <div className="flex justify-between mb-2">
-                  <button
-                    className="text-blue-600 text-sm hover:underline"
-                    onClick={() => setSelectedPI(uniquePI)}
-                  >
-                    Select All
-                  </button>
-
-                  <button
-                    className="text-red-600 text-sm hover:underline"
-                    onClick={() => setSelectedPI([])}
-                  >
-                    Uncheck All
-                  </button>
-                </div>
-
-                {/* Search Input */}
-                <input
-                  type="text"
-                  placeholder="Search PI"
-                  className="input input-sm w-full mb-2"
-                  value={piSearch}
-                  onChange={(e) => setPiSearch(e.target.value)}
-                />
-
-                {/* Checkbox List */}
-                {filteredPI.map((pi) => (
-                  <label
-                    key={pi}
-                    className="flex gap-2 py-1 items-center hover:bg-blue-100 rounded cursor-pointer"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={selectedPI.includes(pi)}
-                      onChange={() => togglePI(pi)}
-                    />
-                    <span className="select-none">{pi}</span>
-                  </label>
-                ))}
-              </div>
-            )}
+            <button
+              className={`btn ${viewMode === 'detail' ? 'btn-active' : ''}`}
+              onClick={() => setViewMode('detail')}
+            >
+              Detail
+            </button>
           </div>
 
-          {/* <div style={style}>
-      <label className="flex gap-2 py-1 items-center hover:bg-blue-100 rounded cursor-pointer px-2">
-        <input
-          type="checkbox"
-          checked={selectedOrder.includes(order)}
-          onChange={() => toggleOrder(order)}
-        />
-        <span className="select-none">{order}</span>
-      </label>
-    </div> */}
-          {/* ///////////////////////////////////////////////////////////////////////// */}
-          {/* Error */}
-          {/* /////////////////////////////////////////////////////////////////////// */}
-          {/* ORDER FILTER */}
-          {/* ORDER FILTER */}
-          {/* <div className="relative" ref={orderRef}>
-            {/* <button
-              className="btn btn-outline w-32"
-              onClick={() => setOrderOpen(!orderOpen)}
-            >
-              Filter Order{" "}
-              {selectedOrder.length ? `(${selectedOrder.length})` : ""}
-            </button> */}
-
-          {/* <div className="absolute bg-base-100 shadow p-3 rounded w-64 max-h-60 overflow-y-auto z-50 mt-2"> */}
-          {/* Select / Uncheck All */}
-          {/* <div className="flex justify-between mb-2">
-                  <button
-                    className="text-blue-600 text-sm hover:underline"
-                    onClick={() => setSelectedOrder(uniqueOrder)}
-                  >
-                    Select All
-                  </button>
-                  <button
-                    className="text-red-600 text-sm hover:underline"
-                    onClick={() => setSelectedOrder([])}
-                  >
-                    Uncheck All
-                  </button>
-                </div>
-
-                {/* Search Input */}
-          {/* <input
-                  type="text"
-                  placeholder="Search Order"
-                  className="input input-sm w-full mb-2"
-                  value={orderSearch}
-                  onChange={(e) => setOrderSearch(e.target.value)}
-                /> */}
-
-          {/* ✅ Virtualized List */}
-          {/* <FixedSizeList
-                  height={240} // dropdown visible height
-                  itemCount={filteredOrder.length}
-                  itemSize={32} // এক একটি row এর height
-                  width="100%"
-                > */}
-          {/* {({ index, style }) => {
-                    const order = filteredOrder[index];
-                    return (
-                      <div style={style} className="px-1">
-                        <label className="flex gap-2 py-1 items-center hover:bg-blue-100 rounded cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={selectedOrder.includes(order)}
-                            onChange={() => toggleOrder(order)}
-                          />
-                          <span className="select-none">{order}</span>
-                        </label>
-                      </div>
-                    );
-                  }}
-                </FixedSizeList> */}
-          {/* </div> */}
-
-          {/* </div>  */}
+          {/* PI Filter */}
+          {uniquePI.length > 0 && renderFilterDropdown(
+            piRef, piOpen, setPiOpen,
+            selectedPI, setSelectedPI,
+            uniquePI, piSearch, setPiSearch,
+            filteredPI, togglePI, "Filter PI"
+          )}
         </div>
-        {grandTotal.TotalQty  > 0 && (
-          <div className="flex items-center border rounded bg-gray-100">
-            <p className="border border-black p-3 font-bold bg-cyan-300">Total Qty: {Math.ceil(grandTotal.TotalQty)}</p>
-            <p className="border border-black p-3 font-bold bg-cyan-300">Challan Qty: {Math.ceil(grandTotal.ChallanQTY)}</p>
-            <p className="border border-black p-3 font-bold bg-cyan-300">Balance Qty: {Math.ceil(grandTotal.BalanceQty)}</p>
-            <p className="border border-black p-3 font-bold bg-emerald-500 text-white">Order: ${Math.ceil(grandTotal.TotalValue)}</p>
-            <p className="border border-black p-3 font-bold bg-cyan-300 bg-emerald-500 text-white">Sales: ${Math.ceil(grandTotal.ChallanValue)}</p>
-          <p className="border border-black p-3 font-bold bg-cyan-300 bg-emerald-500 text-white">Balance: ${Math.ceil(grandTotal.BalanceValue)}</p>
-            
-        </div>)}
 
+        {/* Totals Display */}
+        {grandTotal.TotalQty > 0 && (
+          <div className="flex flex-wrap items-center border rounded bg-gray-100">
+            <p className="border border-black p-3 font-bold bg-cyan-300">
+              Total Qty: {Math.ceil(grandTotal.TotalQty)}
+            </p>
+            <p className="border border-black p-3 font-bold bg-cyan-300">
+              Challan Qty: {Math.ceil(grandTotal.ChallanQTY)}
+            </p>
+            <p className="border border-black p-3 font-bold bg-cyan-300">
+              Balance Qty: {Math.ceil(grandTotal.BalanceQty)}
+            </p>
+            {viewMode === "summary" && (
+              <>
+                <p className="border border-black p-3 font-bold bg-emerald-500 text-white">
+                  Order: ${Math.ceil(grandTotal.TotalValue)}
+                </p>
+                <p className="border border-black p-3 font-bold bg-emerald-500 text-white">
+                  Sales: ${Math.ceil(grandTotal.ChallanValue)}
+                </p>
+                <p className="border border-black p-3 font-bold bg-emerald-500 text-white">
+                  Balance: ${Math.ceil(grandTotal.BalanceValue)}
+                </p>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* Export Button */}
         <button onClick={exportToExcel} className="btn btn-success text-white">
           Export Excel
         </button>
       </div>
 
-      {/* TABLE */}
+      {/* Table */}
       <div className="overflow-x-auto w-full max-h-[650px] overflow-y-auto">
-        {loading ? (
-          <div className="flex justify-center items-center h-64">
-            <FourSquare color="#32cd32" size="large" />
-          </div>
-        ) : (
-          <table className="table table-md min-w-full border">
-            <thead className="bg-blue-500 text-white sticky top-0 z-10">
-              <tr className="text-center">
-                <th>Order</th>
-                <th>Date</th>
-                <th>Customer</th>
-                <th>Delivery</th>
-                <th>Buyer</th>
-                <th>PI</th>
-                <th>Section</th>
-                <th>Order Qty</th>
-                <th>Challan Qty</th>
-                <th>Balance Qty</th>
-                <th>Order Value</th>
-                <th>Challan Value</th>
-                <th>Balance Value</th>
-                <th>Challan</th>
-              </tr>
-            </thead>
-            <tbody>
-              {displayedData.map((data) => (
-  
-                <tr key={data.WorkOrderNo} className="hover:bg-gray-300 cursor-pointer text-center">
-                  <td className="w-xl ">{data.WorkOrderNo}</td>
-                  <td className="w-sm ">{formatDate(data.OrderReceiveDate)}</td>
-                  <td className="w-sm ">{data.CustomerName}</td>
-                  <td className="w-sm ">{data.DeliverName}</td>
-                  <td className="w-sm ">{data.Buyer}</td>
-                  <td className="w-lg ">{data.PINO}</td>
-                  <td className="w-sm ">{data.Section}</td>
-                  <td className="w-sm ">{data.TotalQty.toFixed(2)}</td>
-                  <td className="w-sm ">{data.ChallanQTY.toFixed(2)}</td>
-                  <td className="w-sm ">{data.BalanceQty.toFixed(2)}</td>
-                  <td className="text-blue-600  ">
-                    $ {(data.TotalValue).toFixed(2)}
-                  </td>
-                  <td className="text-green-600  ">
-                    $ {(data.ChallanValue).toFixed(2)}
-                  </td>
-                  <td className="text-red-600  ">
-                    $ {(data.BalanceValue).toFixed(2)}
-                  </td>
-                  <td className="w-xl text-left">
-                    {data.ChallanNo.length > 0 ? (
-                      data.ChallanNo.map((ch, i) => (
-                        <div key={i} className={getStatusColor(ch.status)}>
-                          {i + 1}. {ch.challanNo} ({ch.status})
-                        </div>
-                      ))
-                    ) : (
-                      <div className="text-gray-400">No Challan</div>
-                    )}
-                  </td>
-                </tr>
-           
-              ))}
-
-            </tbody>
-            <tfoot className="sticky bottom-0 bg-blue-300 z-10">
+        <table className="table table-md min-w-full border">
+          <thead className="bg-blue-500 text-white sticky top-0 z-10">
+            <tr className="text-center">
+              {viewMode === "summary" ? (
+                <>
+                  <th>Order</th>
+                  <th>Date</th>
+                  <th>Customer</th>
+                  <th>Delivery</th>
+                  <th>Buyer</th>
+                  <th>PI</th>
+                  <th>Section</th>
+                  <th>Order Qty</th>
+                  <th>Challan Qty</th>
+                  <th>Balance Qty</th>
+                  <th>Order Value</th>
+                  <th>Challan Value</th>
+                  <th>Balance Value</th>
+                  <th>Challan</th>
+                </>
+              ) : (
+                <>
+                  <th>SL.</th>
+                  <th>Order No.</th>
+                  <th>Order Date</th>
+                  <th>Customer</th>
+                  <th>Category</th>
+                  <th>PI No.</th>
+                  <th className="text-right">Order Qty</th>
+                  <th className="text-right">Delivery Qty</th>
+                  <th className="text-center">Delivery Complete</th>
+                </>
+              )}
+            </tr>
+          </thead>
+          <tbody>
+            {renderTableRows()}
+          </tbody>
+          <tfoot className="sticky bottom-0 bg-blue-300 z-10">
             <tr className="font-bold text-lg text-center text-black">
-              <td colSpan={7}></td>
-              <td>{totalData.TotalQty.toFixed(2)}</td>
-              <td className="text-green-700">{totalData.ChallanQTY.toFixed(2)}</td>
-              <td className="text-red-700">{totalData.BalanceQty.toFixed(2)}</td>
-              <td>${(totalData.TotalValue).toFixed(2)}</td>
-              <td className="text-green-700">${(totalData.ChallanValue).toFixed(2)}</td>
-              <td className="text-red-700">${(totalData.BalanceValue).toFixed(2)}</td>
-              <td></td>
-              </tr>
-            </tfoot>
-          </table>
-        )}
+              {viewMode === "summary" ? (
+                <>
+                  <td colSpan={7}></td>
+                  <td>{(totalData.TotalQty || 0).toFixed(2)}</td>
+                  <td className="text-green-700">{(totalData.ChallanQTY || 0).toFixed(2)}</td>
+                  <td className="text-red-700">{(totalData.BalanceQty || 0).toFixed(2)}</td>
+                  <td>${(totalData.TotalValue || 0).toFixed(2)}</td>
+                  <td className="text-green-700">${(totalData.ChallanValue || 0).toFixed(2)}</td>
+                  <td className="text-red-700">${(totalData.BalanceValue || 0).toFixed(2)}</td>
+                  <td></td>
+                </>
+              ) : (
+                <>
+                  <td colSpan={6}></td>
+                  <td className="text-right">{(totalData.TotalQty || 0).toLocaleString()}</td>
+                  <td className="text-right">{(totalData.ChallanQTY || 0).toLocaleString()}</td>
+                  <td className="text-center">
+                    {totalData.TotalQty ? ((totalData.ChallanQTY || 0) / (totalData.TotalQty || 0) * 100).toFixed(0) : 0}%
+                  </td>
+                </>
+              )}
+            </tr>
+          </tfoot>
+        </table>
       </div>
 
-      {/* PAGINATION */}
-      <div className="flex justify-center mt-5 page-paginate">
-        <ReactPaginate
-          breakLabel="..."
-          nextLabel="Next >"
-          previousLabel="< Prev"
-          pageCount={pageCount}
-          onPageChange={handlePageClick}
-          containerClassName="flex gap-2"
-          pageLinkClassName="px-3 py-1 border rounded"
-          activeLinkClassName="bg-blue-500 text-white"
-        />
-      </div>
+      {/* Pagination */}
+      {pageCount > 0 && (
+        <div className="flex justify-center mt-5 page-paginate">
+          <ReactPaginate
+            breakLabel="..."
+            nextLabel="Next >"
+            previousLabel="< Prev"
+            pageCount={pageCount}
+            onPageChange={({ selected }) => setCurrentPage(selected)}
+            containerClassName="flex gap-2"
+            pageLinkClassName="px-3 py-1 border rounded"
+            activeLinkClassName="bg-blue-500 text-white"
+          />
+        </div>
+      )}
     </>
   );
 }

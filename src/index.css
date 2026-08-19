@@ -8,6 +8,7 @@
     box-shadow: 0 2px var(--input-color);
   }
 }
+@custom-variant dark (&:where(.dark, .dark *));
 /* ul.pagination{
   display: flex;
 

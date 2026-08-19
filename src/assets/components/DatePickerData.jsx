@@ -1,8 +1,8 @@
 import React, { useContext, useEffect, useState } from "react";
-import TextField from "@mui/material/TextField";
-import { LocalizationProvider, DesktopDatePicker } from "@mui/x-date-pickers";
+import { LocalizationProvider, DatePicker } from "@mui/x-date-pickers";
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
 import { enGB } from "date-fns/locale";
+import { TextField } from "@mui/material";
 import { GetDataContext } from "../components/DataContext";
 
 function DateRangePicker() {
@@ -15,7 +15,6 @@ function DateRangePicker() {
   const [startDate, setStartDate] = useState(cndata?.startDate || sevenDaysAgo);
   const [endDate, setEndDate] = useState(cndata?.endDate || today);
 
-  // Update context whenever date changes
   useEffect(() => {
     if (setcndata) {
       setcndata((prev) => ({
@@ -28,24 +27,32 @@ function DateRangePicker() {
 
   return (
     <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={enGB}>
-      <div style={{ display: "flex", gap: "16px" }}>
-        <DesktopDatePicker
+      <div
+        style={{
+          display: "flex",
+          gap: "16px",
+          alignItems: "center",
+          flexWrap: "wrap",
+        }}
+      >
+        <DatePicker
           label="Start Date"
           value={startDate}
           onChange={(newValue) => setStartDate(newValue)}
           maxDate={endDate}
-          inputFormat="dd/MM/yyyy"
-          mask="__/__/____"
-          renderInput={(params) => <TextField {...params} />}
+          renderInput={(params) => (
+            <TextField {...params} size="small" sx={{ width: "180px" }} />
+          )}
         />
-        <DesktopDatePicker
+        <span style={{ color: "#666", fontWeight: "bold" }}>to</span>
+        <DatePicker
           label="End Date"
           value={endDate}
           onChange={(newValue) => setEndDate(newValue)}
           minDate={startDate}
-          inputFormat="dd/MM/yyyy"
-          mask="__/__/____"
-          renderInput={(params) => <TextField {...params} />}
+          renderInput={(params) => (
+            <TextField {...params} size="small" sx={{ width: "180px" }} />
+          )}
         />
       </div>
     </LocalizationProvider>

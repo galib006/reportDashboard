@@ -1,21 +1,22 @@
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useContext } from "react";
 import { toast, ToastContainer } from "react-toastify";
+import { GetDataContext } from "../components/DataContext";
 
 function Key() {
   const modalref1 = useRef(null);
-  const [apiKey, setApiKey] = useState("");
+  const [apiKeyInput, setApiKeyInput] = useState("");
+  const { updateApiKey } = useContext(GetDataContext);
 
   const btnSave = () => {
-    if (apiKey.trim() === "") {
+    if (apiKeyInput.trim() === "") {
       toast.error("Field Empty!");
     } else {
-      // save to localStorage
-      localStorage.setItem("apiKey", apiKey);
-
-      toast.success("Key Add Successful!");
-
-      modalref1.current.close();
-      setApiKey("");
+      const success = updateApiKey(apiKeyInput);
+      if (success) {
+        toast.success("Key Add Successful!");
+        modalref1.current.close();
+        setApiKeyInput("");
+      }
     }
   };
 
@@ -31,10 +32,8 @@ function Key() {
                   type="text"
                   placeholder="Key"
                   className="input input-neutral no-outline w-full"
-                  value={apiKey}
-                  onChange={(e) => {
-                    setApiKey(e.target.value);
-                  }}
+                  value={apiKeyInput}
+                  onChange={(e) => setApiKeyInput(e.target.value)}
                 />
               </label>
               <div className="validator-hint hidden">Enter key</div>
@@ -43,12 +42,6 @@ function Key() {
               Save
             </button>
           </div>
-
-          {/* <div className="modal-action mt-0">
-            <form method="dialog">
-              <button className="btn">Close</button>
-            </form>
-          </div> */}
         </div>
       </dialog>
     </div>

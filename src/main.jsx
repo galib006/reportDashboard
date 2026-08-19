@@ -11,11 +11,11 @@ import DataContext from "./assets/components/DataContext.jsx";
 import Inventory from "./assets/pages/Inventory.jsx";
 import "react-toastify/dist/ReactToastify.css";
 import InventoryIssue from "./assets/pages/InventoryIssue.jsx";
-import Delivery from "./assets/pages/Delivery.jsx";
 import EmployeeLIst from "./assets/pages/EmployeeLIst.jsx";
-import OrderSummary from "./assets/pages/OrderSummary.jsx";
+// import OrderSummary from "./assets/pages/OrderSummary.jsx";
 import BalanceSummary from "./assets/pages/BalanceSummary.jsx";
 import OfficeStaffList from "./assets/pages/OfficeStaffList.jsx";
+import ChallanDashboard from "./assets/pages/ChallanDashboard.jsx";
 
 
 
@@ -28,13 +28,17 @@ const router = createBrowserRouter([
       path: "OrderReport",
       Component:OrderReport
     },
-    {
-      path: "OrderSummary",
-      Component:OrderSummary
-    },
+    // {
+    //   path: "OrderSummary",
+    //   Component:OrderSummary
+    // },
     {
       path: "PISummary",
       Component: BalanceSummary
+    },
+    {
+      path: "Dispatch",
+      Component: ChallanDashboard
     },
   {path: "Inventory",
     Component:Inventory
@@ -42,10 +46,6 @@ const router = createBrowserRouter([
   {
     path: "InventoryIssue",
     Component: InventoryIssue
-  },
-  {
-    path: "Delivery",
-    Component: Delivery
   },
   {
     path: "Employee-LIst",
