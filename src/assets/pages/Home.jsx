@@ -1,5 +1,8 @@
 import React, { useContext, useMemo, useState, useEffect, useRef } from "react";
 import { GetDataContext } from "../components/DataContext";
+import { Calendar as CalendarIcon, CalendarRange } from "lucide-react";
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
 import {
   FaTruck, FaBoxOpen, FaUsers, FaBuilding, FaCircle,
   FaMoneyBillWave, FaClock, FaCheckCircle, FaExclamationTriangle,
@@ -1679,7 +1682,126 @@ function Home() {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const autoLoadRef = useRef(false);
   const cancelTokenRef = useRef(null);
+  const [dateRange, setDateRange] = useState({
+  startDate: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+  endDate: new Date(),
+});
+const [showDatePicker, setShowDatePicker] = useState(false);
+const [isFetchingRange, setIsFetchingRange] = useState(false);
+const [rangeFetchProgress, setRangeFetchProgress] = useState(0);
+const [rangeFetchStatus, setRangeFetchStatus] = useState("");
+const fetchDataByDateRange = async (startDate, endDate) => {
+  if (!apiKey) {
+    toast.error("API key not available");
+    return;
+  }
 
+  setIsFetchingRange(true);
+  setRangeFetchProgress(0);
+  setRangeFetchStatus("Preparing to fetch data...");
+
+  const source = axios.CancelToken.source();
+  cancelTokenRef.current = source;
+
+  try {
+    const stDate = startDate.toISOString().split("T")[0];
+    const edDate = endDate.toISOString().split("T")[0];
+    
+    setRangeFetchProgress(10);
+    setRangeFetchStatus(`Fetching orders from ${stDate} to ${edDate}...`);
+
+    // Fetch order data
+    const orderReportResponse = await axios.get(
+      `https://tpl-api.ebs365.info/api/OrderReport/BI_OrderRelatedInformationReport?CompanyID=1&ProductCategoryID=0&ProductSubCategoryID=0&MarketingID=0&CustomerID=0&BuyerID=0&JobCardID=0&StartDate=${stDate}&EndDate=${edDate}&CommandID=5&EmpID=0`,
+      { headers: { Authorization: `${apiKey}` }, timeout: 300000, cancelToken: source.token }
+    );
+
+    const orderData = orderReportResponse.data || [];
+    setRangeFetchProgress(30);
+
+    if (!Array.isArray(orderData) || orderData.length === 0) {
+      toast.warning(`No data found for the selected date range.`);
+      setIsFetchingRange(false);
+      setRangeFetchStatus("");
+      return;
+    }
+
+    setRangeFetchProgress(40);
+    setRangeFetchStatus(`Found ${orderData.length} orders...`);
+
+    setRangeFetchProgress(55);
+    setRangeFetchStatus("Fetching supporting data...");
+
+    const apiConfig = {
+      headers: { Authorization: `${apiKey}` },
+      timeout: 90000,
+      cancelToken: source.token,
+    };
+
+    const [challanRes, bblcRes, invoiceRes, piRes, challanReceiveRes] = await Promise.allSettled([
+      axios.get(`https://tpl-api.ebs365.info/api/Challan/GetDeliveryChalanDashboard?CompanyID=1&ProductCategoryID=0&CustomerID=0&MarkettingID=0&StatusID=7&StartDate=${stDate}&EndDate=${edDate}`, apiConfig),
+      axios.get(`https://tpl-api.ebs365.info/api/BBLC/GetBBLCDashboard?CustomerID=0&CompanyID=1&StartDate=${stDate}&EndDate=${edDate}`, apiConfig),
+      axios.get(`https://tpl-api.ebs365.info/api/CommercialInvoice/GetInvoiceDashboard?CompanyID=1&CustomerID=0&StartDate=${stDate}&EndDate=${edDate}`, apiConfig),
+      axios.get(`https://tpl-api.ebs365.info/api/CustomerPI/GetCustomerPIDashboard?CompanyID=1&CustomerID=0&MarketingID=0&StartDate=${stDate}&EndDate=${edDate}`, apiConfig),
+      axios.get(`https://tpl-api.ebs365.info/api/Challan/GetDeliveryChalanReceiveDashboard?CompanyID=1&ProductCategoryID=0&CustomerID=0&MarkettingID=0&Status=Receive-Complete&StartDate=${stDate}&EndDate=${edDate}`, apiConfig),
+    ]);
+
+    setRangeFetchProgress(75);
+    setRangeFetchStatus("Processing data...");
+
+    const challanData = challanRes.status === "fulfilled" && challanRes.value?.data ? challanRes.value.data : [];
+    const bblcData = bblcRes.status === "fulfilled" && bblcRes.value?.data ? bblcRes.value.data : [];
+    const invoiceData = invoiceRes.status === "fulfilled" && invoiceRes.value?.data ? invoiceRes.value.data : [];
+    const piCompanyData = piRes.status === "fulfilled" && piRes.value?.data ? piRes.value.data : [];
+    const challanReceiveData = challanReceiveRes.status === "fulfilled" && challanReceiveRes.value?.data ? challanReceiveRes.value.data : [];
+
+    setRangeFetchProgress(90);
+    setRangeFetchStatus("Updating dashboard...");
+
+    setcndata((prevState) => ({
+      ...prevState,
+      apiData: orderData,
+      groupedData: [],
+      grupChallan: challanData,
+      bblcData: bblcData,
+      invoiceData: invoiceData,
+      piCompanyData: piCompanyData,
+      workOrderIdMap: {},
+      challanReceiveMap: {},
+      rawChallanReceiveData: challanReceiveData,
+      workOrderStatus: "date-range-loaded",
+      _lastFetch: {
+        timestamp: new Date().toISOString(),
+        startDate: stDate,
+        endDate: edDate,
+        orderCount: orderData.length,
+        challanCount: challanData.length,
+        workOrderStatus: "date-range-loaded",
+        autoLoaded: false,
+        dateRange: true,
+      },
+    }));
+
+    setRangeFetchProgress(100);
+    setRangeFetchStatus(`✅ Loaded ${orderData.length} orders for date range!`);
+    toast.success(`✅ Loaded ${orderData.length} orders from ${stDate} to ${edDate}`);
+    
+    // Auto-select year and month filters to "All" to show all data
+    setSelectedYear("All");
+    setSelectedMonth("All");
+
+  } catch (err) {
+    if (axios.isCancel(err)) return;
+    console.error("Date range fetch error:", err);
+    toast.error("Failed to fetch data for the selected date range.");
+    setRangeFetchStatus("❌ Error fetching data");
+  } finally {
+    setIsFetchingRange(false);
+    setRangeFetchProgress(0);
+    cancelTokenRef.current = null;
+    setTimeout(() => setRangeFetchStatus(""), 3000);
+  }
+};
   const data = useComprehensiveData(apiData, selectedYear, selectedMonth, selectedMarketing);
 
   const marketingNames = useMemo(() => {
@@ -1879,7 +2001,30 @@ function Home() {
     toast.info("Exporting dashboard data...");
     setTimeout(() => toast.success("Data exported successfully!"), 1000);
   };
+const handleDateRangeSubmit = () => {
+  if (dateRange.startDate && dateRange.endDate) {
+    // Validate date range (max 1 year to prevent overload)
+    const diffTime = Math.abs(dateRange.endDate - dateRange.startDate);
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    if (diffDays > 365) {
+      toast.warning("Date range exceeds 365 days. Please select a smaller range.");
+      return;
+    }
+    fetchDataByDateRange(dateRange.startDate, dateRange.endDate);
+  } else {
+    toast.warning("Please select both start and end dates.");
+  }
+};
 
+// Add this quick date range preset handler
+const handleQuickRange = (days) => {
+  const endDate = new Date();
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - days);
+  setDateRange({ startDate, endDate });
+  // Auto-fetch after setting
+  setTimeout(() => fetchDataByDateRange(startDate, endDate), 300);
+};
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
       document.documentElement.requestFullscreen();
@@ -1963,6 +2108,158 @@ function Home() {
           transition={{ duration: 0.5 }}
           className="flex flex-col md:flex-row md:items-center md:justify-between gap-4"
         >
+        <div className="relative">
+  <button
+    onClick={() => setShowDatePicker(!showDatePicker)}
+    className="px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-sm font-medium text-slate-700 hover:border-indigo-300 hover:shadow-md transition-all duration-200 flex items-center gap-2 min-w-[160px]"
+  >
+    <CalendarRange className="w-4 h-4 text-indigo-500" />
+    <span className="truncate">
+      {dateRange.startDate && dateRange.endDate 
+        ? `${dateRange.startDate.toLocaleDateString()} - ${dateRange.endDate.toLocaleDateString()}`
+        : "Select Date Range"}
+    </span>
+  </button>
+  {cndata?._lastFetch?.dateRange && (
+  <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-indigo-50 text-indigo-600 rounded-full text-xs font-medium border border-indigo-200">
+    <CalendarRange className="w-3 h-3" />
+    {new Date(cndata._lastFetch.startDate).toLocaleDateString()} - {new Date(cndata._lastFetch.endDate).toLocaleDateString()}
+    <button
+      onClick={() => setSelectedYear("All")}
+      className="ml-1 hover:text-indigo-800"
+    >
+      ✕
+    </button>
+  </span>
+)}
+  {showDatePicker && (
+    <div className="absolute top-full left-0 mt-2 z-50 bg-white rounded-2xl shadow-2xl border border-slate-200 p-4 w-[480px]">
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center justify-between">
+          <h4 className="text-sm font-semibold text-slate-700">Select Date Range</h4>
+          <button 
+            onClick={() => setShowDatePicker(false)}
+            className="p-1 hover:bg-slate-100 rounded-lg transition-all"
+          >
+            <X className="w-4 h-4 text-slate-400" />
+          </button>
+        </div>
+        
+        <div className="flex flex-col sm:flex-row gap-4">
+          <div className="flex-1">
+            <label className="text-xs text-slate-500 block mb-1">Start Date</label>
+            <DatePicker
+              selected={dateRange.startDate}
+              onChange={(date) => setDateRange(prev => ({ ...prev, startDate: date }))}
+              selectsStart
+              startDate={dateRange.startDate}
+              endDate={dateRange.endDate}
+              className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              dateFormat="MMM d, yyyy"
+              placeholderText="Select start date"
+            />
+          </div>
+          <div className="flex-1">
+            <label className="text-xs text-slate-500 block mb-1">End Date</label>
+            <DatePicker
+              selected={dateRange.endDate}
+              onChange={(date) => setDateRange(prev => ({ ...prev, endDate: date }))}
+              selectsEnd
+              startDate={dateRange.startDate}
+              endDate={dateRange.endDate}
+              minDate={dateRange.startDate}
+              className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              dateFormat="MMM d, yyyy"
+              placeholderText="Select end date"
+            />
+          </div>
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => handleQuickRange(7)}
+            className="px-3 py-1.5 text-xs font-medium bg-slate-100 hover:bg-slate-200 rounded-lg transition-all"
+          >
+            Last 7 days
+          </button>
+          <button
+            onClick={() => handleQuickRange(30)}
+            className="px-3 py-1.5 text-xs font-medium bg-slate-100 hover:bg-slate-200 rounded-lg transition-all"
+          >
+            Last 30 days
+          </button>
+          <button
+            onClick={() => handleQuickRange(90)}
+            className="px-3 py-1.5 text-xs font-medium bg-slate-100 hover:bg-slate-200 rounded-lg transition-all"
+          >
+            Last 90 days
+          </button>
+          <button
+            onClick={() => {
+              const now = new Date();
+              const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+              setDateRange({ startDate: firstDay, endDate: now });
+              setTimeout(() => fetchDataByDateRange(firstDay, now), 300);
+            }}
+            className="px-3 py-1.5 text-xs font-medium bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded-lg transition-all"
+          >
+            This Month
+          </button>
+          <button
+            onClick={() => {
+              const now = new Date();
+              const firstDay = new Date(now.getFullYear(), 0, 1);
+              setDateRange({ startDate: firstDay, endDate: now });
+              setTimeout(() => fetchDataByDateRange(firstDay, now), 300);
+            }}
+            className="px-3 py-1.5 text-xs font-medium bg-purple-50 hover:bg-purple-100 text-purple-600 rounded-lg transition-all"
+          >
+            Year to Date
+          </button>
+        </div>
+
+        <div className="flex gap-2 pt-2 border-t border-slate-100">
+          <button
+            onClick={handleDateRangeSubmit}
+            disabled={isFetchingRange}
+            className="flex-1 px-4 py-2.5 bg-gradient-to-r from-indigo-500 to-purple-600 text-white text-sm font-medium rounded-xl hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          >
+            {isFetchingRange ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                Loading...
+              </>
+            ) : (
+              <>
+                <CalendarIcon className="w-4 h-4" />
+                Fetch Data
+              </>
+            )}
+          </button>
+          <button
+            onClick={() => setShowDatePicker(false)}
+            className="px-4 py-2.5 bg-slate-100 text-slate-600 text-sm font-medium rounded-xl hover:bg-slate-200 transition-all duration-200"
+          >
+            Cancel
+          </button>
+        </div>
+
+        {isFetchingRange && (
+          <div className="mt-2">
+            <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+              <motion.div
+                className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-purple-500"
+                style={{ width: `${rangeFetchProgress}%` }}
+                transition={{ duration: 0.3 }}
+              />
+            </div>
+            <p className="text-xs text-slate-400 mt-1 text-center">{rangeFetchStatus}</p>
+          </div>
+        )}
+      </div>
+    </div>
+  )}
+</div>
           <div>
             <div className="flex items-center gap-3">
               <div className="p-2.5 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 shadow-lg shadow-indigo-200">
