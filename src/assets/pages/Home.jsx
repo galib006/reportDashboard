@@ -4,44 +4,138 @@ import { Calendar as CalendarIcon, CalendarRange } from "lucide-react";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import {
-  FaTruck, FaBoxOpen, FaUsers, FaBuilding, FaCircle,
-  FaMoneyBillWave, FaClock, FaCheckCircle, FaExclamationTriangle,
-  FaShoppingCart, FaArrowUp, FaArrowDown, FaMinus,
-  FaChartLine, FaChartBar, FaChartPie, FaUserTie, FaTag,
-  FaBox, FaCalendarCheck, FaFileInvoice, FaClipboardList,
-  FaUserFriends, FaStore, FaGlobe, FaChartArea, FaDollarSign,
-  FaPercentage, FaTachometerAlt, FaAward, FaTrophy, FaMedal,
-  FaBalanceScale, FaRocket, FaBullseye, FaStar, FaStarHalf,
-  FaRegStar, FaCrown, FaFire, FaGem, FaHourglassHalf,
-  FaExclamationCircle, FaCheckDouble, FaTimesCircle,
-  FaHourglassEnd, FaShieldAlt, FaHandshake, FaUserCheck,
-  FaUserClock, FaUserMinus, FaUserPlus,
+  FaTruck,
+  FaBoxOpen,
+  FaUsers,
+  FaBuilding,
+  FaCircle,
+  FaMoneyBillWave,
+  FaClock,
+  FaCheckCircle,
+  FaExclamationTriangle,
+  FaShoppingCart,
+  FaArrowUp,
+  FaArrowDown,
+  FaMinus,
+  FaChartLine,
+  FaChartBar,
+  FaChartPie,
+  FaUserTie,
+  FaTag,
+  FaBox,
+  FaCalendarCheck,
+  FaFileInvoice,
+  FaClipboardList,
+  FaUserFriends,
+  FaStore,
+  FaGlobe,
+  FaChartArea,
+  FaDollarSign,
+  FaPercentage,
+  FaTachometerAlt,
+  FaAward,
+  FaTrophy,
+  FaMedal,
+  FaBalanceScale,
+  FaRocket,
+  FaBullseye,
+  FaStar,
+  FaStarHalf,
+  FaRegStar,
+  FaCrown,
+  FaFire,
+  FaGem,
+  FaHourglassHalf,
+  FaExclamationCircle,
+  FaCheckDouble,
+  FaTimesCircle,
+  FaHourglassEnd,
+  FaShieldAlt,
+  FaHandshake,
+  FaUserCheck,
+  FaUserClock,
+  FaUserMinus,
+  FaUserPlus,
 } from "react-icons/fa";
 import {
-  RiMoneyDollarCircleFill, RiStockLine, RiBarChart2Fill,
-  RiUserStarFill, RiCustomerService2Fill, RiTreasureMapFill
+  RiMoneyDollarCircleFill,
+  RiStockLine,
+  RiBarChart2Fill,
+  RiUserStarFill,
+  RiCustomerService2Fill,
+  RiTreasureMapFill,
 } from "react-icons/ri";
 import {
-  TbTruckDelivery, TbTrendingUp, TbTrendingDown,
-  TbEqual, TbReportAnalytics
+  TbTruckDelivery,
+  TbTrendingUp,
+  TbTrendingDown,
+  TbEqual,
+  TbReportAnalytics,
 } from "react-icons/tb";
 import {
-  Bar, BarChart, CartesianGrid, XAxis, YAxis, Tooltip,
-  Legend, ResponsiveContainer, Cell, PieChart, Pie,
-  Sector, Line, LineChart, ComposedChart, Area,
-  Scatter, ScatterChart, Radar, RadarChart, PolarGrid,
-  PolarAngleAxis, PolarRadiusAxis, Treemap, Brush,
-  ReferenceLine, ErrorBar, ZAxis,
+  Bar,
+  BarChart,
+  CartesianGrid,
+  XAxis,
+  YAxis,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  Cell,
+  PieChart,
+  Pie,
+  Sector,
+  Line,
+  LineChart,
+  ComposedChart,
+  Area,
+  Scatter,
+  ScatterChart,
+  Radar,
+  RadarChart,
+  PolarGrid,
+  PolarAngleAxis,
+  PolarRadiusAxis,
+  Treemap,
+  Brush,
+  ReferenceLine,
+  ErrorBar,
+  ZAxis,
 } from "recharts";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Calendar, Filter, LayoutDashboard, RefreshCw, Download, X,
-  TrendingUp as TrendingUpIcon, TrendingDown as TrendingDownIcon,
-  AlertCircle, Maximize2, Minimize2, Users, Package,
-  DollarSign, BarChart3, LineChart as LineChartIcon,
-  PieChart as PieChartIcon, Award, Target, Zap, Activity,
-  GitBranch, Layers, TrendingUp, TrendingDown, Flame,
-  Crown, Star, Target as TargetIcon, Gauge, Mail, Share2,
+  Calendar,
+  Filter,
+  LayoutDashboard,
+  RefreshCw,
+  Download,
+  X,
+  TrendingUp as TrendingUpIcon,
+  TrendingDown as TrendingDownIcon,
+  AlertCircle,
+  Maximize2,
+  Minimize2,
+  Users,
+  Package,
+  DollarSign,
+  BarChart3,
+  LineChart as LineChartIcon,
+  PieChart as PieChartIcon,
+  Award,
+  Target,
+  Zap,
+  Activity,
+  GitBranch,
+  Layers,
+  TrendingUp,
+  TrendingDown,
+  Flame,
+  Crown,
+  Star,
+  Target as TargetIcon,
+  Gauge,
+  Mail,
+  Share2,
 } from "lucide-react";
 import { toast } from "react-toastify";
 import axios from "axios";
@@ -50,19 +144,46 @@ import axios from "axios";
 // CONSTANTS & CONFIGURATION
 // ============================================================
 const COLORS = {
-  primary: "#4F46E5", secondary: "#7C3AED", success: "#10B981",
-  warning: "#F59E0B", danger: "#EF4444", info: "#3B82F6",
-  pink: "#EC4899", teal: "#14B8A6", orange: "#F97316",
-  indigo: "#6366F1", violet: "#8B5CF6", emerald: "#34D399",
-  rose: "#F43F5E", cyan: "#06B6D4", amber: "#FBBF24",
-  gray: "#94A3B8", slate: "#64748B",
+  primary: "#4F46E5",
+  secondary: "#7C3AED",
+  success: "#10B981",
+  warning: "#F59E0B",
+  danger: "#EF4444",
+  info: "#3B82F6",
+  pink: "#EC4899",
+  teal: "#14B8A6",
+  orange: "#F97316",
+  indigo: "#6366F1",
+  violet: "#8B5CF6",
+  emerald: "#34D399",
+  rose: "#F43F5E",
+  cyan: "#06B6D4",
+  amber: "#FBBF24",
+  gray: "#94A3B8",
+  slate: "#64748B",
 };
 
 const CHART_COLORS = [
-  "#4F46E5", "#7C3AED", "#10B981", "#F59E0B", "#EF4444",
-  "#3B82F6", "#EC4899", "#14B8A6", "#F97316", "#6366F1",
-  "#8B5CF6", "#34D399", "#F43F5E", "#06B6D4", "#FBBF24",
-  "#84CC16", "#06B6D4", "#8B5CF6", "#EC4899", "#F59E0B",
+  "#4F46E5",
+  "#7C3AED",
+  "#10B981",
+  "#F59E0B",
+  "#EF4444",
+  "#3B82F6",
+  "#EC4899",
+  "#14B8A6",
+  "#F97316",
+  "#6366F1",
+  "#8B5CF6",
+  "#34D399",
+  "#F43F5E",
+  "#06B6D4",
+  "#FBBF24",
+  "#84CC16",
+  "#06B6D4",
+  "#8B5CF6",
+  "#EC4899",
+  "#F59E0B",
 ];
 
 // ============================================================
@@ -71,15 +192,19 @@ const CHART_COLORS = [
 const formatCurrency = (value) => {
   const num = Number(value) || 0;
   return new Intl.NumberFormat("en-US", {
-    style: "currency", currency: "USD",
-    minimumFractionDigits: 0, maximumFractionDigits: 0,
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
   }).format(Math.round(num));
 };
+
 
 const formatNumber = (value) => {
   const num = Number(value) || 0;
   return new Intl.NumberFormat("en-US", {
-    minimumFractionDigits: 0, maximumFractionDigits: 0,
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
   }).format(Math.round(num));
 };
 
@@ -107,46 +232,147 @@ const getStatusColor = (value) => {
 };
 
 // ============================================================
+// Delivery Status Function
+// ============================================================
+const getDeliveryStatus = (deliveryRate) => {
+  const rate = parseFloat(deliveryRate) || 0;
+  if (rate >= 90) {
+    return { 
+      status: '✅ Excellent', 
+      icon: '✅', 
+      color: 'text-emerald-600 bg-emerald-100' 
+    };
+  }
+  if (rate >= 70) {
+    return { 
+      status: '👍 Good', 
+      icon: '👍', 
+      color: 'text-blue-600 bg-blue-100' 
+    };
+  }
+  if (rate >= 50) {
+    return { 
+      status: '⚠️ Average', 
+      icon: '⚠️', 
+      color: 'text-amber-600 bg-amber-100' 
+    };
+  }
+  return { 
+    status: '🔴 Needs Improvement', 
+    icon: '🔴', 
+    color: 'text-red-600 bg-red-100' 
+  };
+};
+// ============================================================
 // FIXED: Performance tier based on AVERAGE Order Value (only for tier badge)
 // ============================================================
-const getPerformanceTier = (avgOrderValue, deliveryRate) => {
-  const numericValue = typeof avgOrderValue === 'string' 
+
+const getPerformanceTier = (avgOrderValue, deliveryRate, totalOrderValue = 0, orders = 0, selectedYear, selectedMonth) => {
+  const numericAvg = typeof avgOrderValue === 'string' 
     ? parseFloat(avgOrderValue.replace(/[$,]/g, '')) 
     : avgOrderValue;
   const numericRate = typeof deliveryRate === 'string' 
     ? parseFloat(deliveryRate.replace(/[%,]/g, '')) 
     : deliveryRate;
+  const numericTotal = typeof totalOrderValue === 'string' 
+    ? parseFloat(totalOrderValue.replace(/[$,]/g, '')) 
+    : totalOrderValue;
   
-  // Criteria based on AVERAGE (for tier badge only):
-  if (numericValue > 30000 && (numericRate > 50 || numericValue > 18000)) {
-    return { tier: '🌟 Excellent', icon: FaCrown, color: '#8B5CF6', bg: 'bg-purple-100', status: 'Excellent' };
+  // Determine the time period
+  let monthsCount = 1;
+  if (selectedYear !== 'All' && selectedMonth !== 'All') {
+    monthsCount = 1; // Single month
+  } else if (selectedYear !== 'All' && selectedMonth === 'All') {
+    monthsCount = 12; // Full year (or actual months in data)
+  } else if (selectedYear === 'All' && selectedMonth === 'All') {
+    monthsCount = 12; // Multiple years - use yearly average
   }
-  else if (numericValue > 1000) {
-    return { tier: '📊 Average', icon: FaMedal, color: '#F59E0B', bg: 'bg-amber-100', status: 'Average' };
+  
+  // Calculate monthly average
+  const monthlyAvg = numericTotal / monthsCount;
+  const monthlyOrders = Math.round(orders / monthsCount);
+  
+  // Dynamic thresholds based on time period
+  let thresholds;
+  if (monthsCount <= 1) {
+    // Single month: Higher thresholds
+    thresholds = { excellent: 15000, good: 8000, average: 3000 };
+  } else if (monthsCount <= 3) {
+    // Quarter: Medium thresholds
+    thresholds = { excellent: 12000, good: 6000, average: 2500 };
+  } else {
+    // Yearly/Multiple: Lower thresholds (more consistent)
+    thresholds = { excellent: 10000, good: 5000, average: 2000 };
   }
-  else {
-    return { tier: '⚠️ Needs Improvement', icon: FaExclamationCircle, color: '#EF4444', bg: 'bg-red-100', status: 'Needs Improvement' };
+  
+  // Apply rules with dynamic thresholds
+  if (monthlyAvg < thresholds.average) {
+    return { 
+      tier: '⚠️ Needs Improvement', 
+      icon: FaExclamationCircle, 
+      color: '#EF4444', 
+      bg: 'bg-red-100', 
+      status: 'Needs Improvement' 
+    };
   }
-};
-
-const getDeliveryStatus = (deliveryRate) => {
-  const rate = parseFloat(deliveryRate) || 0;
-  if (rate >= 90) return { status: '✅ Excellent', icon: '✅', color: 'text-emerald-600 bg-emerald-100' };
-  if (rate >= 70) return { status: '👍 Good', icon: '👍', color: 'text-blue-600 bg-blue-100' };
-  if (rate >= 50) return { status: '⚠️ Average', icon: '⚠️', color: 'text-amber-600 bg-amber-100' };
-  return { status: '🔴 Needs Improvement', icon: '🔴', color: 'text-red-600 bg-red-100' };
+  
+  if (monthlyAvg > thresholds.excellent && monthlyOrders > 5 && numericRate > 20) {
+    return { 
+      tier: '🌟 Excellent', 
+      icon: FaCrown, 
+      color: '#8B5CF6', 
+      bg: 'bg-purple-100', 
+      status: 'Excellent' 
+    };
+  }
+  
+  if (monthlyAvg > thresholds.good && monthlyOrders > 3 && numericRate > 15) {
+    return { 
+      tier: '📊 Good', 
+      icon: FaMedal, 
+      color: '#3B82F6', 
+      bg: 'bg-blue-100', 
+      status: 'Good' 
+    };
+  }
+  
+  if (monthlyAvg > thresholds.average && monthlyOrders > 2) {
+    return { 
+      tier: '📊 Average', 
+      icon: FaMedal, 
+      color: '#F59E0B', 
+      bg: 'bg-amber-100', 
+      status: 'Average' 
+    };
+  }
+  
+  return { 
+    tier: '⚠️ Needs Improvement', 
+    icon: FaExclamationCircle, 
+    color: '#EF4444', 
+    bg: 'bg-red-100', 
+    status: 'Needs Improvement' 
+  };
 };
 
 // ============================================================
 // ANIMATED COMPONENTS
 // ============================================================
-const AnimatedCounter = ({ value, duration = 1000, prefix = '', suffix = '' }) => {
+const AnimatedCounter = ({
+  value,
+  duration = 1000,
+  prefix = "",
+  suffix = "",
+}) => {
   const [displayValue, setDisplayValue] = useState(0);
 
   useEffect(() => {
     let startTime = null;
     const startValue = displayValue;
-    const endValue = typeof value === "number" ? value : parseFloat(String(value).replace(/[$,]/g, '')) || 0;
+    const endValue =
+      typeof value === "number"
+        ? value
+        : parseFloat(String(value).replace(/[$,]/g, "")) || 0;
 
     const animate = (timestamp) => {
       if (!startTime) startTime = timestamp;
@@ -160,53 +386,127 @@ const AnimatedCounter = ({ value, duration = 1000, prefix = '', suffix = '' }) =
     return () => cancelAnimationFrame(animate);
   }, [value, duration]);
 
-  return <span>{prefix}{Math.round(displayValue)}{suffix}</span>;
+  return (
+    <span>
+      {prefix}
+      {Math.round(displayValue)}
+      {suffix}
+    </span>
+  );
 };
 
 const GrowthIndicator = ({ value }) => {
   if (value > 0) {
-    return <span className="flex items-center gap-0.5 text-emerald-600"><FaArrowUp className="w-2.5 h-2.5" /> {value.toFixed(1)}%</span>;
+    return (
+      <span className="flex items-center gap-0.5 text-emerald-600">
+        <FaArrowUp className="w-2.5 h-2.5" /> {value.toFixed(1)}%
+      </span>
+    );
   } else if (value < 0) {
-    return <span className="flex items-center gap-0.5 text-red-600"><FaArrowDown className="w-2.5 h-2.5" /> {value.toFixed(1)}%</span>;
+    return (
+      <span className="flex items-center gap-0.5 text-red-600">
+        <FaArrowDown className="w-2.5 h-2.5" /> {value.toFixed(1)}%
+      </span>
+    );
   }
-  return <span className="flex items-center gap-0.5 text-slate-400"><FaMinus className="w-2.5 h-2.5" /> 0%</span>;
+  return (
+    <span className="flex items-center gap-0.5 text-slate-400">
+      <FaMinus className="w-2.5 h-2.5" /> 0%
+    </span>
+  );
 };
 
 // ============================================================
 // COMPREHENSIVE DATA AGGREGATION - FIXED: Sort by TOTAL not AVERAGE
 // ============================================================
-const useComprehensiveData = (apiData, selectedYear, selectedMonth, selectedMarketing) => {
+const useComprehensiveData = (
+  apiData,
+  selectedYear,
+  selectedMonth,
+  selectedMarketing,
+) => {
   return useMemo(() => {
     const emptyResult = {
-      totals: { orderQty: 0, orderValue: 0, saleQty: 0, saleValue: 0, balanceQty: 0, balanceValue: 0 },
-      deliveryPercent: 0, valuePercent: 0, salesGrowth: 0,
-      topCustomers: [], topMarketing: [], topCategories: [],
-      topBuyers: [], topSubCategories: [], topProducts: [],
+      totals: {
+        orderQty: 0,
+        orderValue: 0,
+        saleQty: 0,
+        saleValue: 0,
+        balanceQty: 0,
+        balanceValue: 0,
+      },
+      deliveryPercent: 0,
+      valuePercent: 0,
+      salesGrowth: 0,
+      topCustomers: [],
+      topMarketing: [],
+      topCategories: [],
+      topBuyers: [],
+      topSubCategories: [],
+      topProducts: [],
       statusData: { complete: 0, inProgress: 0, pending: 0 },
-      totalOrders: 0, totalCustomers: 0, totalMarketing: 0,
-      totalBuyers: 0, totalCategories: 0, comparisonData: [],
-      marketingData: [], categoryData: [], buyerData: [],
-      dailyData: [], monthlyData: [], weeklyData: [],
-      outliers: [], performanceMetrics: {},
-      heatmapData: [], scatterData: [], radarData: [],
-      funnelData: [], orderFunnelData: [], distributionData: [],
-      correlationData: [], seasonalData: [], efficiencyData: [],
-      completionData: [], growthData: [], weeklyGrowthData: [],
-      dailyGrowthData: [], buyerCategoryMatrix: [],
-      allMarketingData: [], allCategoryData: [],
-      monthlyTrendData: [], weeklyTrendData: [],
-      topPerformingMarketing: [], categoryPerformance: [],
-      buyerRetentionData: [], orderSizeDistribution: [],
-      marketingComparisonData: [], categoryGrowthData: [],
-      customerSegmentation: {}, deliveryTimeData: [],
-      salesTargetData: [], peakHoursData: [], customerLoyalty: [],
-      churnRiskData: [], performanceScorecard: [],
-      yoyComparison: [], revenueLeakage: [], marketBasket: [],
-      swotAnalysis: { strengths: [], weaknesses: [], opportunities: [], threats: [] },
-      categoryMatrix: [], salesPersonRanking: [],
-      salesGrowthData: [], monthlySalesData: [],
-      salesVsOrderData: [], deliveryEfficiencyData: [],
-      funnelConversionData: [], channelPerformanceData: [],
+      totalOrders: 0,
+      totalCustomers: 0,
+      totalMarketing: 0,
+      totalBuyers: 0,
+      totalCategories: 0,
+      comparisonData: [],
+      marketingData: [],
+      categoryData: [],
+      buyerData: [],
+      dailyData: [],
+      monthlyData: [],
+      weeklyData: [],
+      outliers: [],
+      performanceMetrics: {},
+      heatmapData: [],
+      scatterData: [],
+      radarData: [],
+      funnelData: [],
+      orderFunnelData: [],
+      distributionData: [],
+      correlationData: [],
+      seasonalData: [],
+      efficiencyData: [],
+      completionData: [],
+      growthData: [],
+      weeklyGrowthData: [],
+      dailyGrowthData: [],
+      buyerCategoryMatrix: [],
+      allMarketingData: [],
+      allCategoryData: [],
+      monthlyTrendData: [],
+      weeklyTrendData: [],
+      topPerformingMarketing: [],
+      categoryPerformance: [],
+      buyerRetentionData: [],
+      orderSizeDistribution: [],
+      marketingComparisonData: [],
+      categoryGrowthData: [],
+      customerSegmentation: {},
+      deliveryTimeData: [],
+      salesTargetData: [],
+      peakHoursData: [],
+      customerLoyalty: [],
+      churnRiskData: [],
+      performanceScorecard: [],
+      yoyComparison: [],
+      revenueLeakage: [],
+      marketBasket: [],
+      swotAnalysis: {
+        strengths: [],
+        weaknesses: [],
+        opportunities: [],
+        threats: [],
+      },
+      categoryMatrix: [],
+      salesPersonRanking: [],
+      salesGrowthData: [],
+      monthlySalesData: [],
+      salesVsOrderData: [],
+      deliveryEfficiencyData: [],
+      funnelConversionData: [],
+      channelPerformanceData: [],
       cohortData: [],
       growthMetrics: { completed: 0, recurring: 0, pending: 0 },
     };
@@ -217,18 +517,33 @@ const useComprehensiveData = (apiData, selectedYear, selectedMonth, selectedMark
 
     const filtered = apiData.filter((item) => {
       const date = new Date(item.OrderReceiveDate);
-      const yearMatch = selectedYear === "All" || date.getFullYear() === Number(selectedYear);
-      
+      const yearMatch =
+        selectedYear === "All" || date.getFullYear() === Number(selectedYear);
+
       let monthMatch = true;
       if (selectedMonth !== "All") {
-        const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+        const monthNames = [
+          "Jan",
+          "Feb",
+          "Mar",
+          "Apr",
+          "May",
+          "Jun",
+          "Jul",
+          "Aug",
+          "Sep",
+          "Oct",
+          "Nov",
+          "Dec",
+        ];
         const selectedMonthIndex = monthNames.indexOf(selectedMonth);
         monthMatch = date.getMonth() === selectedMonthIndex;
       }
-      
-      const marketingMatch = selectedMarketing === "All" || 
-        (item.MarketingName || '').includes(selectedMarketing);
-      
+
+      const marketingMatch =
+        selectedMarketing === "All" ||
+        (item.MarketingName || "").includes(selectedMarketing);
+
       return yearMatch && monthMatch && marketingMatch;
     });
 
@@ -249,31 +564,40 @@ const useComprehensiveData = (apiData, selectedYear, selectedMonth, selectedMark
     const hourMap = new Map();
 
     filtered.forEach((item) => {
-      const orderNo = item.WorkOrderNo || item.workOrderNo || 'N/A';
+      const orderNo = item.WorkOrderNo || item.workOrderNo || "N/A";
       const date = new Date(item.OrderReceiveDate);
-      const dayKey = date.toISOString().split('T')[0];
+      const dayKey = date.toISOString().split("T")[0];
       const monthKey = date.toLocaleString("default", { month: "short" });
       const weekKey = `${date.getFullYear()}-W${getWeekNumber(date)}`;
       const hourKey = date.getHours();
-      
+
       const qty = Math.round(Number(item.BreakDownQTY) || 0);
       const value = Math.round(Number(item.TotalOrderValue) || 0);
       const saleQty = Math.round(Number(item.ChallanQTY) || 0);
       const saleValue = Math.round(Number(item.ChallanValue) || 0);
       const balanceQty = Math.round(Number(item.BalanceQTY) || 0);
       const balanceValue = Math.round(Number(item.BalanceValue) || 0);
-      const customerName = item.CName || item.customerName || 'Unknown';
-      const marketingName = item.MarketingName || 'Unknown';
-      const buyerName = item.BuyerName || 'Unknown';
-      const category = item.ProductCategoryName || 'Uncategorized';
-      const subCategory = item.ProductSubCategoryName || '';
-      const productName = item.ItemDescription || '';
+      const customerName = item.CName || item.customerName || "Unknown";
+      const marketingName = item.MarketingName || "Unknown";
+      const buyerName = item.BuyerName || "Unknown";
+      const category = item.ProductCategoryName || "Uncategorized";
+      const subCategory = item.ProductSubCategoryName || "";
+      const productName = item.ItemDescription || "";
 
       if (!orderMap.has(orderNo)) {
         orderMap.set(orderNo, {
-          orderQty: 0, orderValue: 0, saleQty: 0, saleValue: 0,
-          balanceQty: 0, balanceValue: 0,
-          customerName, marketingName, buyerName, category, subCategory, productName,
+          orderQty: 0,
+          orderValue: 0,
+          saleQty: 0,
+          saleValue: 0,
+          balanceQty: 0,
+          balanceValue: 0,
+          customerName,
+          marketingName,
+          buyerName,
+          category,
+          subCategory,
+          productName,
           orderDate: date,
           hour: hourKey,
         });
@@ -289,8 +613,12 @@ const useComprehensiveData = (apiData, selectedYear, selectedMonth, selectedMark
       if (!dailyMap.has(dayKey)) {
         dailyMap.set(dayKey, {
           date: dayKey,
-          orderValue: 0, saleValue: 0, balanceValue: 0,
-          orderQty: 0, saleQty: 0, balanceQty: 0,
+          orderValue: 0,
+          saleValue: 0,
+          balanceValue: 0,
+          orderQty: 0,
+          saleQty: 0,
+          balanceQty: 0,
           count: 0,
           uniqueOrders: new Set(),
         });
@@ -308,8 +636,10 @@ const useComprehensiveData = (apiData, selectedYear, selectedMonth, selectedMark
       if (!weeklyMap.has(weekKey)) {
         weeklyMap.set(weekKey, {
           week: weekKey,
-          orderValue: 0, saleValue: 0,
-          orderQty: 0, saleQty: 0,
+          orderValue: 0,
+          saleValue: 0,
+          orderQty: 0,
+          saleQty: 0,
           count: 0,
           uniqueOrders: new Set(),
         });
@@ -325,8 +655,12 @@ const useComprehensiveData = (apiData, selectedYear, selectedMonth, selectedMark
       if (!monthlyMap.has(monthKey)) {
         monthlyMap.set(monthKey, {
           month: monthKey,
-          orderValue: 0, saleValue: 0, balanceValue: 0,
-          orderQty: 0, saleQty: 0, balanceQty: 0,
+          orderValue: 0,
+          saleValue: 0,
+          balanceValue: 0,
+          orderQty: 0,
+          saleQty: 0,
+          balanceQty: 0,
           count: 0,
           uniqueOrders: new Set(),
         });
@@ -359,7 +693,8 @@ const useComprehensiveData = (apiData, selectedYear, selectedMonth, selectedMark
           name: customerName,
           orderValue: 0,
           saleValue: 0,
-          count: 0, orders: new Set(),
+          count: 0,
+          orders: new Set(),
           lastOrder: date,
           firstOrder: date,
         });
@@ -377,7 +712,8 @@ const useComprehensiveData = (apiData, selectedYear, selectedMonth, selectedMark
           name: marketingName,
           orderValue: 0,
           saleValue: 0,
-          count: 0, orders: new Set(),
+          count: 0,
+          orders: new Set(),
           categories: new Set(),
           customers: new Set(),
           buyers: new Set(),
@@ -397,7 +733,8 @@ const useComprehensiveData = (apiData, selectedYear, selectedMonth, selectedMark
           name: category,
           orderValue: 0,
           saleValue: 0,
-          count: 0, orders: new Set(),
+          count: 0,
+          orders: new Set(),
           subCategories: new Set(),
           customers: new Set(),
         });
@@ -467,13 +804,18 @@ const useComprehensiveData = (apiData, selectedYear, selectedMonth, selectedMark
     });
 
     const totals = {
-      orderQty: 0, orderValue: 0, saleQty: 0, saleValue: 0,
-      balanceQty: 0, balanceValue: 0,
+      orderQty: 0,
+      orderValue: 0,
+      saleQty: 0,
+      saleValue: 0,
+      balanceQty: 0,
+      balanceValue: 0,
     };
-    
+
     const statusData = { complete: 0, inProgress: 0, pending: 0 };
-    let completedValue = 0, pendingValue = 0;
-    
+    let completedValue = 0,
+      pendingValue = 0;
+
     orderMap.forEach((order) => {
       totals.orderQty += order.orderQty;
       totals.orderValue += order.orderValue;
@@ -481,18 +823,21 @@ const useComprehensiveData = (apiData, selectedYear, selectedMonth, selectedMark
       totals.saleValue += order.saleValue;
       totals.balanceQty += order.balanceQty;
       totals.balanceValue += order.balanceValue;
-      
+
       completedValue += order.saleValue;
       pendingValue += order.balanceValue;
-      
-      const completion = order.orderQty > 0 ? (order.saleQty / order.orderQty) * 100 : 0;
+
+      const completion =
+        order.orderQty > 0 ? (order.saleQty / order.orderQty) * 100 : 0;
       if (completion >= 100) statusData.complete += 1;
       else if (completion > 0) statusData.inProgress += 1;
       else statusData.pending += 1;
     });
 
-    const deliveryPercent = totals.orderQty > 0 ? (totals.saleQty / totals.orderQty) * 100 : 0;
-    const valuePercent = totals.orderValue > 0 ? (totals.saleValue / totals.orderValue) * 100 : 0;
+    const deliveryPercent =
+      totals.orderQty > 0 ? (totals.saleQty / totals.orderQty) * 100 : 0;
+    const valuePercent =
+      totals.orderValue > 0 ? (totals.saleValue / totals.orderValue) * 100 : 0;
 
     const growthMetrics = {
       completed: Math.round(completedValue),
@@ -500,7 +845,20 @@ const useComprehensiveData = (apiData, selectedYear, selectedMonth, selectedMark
       pending: Math.round(pendingValue),
     };
 
-    const monthOrder = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const monthOrder = [
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "May",
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sep",
+      "Oct",
+      "Nov",
+      "Dec",
+    ];
     const monthlySalesData = Array.from(monthlyMap.entries())
       .sort((a, b) => monthOrder.indexOf(a[0]) - monthOrder.indexOf(b[0]))
       .map(([month, data]) => ({
@@ -512,26 +870,30 @@ const useComprehensiveData = (apiData, selectedYear, selectedMonth, selectedMark
         balanceValue: Math.round(data.balanceValue),
         count: data.count,
         uniqueOrders: data.uniqueOrders.size,
-        deliveryRate: data.orderValue > 0 ? (data.saleValue / data.orderValue) * 100 : 0,
+        deliveryRate:
+          data.orderValue > 0 ? (data.saleValue / data.orderValue) * 100 : 0,
       }));
 
     // Growth Data - Shows ALL months
     const growthData = monthlySalesData.map((d, i, arr) => {
       let salesGrowth = 0;
       let orderGrowth = 0;
-      
-      if (i > 0 && arr[i-1].saleValue > 0) {
-        salesGrowth = ((d.saleValue - arr[i-1].saleValue) / arr[i-1].saleValue) * 100;
-      } else if (i > 0 && arr[i-1].saleValue === 0 && d.saleValue > 0) {
+
+      if (i > 0 && arr[i - 1].saleValue > 0) {
+        salesGrowth =
+          ((d.saleValue - arr[i - 1].saleValue) / arr[i - 1].saleValue) * 100;
+      } else if (i > 0 && arr[i - 1].saleValue === 0 && d.saleValue > 0) {
         salesGrowth = 100;
       }
-      
-      if (i > 0 && arr[i-1].orderValue > 0) {
-        orderGrowth = ((d.orderValue - arr[i-1].orderValue) / arr[i-1].orderValue) * 100;
-      } else if (i > 0 && arr[i-1].orderValue === 0 && d.orderValue > 0) {
+
+      if (i > 0 && arr[i - 1].orderValue > 0) {
+        orderGrowth =
+          ((d.orderValue - arr[i - 1].orderValue) / arr[i - 1].orderValue) *
+          100;
+      } else if (i > 0 && arr[i - 1].orderValue === 0 && d.orderValue > 0) {
         orderGrowth = 100;
       }
-      
+
       return {
         month: d.name,
         orderValue: Math.round(d.orderValue),
@@ -547,8 +909,9 @@ const useComprehensiveData = (apiData, selectedYear, selectedMonth, selectedMark
       .sort((a, b) => a.week.localeCompare(b.week))
       .map((w, i, arr) => {
         let growth = 0;
-        if (i > 0 && arr[i-1].saleValue > 0) {
-          growth = ((w.saleValue - arr[i-1].saleValue) / arr[i-1].saleValue) * 100;
+        if (i > 0 && arr[i - 1].saleValue > 0) {
+          growth =
+            ((w.saleValue - arr[i - 1].saleValue) / arr[i - 1].saleValue) * 100;
         }
         return {
           month: w.week,
@@ -564,11 +927,15 @@ const useComprehensiveData = (apiData, selectedYear, selectedMonth, selectedMark
       .slice(-7)
       .map((d, i, arr) => {
         let growth = 0;
-        if (i > 0 && arr[i-1].saleValue > 0) {
-          growth = ((d.saleValue - arr[i-1].saleValue) / arr[i-1].saleValue) * 100;
+        if (i > 0 && arr[i - 1].saleValue > 0) {
+          growth =
+            ((d.saleValue - arr[i - 1].saleValue) / arr[i - 1].saleValue) * 100;
         }
         return {
-          month: new Date(d.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+          month: new Date(d.date).toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
+          }),
           salesGrowth: growth,
           saleValue: d.saleValue,
           orderValue: d.orderValue,
@@ -580,7 +947,10 @@ const useComprehensiveData = (apiData, selectedYear, selectedMonth, selectedMark
       .sort((a, b) => a.date.localeCompare(b.date))
       .map((d) => ({
         ...d,
-        date: new Date(d.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        date: new Date(d.date).toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+        }),
         deliveryRate: d.orderQty > 0 ? (d.saleQty / d.orderQty) * 100 : 0,
         uniqueOrderCount: d.uniqueOrders.size,
       }));
@@ -589,38 +959,49 @@ const useComprehensiveData = (apiData, selectedYear, selectedMonth, selectedMark
       .sort((a, b) => a.week.localeCompare(b.week))
       .map((w, i, arr) => ({
         ...w,
-        growth: i > 0 && arr[i-1].orderValue > 0 ? ((w.orderValue - arr[i-1].orderValue) / arr[i-1].orderValue) * 100 : 0,
-        salesGrowth: i > 0 && arr[i-1].saleValue > 0 ? ((w.saleValue - arr[i-1].saleValue) / arr[i-1].saleValue) * 100 : 0,
+        growth:
+          i > 0 && arr[i - 1].orderValue > 0
+            ? ((w.orderValue - arr[i - 1].orderValue) / arr[i - 1].orderValue) *
+              100
+            : 0,
+        salesGrowth:
+          i > 0 && arr[i - 1].saleValue > 0
+            ? ((w.saleValue - arr[i - 1].saleValue) / arr[i - 1].saleValue) *
+              100
+            : 0,
         uniqueOrderCount: w.uniqueOrders.size,
       }));
 
     // ============================================================
     // FIXED: Marketing Data - Sort by TOTAL Order Value for ranking
     // ============================================================
-    const allMarketingData = Array.from(marketingMap.values())
-      .map(m => ({
-        name: m.name,
-        value: Math.round(m.saleValue || 0), // TOTAL Sales Revenue
-        orderValue: Math.round(m.orderValue || 0), // TOTAL Order Value
-        count: m.count,
-        orders: m.orders.size,
-        categories: m.categories.size,
-        customers: m.customers.size,
-        buyers: m.buyers.size,
-        avgOrderValue: m.orders.size > 0 ? Math.round((m.orderValue || 0) / m.orders.size) : 0,
-        avgSaleValue: m.orders.size > 0 ? Math.round((m.saleValue || 0) / m.orders.size) : 0,
-        deliveryRate: m.orderValue > 0 ? (m.saleValue / m.orderValue) * 100 : 0,
-      }));
+    const allMarketingData = Array.from(marketingMap.values()).map((m) => ({
+      name: m.name,
+      value: Math.round(m.saleValue || 0), // TOTAL Sales Revenue
+      orderValue: Math.round(m.orderValue || 0), // TOTAL Order Value
+      count: m.count,
+      orders: m.orders.size,
+      categories: m.categories.size,
+      customers: m.customers.size,
+      buyers: m.buyers.size,
+      avgOrderValue:
+        m.orders.size > 0 ? Math.round((m.orderValue || 0) / m.orders.size) : 0,
+      avgSaleValue:
+        m.orders.size > 0 ? Math.round((m.saleValue || 0) / m.orders.size) : 0,
+      deliveryRate: m.orderValue > 0 ? (m.saleValue / m.orderValue) * 100 : 0,
+    }));
 
     // FIXED: Sort by TOTAL Order Value (not average)
-    const allMarketingDataRanked = [...allMarketingData].sort((a, b) => b.orderValue - a.orderValue);
+    const allMarketingDataRanked = [...allMarketingData].sort(
+      (a, b) => b.orderValue - a.orderValue,
+    );
     const topMarketing = allMarketingDataRanked.slice(0, 10);
 
     // ============================================================
     // FIXED: Category Data - Sort by TOTAL Order Value
     // ============================================================
     const allCategoryData = Array.from(categoryMap.values())
-      .map(c => ({
+      .map((c) => ({
         name: c.name,
         value: Math.round(c.saleValue || 0), // TOTAL Sales Revenue
         orderValue: Math.round(c.orderValue || 0), // TOTAL Order Value
@@ -629,7 +1010,10 @@ const useComprehensiveData = (apiData, selectedYear, selectedMonth, selectedMark
         subCategories: c.subCategories.size,
         customers: c.customers.size,
         deliveryRate: c.orderValue > 0 ? (c.saleValue / c.orderValue) * 100 : 0,
-        avgOrderValue: c.orders.size > 0 ? Math.round((c.orderValue || 0) / c.orders.size) : 0,
+        avgOrderValue:
+          c.orders.size > 0
+            ? Math.round((c.orderValue || 0) / c.orders.size)
+            : 0,
       }))
       .sort((a, b) => b.orderValue - a.orderValue);
 
@@ -639,7 +1023,7 @@ const useComprehensiveData = (apiData, selectedYear, selectedMonth, selectedMark
     // FIXED: Sub-Categories - Sort by TOTAL Order Value
     // ============================================================
     const topSubCategories = Array.from(subCategoryMap.values())
-      .map(s => ({
+      .map((s) => ({
         name: s.name,
         category: s.category,
         value: Math.round(s.saleValue || 0),
@@ -647,7 +1031,10 @@ const useComprehensiveData = (apiData, selectedYear, selectedMonth, selectedMark
         count: s.count,
         orders: s.orders.size,
         deliveryRate: s.orderValue > 0 ? (s.saleValue / s.orderValue) * 100 : 0,
-        avgOrderValue: s.orders.size > 0 ? Math.round((s.orderValue || 0) / s.orders.size) : 0,
+        avgOrderValue:
+          s.orders.size > 0
+            ? Math.round((s.orderValue || 0) / s.orders.size)
+            : 0,
       }))
       .sort((a, b) => b.orderValue - a.orderValue)
       .slice(0, 10);
@@ -656,14 +1043,19 @@ const useComprehensiveData = (apiData, selectedYear, selectedMonth, selectedMark
     // FIXED: Customer Data - Sort by TOTAL Order Value
     // ============================================================
     const allCustomers = Array.from(customerMap.values())
-      .map(c => ({ 
-        name: c.name, 
+      .map((c) => ({
+        name: c.name,
         value: Math.round(c.saleValue || 0),
         orderValue: Math.round(c.orderValue || 0),
-        count: c.count, 
+        count: c.count,
         orders: c.orders.size,
-        daysSinceLastOrder: Math.floor((new Date() - c.lastOrder) / (1000 * 60 * 60 * 24)),
-        avgOrderValue: c.orders.size > 0 ? Math.round((c.orderValue || 0) / c.orders.size) : 0,
+        daysSinceLastOrder: Math.floor(
+          (new Date() - c.lastOrder) / (1000 * 60 * 60 * 24),
+        ),
+        avgOrderValue:
+          c.orders.size > 0
+            ? Math.round((c.orderValue || 0) / c.orders.size)
+            : 0,
       }))
       .sort((a, b) => b.orderValue - a.orderValue);
 
@@ -673,14 +1065,17 @@ const useComprehensiveData = (apiData, selectedYear, selectedMonth, selectedMark
     // FIXED: Buyer Data - Sort by TOTAL Order Value
     // ============================================================
     const allBuyers = Array.from(buyerMap.values())
-      .map(b => ({
+      .map((b) => ({
         name: b.name,
         value: Math.round(b.saleValue || 0),
         orderValue: Math.round(b.orderValue || 0),
         count: b.count,
         categories: b.categories.size,
         orders: b.orders.size,
-        avgOrderValue: b.orders.size > 0 ? Math.round((b.orderValue || 0) / b.orders.size) : 0,
+        avgOrderValue:
+          b.orders.size > 0
+            ? Math.round((b.orderValue || 0) / b.orders.size)
+            : 0,
       }))
       .sort((a, b) => b.orderValue - a.orderValue);
 
@@ -690,8 +1085,8 @@ const useComprehensiveData = (apiData, selectedYear, selectedMonth, selectedMark
     const topProducts = Array.from(productMap.values())
       .sort((a, b) => b.saleValue - a.saleValue)
       .slice(0, 10)
-      .map(p => ({
-        name: p.name.length > 30 ? p.name.substring(0, 30) + '...' : p.name,
+      .map((p) => ({
+        name: p.name.length > 30 ? p.name.substring(0, 30) + "..." : p.name,
         category: p.category,
         value: Math.round(p.saleValue || 0),
         orderValue: Math.round(p.orderValue || 0),
@@ -701,9 +1096,21 @@ const useComprehensiveData = (apiData, selectedYear, selectedMonth, selectedMark
 
     // Order Funnel Data
     const orderFunnelData = [
-      { name: 'Orders Received', value: Math.round(totals.orderQty) || 1, fill: COLORS.primary },
-      { name: 'Delivered', value: Math.round(totals.saleQty) || 1, fill: COLORS.success },
-      { name: 'Pending', value: Math.round(totals.balanceQty) || 1, fill: COLORS.danger },
+      {
+        name: "Orders Received",
+        value: Math.round(totals.orderQty) || 1,
+        fill: COLORS.primary,
+      },
+      {
+        name: "Delivered",
+        value: Math.round(totals.saleQty) || 1,
+        fill: COLORS.success,
+      },
+      {
+        name: "Pending",
+        value: Math.round(totals.balanceQty) || 1,
+        fill: COLORS.danger,
+      },
     ];
 
     const funnelConversionData = orderFunnelData;
@@ -711,43 +1118,59 @@ const useComprehensiveData = (apiData, selectedYear, selectedMonth, selectedMark
     // ============================================================
     // FIXED: Channel Performance - Sort by TOTAL, tier by AVG
     // ============================================================
-    const channelPerformanceData = allMarketingDataRanked.slice(0, 8).map((m, i) => {
-      const avgOrderValue = m.avgOrderValue || 0;
-      const deliveryRate = m.deliveryRate || 0;
-      const tier = getPerformanceTier(avgOrderValue, deliveryRate);
-      const Icon = tier.icon;
-      
-      return {
-        channel: m.name,
-        orderValue: formatCurrency(m.orderValue), // TOTAL
-        revenue: formatCurrency(m.value), // TOTAL
-        avgOrderValue: formatCurrency(avgOrderValue),
-        orders: m.orders,
-        delivered: Math.round(m.orders * (deliveryRate / 100)),
-        deliveryRate: deliveryRate.toFixed(0) + '%',
-        avgSaleValue: formatCurrency(m.avgSaleValue),
-        customers: m.customers,
-        categories: m.categories,
-        leakage: m.orderValue > 0 
-          ? formatCurrency(m.orderValue - m.value) 
-          : formatCurrency(0),
-        leakagePercent: m.orderValue > 0 
-          ? ((m.orderValue - m.value) / m.orderValue * 100).toFixed(0) + '%'
-          : '0%',
-        status: tier.status,
-        tier: tier.tier,
-        tierIcon: tier.icon,
-        tierColor: tier.color,
-        tierBg: tier.bg,
-        color: CHART_COLORS[i % CHART_COLORS.length],
-        orderTrend: allMarketingDataRanked.length > 1 ? (m.orderValue - (allMarketingDataRanked[i+1]?.orderValue || 0)) / (allMarketingDataRanked[i+1]?.orderValue || 1) * 100 : 0,
-      };
-    });
+    // In useComprehensiveData hook - channelPerformanceData section
+const channelPerformanceData = allMarketingDataRanked
+  .slice(0, 8)
+  .map((m, i) => {
+    const avgOrderValue = m.avgOrderValue || 0;
+    const deliveryRate = m.deliveryRate || 0;
+    const totalOrderValue = m.orderValue || 0;
+    const orders = m.orders || 0;
+
+    // ✅ Pass time parameters
+    const tier = getPerformanceTier(
+      avgOrderValue,
+      deliveryRate,
+      totalOrderValue,
+      orders,
+      selectedYear,
+      selectedMonth
+    );
+    const Icon = tier.icon;
+
+    return {
+      channel: m.name,
+      orderValue: formatCurrency(m.orderValue),
+      revenue: formatCurrency(m.value),
+      avgOrderValue: formatCurrency(avgOrderValue),
+      orders: m.orders,
+      delivered: Math.round(m.orders * (deliveryRate / 100)),
+      deliveryRate: deliveryRate.toFixed(0) + "%",
+      avgSaleValue: formatCurrency(m.avgSaleValue),
+      customers: m.customers,
+      categories: m.categories,
+      leakage: m.orderValue > 0
+        ? formatCurrency(m.orderValue - m.value)
+        : formatCurrency(0),
+      leakagePercent: m.orderValue > 0
+        ? (((m.orderValue - m.value) / m.orderValue) * 100).toFixed(0) + "%"
+        : "0%",
+      status: tier.status,
+      tier: tier.tier,
+      tierIcon: tier.icon,
+      tierColor: tier.color,
+      tierBg: tier.bg,
+      color: CHART_COLORS[i % CHART_COLORS.length],
+      orderTrend: allMarketingDataRanked.length > 1
+        ? ((m.orderValue - (allMarketingDataRanked[i + 1]?.orderValue || 0)) / (allMarketingDataRanked[i + 1]?.orderValue || 1)) * 100
+        : 0,
+    };
+  });
 
     // ============================================================
     // FIXED: Sales vs Order Data - Only Order Value & Sales Revenue
     // ============================================================
-    const salesVsOrderData = allMarketingDataRanked.map(m => ({
+    const salesVsOrderData = allMarketingDataRanked.map((m) => ({
       name: m.name,
       orderValue: m.orderValue || 0,
       saleValue: m.value || 0,
@@ -755,24 +1178,50 @@ const useComprehensiveData = (apiData, selectedYear, selectedMonth, selectedMark
     }));
 
     const completionData = [
-      { name: 'Complete', value: statusData.complete, fill: COLORS.success },
-      { name: 'In Progress', value: statusData.inProgress, fill: COLORS.warning },
-      { name: 'Pending', value: statusData.pending, fill: COLORS.danger },
+      { name: "Complete", value: statusData.complete, fill: COLORS.success },
+      {
+        name: "In Progress",
+        value: statusData.inProgress,
+        fill: COLORS.warning,
+      },
+      { name: "Pending", value: statusData.pending, fill: COLORS.danger },
     ];
 
     const performanceMetrics = {
-      avgDailyOrder: Math.round(dailyData.reduce((sum, d) => sum + d.orderValue, 0) / (dailyData.length || 1)),
-      avgDailySale: Math.round(dailyData.reduce((sum, d) => sum + d.saleValue, 0) / (dailyData.length || 1)),
+      avgDailyOrder: Math.round(
+        dailyData.reduce((sum, d) => sum + d.orderValue, 0) /
+          (dailyData.length || 1),
+      ),
+      avgDailySale: Math.round(
+        dailyData.reduce((sum, d) => sum + d.saleValue, 0) /
+          (dailyData.length || 1),
+      ),
       avgOrderValue: Math.round(totals.orderValue / (orderMap.size || 1)),
       avgSaleValue: Math.round(totals.saleValue / (orderMap.size || 1)),
       avgCustomerValue: Math.round(totals.saleValue / (customerMap.size || 1)),
-      avgMarketingValue: Math.round(totals.saleValue / (marketingMap.size || 1)),
-      orderToDeliveryRatio: totals.orderQty > 0 ? (totals.saleQty / totals.orderQty) : 0,
-      customerRetention: customerMap.size > 0 ? (customerMap.size / orderMap.size) * 100 : 0,
+      avgMarketingValue: Math.round(
+        totals.saleValue / (marketingMap.size || 1),
+      ),
+      orderToDeliveryRatio:
+        totals.orderQty > 0 ? totals.saleQty / totals.orderQty : 0,
+      customerRetention:
+        customerMap.size > 0 ? (customerMap.size / orderMap.size) * 100 : 0,
     };
 
     // Top Performing Marketing - Sort by TOTAL
-    const topPerformingMarketing = allMarketingDataRanked.slice(0, 5).map(m => ({
+const topPerformingMarketing = allMarketingDataRanked
+  .slice(0, 5)
+  .map((m) => {
+    // ✅ Pass ALL parameters including time
+    const tier = getPerformanceTier(
+      m.avgOrderValue,
+      m.deliveryRate,
+      m.orderValue,
+      m.orders,
+      selectedYear,
+      selectedMonth
+    );
+    return {
       name: m.name,
       revenueDisplay: formatCurrency(m.value),
       revenue: m.value,
@@ -780,11 +1229,15 @@ const useComprehensiveData = (apiData, selectedYear, selectedMonth, selectedMark
       avgOrderValue: formatCurrency(m.avgOrderValue),
       orders: m.orders,
       customers: m.customers,
-      deliveryRate: m.deliveryRate.toFixed(0) + '%',
-    }));
+      deliveryRate: m.deliveryRate.toFixed(0) + "%",
+      tier: tier.tier,
+      tierColor: tier.color,
+      tierBg: tier.bg,
+    };
+  });
 
     // Category Performance - Sort by TOTAL
-    const categoryPerformance = allCategoryData.slice(0, 5).map(c => ({
+    const categoryPerformance = allCategoryData.slice(0, 5).map((c) => ({
       name: c.name,
       revenue: Math.round(c.value),
       orderValue: Math.round(c.orderValue),
@@ -792,12 +1245,12 @@ const useComprehensiveData = (apiData, selectedYear, selectedMonth, selectedMark
       orders: c.orders,
       subCategories: c.subCategories,
       customers: c.customers,
-      deliveryRate: c.deliveryRate.toFixed(0) + '%',
+      deliveryRate: c.deliveryRate.toFixed(0) + "%",
     }));
 
     const peakHoursData = Array.from(hourMap.values())
       .sort((a, b) => a.hour - b.hour)
-      .map(h => ({
+      .map((h) => ({
         hour: `${h.hour}:00`,
         orders: h.count,
         orderRevenue: Math.round(h.orderValue),
@@ -805,99 +1258,144 @@ const useComprehensiveData = (apiData, selectedYear, selectedMonth, selectedMark
       }));
 
     // ============================================================
-    // FIXED: Sales Person Ranking - Sort by TOTAL Order Value
-    // ============================================================
-    const salesPersonRanking = allMarketingDataRanked.map((m, index) => {
-      const tier = getPerformanceTier(m.avgOrderValue, m.deliveryRate);
-      const Icon = tier.icon;
-      const deliveryStatus = getDeliveryStatus(m.deliveryRate);
-      
-      return {
-        rank: index + 1,
-        name: m.name,
-        orderValue: formatCurrency(m.orderValue), // TOTAL
-        revenue: formatCurrency(m.value), // TOTAL
-        avgOrderValue: formatCurrency(m.avgOrderValue),
-        avgSaleValue: formatCurrency(m.avgSaleValue),
-        orders: m.orders,
-        customers: m.customers,
-        deliveryRate: m.deliveryRate.toFixed(0) + '%',
-        deliveryStatus: deliveryStatus.status,
-        deliveryStatusIcon: deliveryStatus.icon,
-        tier: tier.tier,
-        tierIcon: Icon,
-        tierColor: tier.color,
-        tierBg: tier.bg,
-        badge: index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `${index + 1}.`,
-      };
-    });
+// FIXED: Sales Person Ranking - With Time-Aware Tiers
+// ============================================================
+const salesPersonRanking = allMarketingDataRanked.map((m, index) => {
+  const avgOrderValue = m.avgOrderValue || 0;
+  const deliveryRate = m.deliveryRate || 0;
+  const totalOrderValue = m.orderValue || 0;
+  const orders = m.orders || 0;
+  
+  // ✅ Pass ALL parameters including time
+  const tier = getPerformanceTier(
+    avgOrderValue, 
+    deliveryRate, 
+    totalOrderValue, 
+    orders,
+    selectedYear,
+    selectedMonth
+  );
+  const Icon = tier.icon;
+  const deliveryStatus = getDeliveryStatus(m.deliveryRate);
+  
+  return {
+    rank: index + 1,
+    name: m.name,
+    orderValue: formatCurrency(m.orderValue),
+    revenue: formatCurrency(m.value),
+    avgOrderValue: formatCurrency(m.avgOrderValue),
+    avgSaleValue: formatCurrency(m.avgSaleValue),
+    orders: m.orders,
+    customers: m.customers,
+    deliveryRate: m.deliveryRate.toFixed(0) + "%",
+    deliveryStatus: deliveryStatus.status,
+    deliveryStatusIcon: deliveryStatus.icon,
+    tier: tier.tier,
+    tierIcon: Icon,
+    tierColor: tier.color,
+    tierBg: tier.bg,
+    badge: index === 0 ? "🥇" : index === 1 ? "🥈" : index === 2 ? "🥉" : `${index + 1}.`,
+  };
+});
 
     // ============================================================
     // FIXED: Customer Segmentation - Sort by TOTAL, show AVG for context
     // ============================================================
     const customerSegmentation = {
-      vip: allCustomers.filter(c => c.avgOrderValue > 10000).map(c => ({
-        name: c.name,
-        orderValue: formatCurrency(c.orderValue),
-        avgOrderValue: formatCurrency(c.avgOrderValue),
-      })),
-      regular: allCustomers.filter(c => c.avgOrderValue >= 1000 && c.avgOrderValue <= 10000).map(c => ({
-        name: c.name,
-        orderValue: formatCurrency(c.orderValue),
-        avgOrderValue: formatCurrency(c.avgOrderValue),
-      })),
-      occasional: allCustomers.filter(c => c.avgOrderValue < 1000 && c.count > 0).map(c => ({
-        name: c.name,
-        orderValue: formatCurrency(c.orderValue),
-        avgOrderValue: formatCurrency(c.avgOrderValue),
-      })),
-      new: allCustomers.filter(c => c.daysSinceLastOrder < 30).map(c => ({
-        name: c.name,
-        orderValue: formatCurrency(c.orderValue),
-        avgOrderValue: formatCurrency(c.avgOrderValue),
-      })),
+      vip: allCustomers
+        .filter((c) => c.avgOrderValue > 10000)
+        .map((c) => ({
+          name: c.name,
+          orderValue: formatCurrency(c.orderValue),
+          avgOrderValue: formatCurrency(c.avgOrderValue),
+        })),
+      regular: allCustomers
+        .filter((c) => c.avgOrderValue >= 1000 && c.avgOrderValue <= 10000)
+        .map((c) => ({
+          name: c.name,
+          orderValue: formatCurrency(c.orderValue),
+          avgOrderValue: formatCurrency(c.avgOrderValue),
+        })),
+      occasional: allCustomers
+        .filter((c) => c.avgOrderValue < 1000 && c.count > 0)
+        .map((c) => ({
+          name: c.name,
+          orderValue: formatCurrency(c.orderValue),
+          avgOrderValue: formatCurrency(c.avgOrderValue),
+        })),
+      new: allCustomers
+        .filter((c) => c.daysSinceLastOrder < 30)
+        .map((c) => ({
+          name: c.name,
+          orderValue: formatCurrency(c.orderValue),
+          avgOrderValue: formatCurrency(c.avgOrderValue),
+        })),
     };
 
-    const customerLoyalty = allCustomers.slice(0, 5).map(c => ({ 
-      name: c.name, 
-      orders: c.orders, 
+    const customerLoyalty = allCustomers.slice(0, 5).map((c) => ({
+      name: c.name,
+      orders: c.orders,
       value: c.value,
       orderValue: c.orderValue,
       avgOrderValue: c.avgOrderValue,
-      loyaltyScore: Math.min(100, c.orders * 10) 
+      loyaltyScore: Math.min(100, c.orders * 10),
     }));
 
-    const churnRiskData = allCustomers.filter(c => c.daysSinceLastOrder > 30).slice(0, 10).map(c => ({ 
-      name: c.name, 
-      daysSinceLastOrder: c.daysSinceLastOrder, 
-      risk: c.daysSinceLastOrder > 90 ? 'High' : 'Medium' 
-    }));
+    const churnRiskData = allCustomers
+      .filter((c) => c.daysSinceLastOrder > 30)
+      .slice(0, 10)
+      .map((c) => ({
+        name: c.name,
+        daysSinceLastOrder: c.daysSinceLastOrder,
+        risk: c.daysSinceLastOrder > 90 ? "High" : "Medium",
+      }));
 
     const firstMonth = monthlySalesData[0]?.saleValue || 0;
-    const lastMonth = monthlySalesData[monthlySalesData.length - 1]?.saleValue || 0;
-    const salesGrowth = firstMonth > 0 ? ((lastMonth - firstMonth) / firstMonth) * 100 : 0;
+    const lastMonth =
+      monthlySalesData[monthlySalesData.length - 1]?.saleValue || 0;
+    const salesGrowth =
+      firstMonth > 0 ? ((lastMonth - firstMonth) / firstMonth) * 100 : 0;
 
     const distributionData = [];
     const ranges = [0, 1000, 5000, 10000, 50000, 100000, 500000];
     ranges.forEach((range, i) => {
       if (i < ranges.length - 1) {
-        const count = Array.from(orderMap.values())
-          .filter(o => o.orderValue >= range && o.orderValue < ranges[i + 1]).length;
+        const count = Array.from(orderMap.values()).filter(
+          (o) => o.orderValue >= range && o.orderValue < ranges[i + 1],
+        ).length;
         distributionData.push({
-          range: `${formatCompactCurrency(range)}-${formatCompactCurrency(ranges[i+1])}`,
+          range: `${formatCompactCurrency(range)}-${formatCompactCurrency(ranges[i + 1])}`,
           count: count || 0,
         });
       }
     });
 
     const orderSizeDistribution = [
-      { name: 'Small (<100)', value: Array.from(orderMap.values()).filter(o => o.saleValue < 100).length },
-      { name: 'Medium (100-500)', value: Array.from(orderMap.values()).filter(o => o.saleValue >= 100 && o.saleValue < 500).length },
-      { name: 'Large (500-2000)', value: Array.from(orderMap.values()).filter(o => o.saleValue >= 500 && o.saleValue < 2000).length },
-      { name: 'XL (>2000)', value: Array.from(orderMap.values()).filter(o => o.saleValue >= 2000).length },
+      {
+        name: "Small (<100)",
+        value: Array.from(orderMap.values()).filter((o) => o.saleValue < 100)
+          .length,
+      },
+      {
+        name: "Medium (100-500)",
+        value: Array.from(orderMap.values()).filter(
+          (o) => o.saleValue >= 100 && o.saleValue < 500,
+        ).length,
+      },
+      {
+        name: "Large (500-2000)",
+        value: Array.from(orderMap.values()).filter(
+          (o) => o.saleValue >= 500 && o.saleValue < 2000,
+        ).length,
+      },
+      {
+        name: "XL (>2000)",
+        value: Array.from(orderMap.values()).filter((o) => o.saleValue >= 2000)
+          .length,
+      },
     ];
 
-    const marketBasket = topSubCategories.slice(0, 5).map(s => ({
+    const marketBasket = topSubCategories.slice(0, 5).map((s) => ({
       products: s.name,
       category: s.category,
       count: s.orders,
@@ -908,7 +1406,12 @@ const useComprehensiveData = (apiData, selectedYear, selectedMonth, selectedMark
       month: m.name,
       currentYear: m.saleValue,
       lastYear: Math.round(m.saleValue * (0.7 + Math.random() * 0.3)),
-      growth: m.saleValue > 0 ? ((m.saleValue - Math.round(m.saleValue * 0.7)) / Math.round(m.saleValue * 0.7)) * 100 : 0,
+      growth:
+        m.saleValue > 0
+          ? ((m.saleValue - Math.round(m.saleValue * 0.7)) /
+              Math.round(m.saleValue * 0.7)) *
+            100
+          : 0,
     }));
 
     return {
@@ -938,20 +1441,39 @@ const useComprehensiveData = (apiData, selectedYear, selectedMonth, selectedMark
       outliers: [],
       performanceMetrics,
       heatmapData: [],
-      scatterData: allMarketingData.map(m => ({ x: m.orders || 1, y: m.value || 1, z: m.customers || 1, name: m.name })),
-      radarData: allMarketingData.map(m => ({ subject: m.name, Revenue: m.value, Orders: m.orders, Customers: m.customers, Categories: m.categories })),
+      scatterData: allMarketingData.map((m) => ({
+        x: m.orders || 1,
+        y: m.value || 1,
+        z: m.customers || 1,
+        name: m.name,
+      })),
+      radarData: allMarketingData.map((m) => ({
+        subject: m.name,
+        Revenue: m.value,
+        Orders: m.orders,
+        Customers: m.customers,
+        Categories: m.categories,
+      })),
       funnelData: orderFunnelData,
       orderFunnelData,
       distributionData,
       correlationData: [
-        { name: 'Orders vs Sales', value: 0.92 },
-        { name: 'Customers vs Sales', value: 0.78 },
-        { name: 'Categories vs Sales', value: 0.65 },
-        { name: 'Marketing vs Sales', value: 0.85 },
-        { name: 'Delivery Rate vs Sales', value: 0.72 },
+        { name: "Orders vs Sales", value: 0.92 },
+        { name: "Customers vs Sales", value: 0.78 },
+        { name: "Categories vs Sales", value: 0.65 },
+        { name: "Marketing vs Sales", value: 0.85 },
+        { name: "Delivery Rate vs Sales", value: 0.72 },
       ],
-      seasonalData: monthlyData.map(d => ({ month: d.name, value: Math.round(d.saleValue) })),
-      efficiencyData: allMarketingData.map(m => ({ name: m.name, efficiency: m.orders > 0 ? Math.round(m.value / m.orders) : 0, orders: m.orders, revenue: Math.round(m.value) })),
+      seasonalData: monthlyData.map((d) => ({
+        month: d.name,
+        value: Math.round(d.saleValue),
+      })),
+      efficiencyData: allMarketingData.map((m) => ({
+        name: m.name,
+        efficiency: m.orders > 0 ? Math.round(m.value / m.orders) : 0,
+        orders: m.orders,
+        revenue: Math.round(m.value),
+      })),
       completionData,
       growthData,
       weeklyGrowthData,
@@ -965,14 +1487,14 @@ const useComprehensiveData = (apiData, selectedYear, selectedMonth, selectedMark
       categoryPerformance,
       buyerRetentionData: topBuyers.slice(0, 5),
       orderSizeDistribution,
-      marketingComparisonData: allMarketingDataRanked.slice(0, 8).map(m => ({ 
-        name: m.name, 
+      marketingComparisonData: allMarketingDataRanked.slice(0, 8).map((m) => ({
+        name: m.name,
         orderValue: formatCurrency(m.orderValue),
         avgOrderValue: formatCurrency(m.avgOrderValue),
         revenue: formatCurrency(m.value),
-        orders: m.orders, 
-        customers: m.customers, 
-        deliveryRate: m.deliveryRate.toFixed(0) + '%',
+        orders: m.orders,
+        customers: m.customers,
+        deliveryRate: m.deliveryRate.toFixed(0) + "%",
       })),
       categoryGrowthData: allCategoryData.slice(0, 5),
       customerSegmentation,
@@ -983,26 +1505,58 @@ const useComprehensiveData = (apiData, selectedYear, selectedMonth, selectedMark
       churnRiskData,
       performanceScorecard: allMarketingDataRanked.slice(0, 5),
       yoyComparison,
-      revenueLeakage: [{ name: 'Delivered', value: totals.saleValue, color: COLORS.success }, { name: 'Pending', value: totals.balanceValue, color: COLORS.danger }],
+      revenueLeakage: [
+        { name: "Delivered", value: totals.saleValue, color: COLORS.success },
+        { name: "Pending", value: totals.balanceValue, color: COLORS.danger },
+      ],
       marketBasket,
       swotAnalysis: {
-        strengths: allMarketingDataRanked.slice(0, 3).map(m => `${m.name}: ${formatCurrency(m.value)} revenue`),
-        weaknesses: allMarketingDataRanked.slice(-3).map(m => `${m.name}: ${formatCurrency(m.value)} revenue`),
-        opportunities: ['Growing demand in top categories', 'New market expansion', 'Digital transformation'],
-        threats: ['Competition from new players', 'Supply chain disruptions', 'Rising material costs'],
+        strengths: allMarketingDataRanked
+          .slice(0, 3)
+          .map((m) => `${m.name}: ${formatCurrency(m.value)} revenue`),
+        weaknesses: allMarketingDataRanked
+          .slice(-3)
+          .map((m) => `${m.name}: ${formatCurrency(m.value)} revenue`),
+        opportunities: [
+          "Growing demand in top categories",
+          "New market expansion",
+          "Digital transformation",
+        ],
+        threats: [
+          "Competition from new players",
+          "Supply chain disruptions",
+          "Rising material costs",
+        ],
       },
-      categoryMatrix: allCategoryData.slice(0, 8).map(c => ({ name: c.name, growth: c.orders > 0 ? (c.value / c.orders) : 0, marketShare: c.value / totals.saleValue, revenue: c.value })),
+      categoryMatrix: allCategoryData
+        .slice(0, 8)
+        .map((c) => ({
+          name: c.name,
+          growth: c.orders > 0 ? c.value / c.orders : 0,
+          marketShare: c.value / totals.saleValue,
+          revenue: c.value,
+        })),
       salesPersonRanking,
       salesGrowthData: growthData,
       monthlySalesData,
       salesVsOrderData,
-      deliveryEfficiencyData: allMarketingData.map(m => ({ name: m.name, deliveryRate: m.deliveryRate, orders: m.orders, revenue: m.value })).sort((a, b) => b.deliveryRate - a.deliveryRate).slice(0, 10),
+      deliveryEfficiencyData: allMarketingData
+        .map((m) => ({
+          name: m.name,
+          deliveryRate: m.deliveryRate,
+          orders: m.orders,
+          revenue: m.value,
+        }))
+        .sort((a, b) => b.deliveryRate - a.deliveryRate)
+        .slice(0, 10),
       funnelConversionData,
       channelPerformanceData,
       cohortData: monthlyData.map((d, i) => ({
         cohort: d.name,
         revenue: d.saleValue,
-        cumulative: monthlyData.slice(0, i + 1).reduce((sum, item) => sum + item.saleValue, 0),
+        cumulative: monthlyData
+          .slice(0, i + 1)
+          .reduce((sum, item) => sum + item.saleValue, 0),
       })),
       growthMetrics,
     };
@@ -1012,9 +1566,12 @@ const useComprehensiveData = (apiData, selectedYear, selectedMonth, selectedMark
 function getWeekNumber(date) {
   const d = new Date(date);
   d.setHours(0, 0, 0, 0);
-  d.setDate(d.getDate() + 3 - (d.getDay() + 6) % 7);
+  d.setDate(d.getDate() + 3 - ((d.getDay() + 6) % 7));
   const week1 = new Date(d.getFullYear(), 0, 4);
-  return 1 + Math.round(((d - week1) / 86400000 - 3 + (week1.getDay() + 6) % 7) / 7);
+  return (
+    1 +
+    Math.round(((d - week1) / 86400000 - 3 + ((week1.getDay() + 6) % 7)) / 7)
+  );
 }
 
 // ============================================================
@@ -1022,9 +1579,11 @@ function getWeekNumber(date) {
 // ============================================================
 const FunnelChartComponent = ({ data }) => {
   if (!data || data.length === 0) {
-    return <div className="text-center text-slate-400 py-8">No funnel data</div>;
+    return (
+      <div className="text-center text-slate-400 py-8">No funnel data</div>
+    );
   }
-  
+
   const total = data.reduce((sum, d) => sum + d.value, 0);
   const chartData = data.map((d, i) => ({
     ...d,
@@ -1035,7 +1594,7 @@ const FunnelChartComponent = ({ data }) => {
   return (
     <div className="space-y-4">
       {chartData.map((entry, index) => (
-        <motion.div 
+        <motion.div
           key={index}
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
@@ -1044,14 +1603,22 @@ const FunnelChartComponent = ({ data }) => {
         >
           <div className="flex items-center justify-between text-xs">
             <span className="font-medium text-slate-700 flex items-center gap-2">
-              <span className="w-5 h-5 rounded-full flex items-center justify-center text-white text-[10px] font-bold" style={{ backgroundColor: entry.fill || CHART_COLORS[index % CHART_COLORS.length] }}>
+              <span
+                className="w-5 h-5 rounded-full flex items-center justify-center text-white text-[10px] font-bold"
+                style={{
+                  backgroundColor:
+                    entry.fill || CHART_COLORS[index % CHART_COLORS.length],
+                }}
+              >
                 {entry.stage}
               </span>
               {entry.name}
             </span>
             <span className="text-slate-500">
-              {formatNumber(entry.value)} 
-              <span className="text-slate-400 ml-1">({entry.percentage.toFixed(0)}%)</span>
+              {formatNumber(entry.value)}
+              <span className="text-slate-400 ml-1">
+                ({entry.percentage.toFixed(0)}%)
+              </span>
             </span>
           </div>
           <div className="w-full bg-slate-100 rounded-full h-8 overflow-hidden relative">
@@ -1059,27 +1626,35 @@ const FunnelChartComponent = ({ data }) => {
               className="h-full rounded-full flex items-center justify-end px-3"
               style={{
                 width: `${Math.max(entry.percentage, 5)}%`,
-                backgroundColor: entry.fill || CHART_COLORS[index % CHART_COLORS.length],
+                backgroundColor:
+                  entry.fill || CHART_COLORS[index % CHART_COLORS.length],
               }}
               initial={{ width: 0 }}
               animate={{ width: `${Math.max(entry.percentage, 5)}%` }}
               transition={{ duration: 0.8, delay: index * 0.1 }}
             >
-              <span className="text-xs text-white font-medium">{formatNumber(entry.value)}</span>
+              <span className="text-xs text-white font-medium">
+                {formatNumber(entry.value)}
+              </span>
             </motion.div>
           </div>
           {index < chartData.length - 1 && (
             <div className="text-center text-[10px] text-slate-400">
-              ↓ {chartData[index + 1].value > 0 
-                ? ((entry.value / chartData[index + 1].value) * 100).toFixed(0) 
-                : 0}% conversion rate
+              ↓{" "}
+              {chartData[index + 1].value > 0
+                ? ((entry.value / chartData[index + 1].value) * 100).toFixed(0)
+                : 0}
+              % conversion rate
             </div>
           )}
         </motion.div>
       ))}
       <div className="mt-4 p-3 bg-slate-50 rounded-lg text-xs text-slate-600">
         <p className="font-medium">📊 Funnel Summary:</p>
-        <p>Total Orders: {formatNumber(total)} | Delivery Rate: {data[1]?.value > 0 ? ((data[1].value / total) * 100).toFixed(0) : 0}%</p>
+        <p>
+          Total Orders: {formatNumber(total)} | Delivery Rate:{" "}
+          {data[1]?.value > 0 ? ((data[1].value / total) * 100).toFixed(0) : 0}%
+        </p>
       </div>
     </div>
   );
@@ -1090,7 +1665,11 @@ const StatusIndicator = ({ status }) => {
   const config = {
     complete: { icon: FaCheckCircle, color: COLORS.success, label: "Complete" },
     inProgress: { icon: FaClock, color: COLORS.warning, label: "In Progress" },
-    pending: { icon: FaExclamationTriangle, color: COLORS.danger, label: "Pending" },
+    pending: {
+      icon: FaExclamationTriangle,
+      color: COLORS.danger,
+      label: "Pending",
+    },
   };
 
   const { icon: Icon, color, label } = config[status] || config.pending;
@@ -1159,19 +1738,23 @@ const PredictionChart = ({ data }) => {
   const [predictionPeriod, setPredictionPeriod] = useState(3);
 
   if (!data || data.length === 0) {
-    return <div className="h-[200px] flex items-center justify-center text-slate-400">No data for prediction</div>;
+    return (
+      <div className="h-[200px] flex items-center justify-center text-slate-400">
+        No data for prediction
+      </div>
+    );
   }
 
   const lastData = data.slice(-6);
   const xValues = lastData.map((_, i) => i);
-  const yValues = lastData.map(d => d.saleValue || d.value || 0);
-  
+  const yValues = lastData.map((d) => d.saleValue || d.value || 0);
+
   const n = xValues.length;
   const sumX = xValues.reduce((a, b) => a + b, 0);
   const sumY = yValues.reduce((a, b) => a + b, 0);
   const sumXY = xValues.reduce((a, b, i) => a + b * yValues[i], 0);
   const sumX2 = xValues.reduce((a, b) => a + b * b, 0);
-  
+
   const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
   const intercept = (sumY - slope * sumX) / n;
 
@@ -1186,8 +1769,11 @@ const PredictionChart = ({ data }) => {
   }
 
   const chartData = [
-    ...lastData.map((d, i) => ({ name: d.name || d.month || `M${i+1}`, actual: Math.round(d.saleValue || d.value || 0) })),
-    ...predictedData.map(d => ({ name: d.name, predicted: d.predicted })),
+    ...lastData.map((d, i) => ({
+      name: d.name || d.month || `M${i + 1}`,
+      actual: Math.round(d.saleValue || d.value || 0),
+    })),
+    ...predictedData.map((d) => ({ name: d.name, predicted: d.predicted })),
   ];
 
   return (
@@ -1195,12 +1781,14 @@ const PredictionChart = ({ data }) => {
       <div className="flex items-center justify-between mb-2">
         <p className="text-xs text-slate-500">Sales revenue forecast</p>
         <div className="flex gap-1">
-          {[3, 6, 12].map(period => (
+          {[3, 6, 12].map((period) => (
             <button
               key={period}
               onClick={() => setPredictionPeriod(period)}
               className={`px-2 py-0.5 text-xs rounded transition-all ${
-                predictionPeriod === period ? 'bg-indigo-500 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                predictionPeriod === period
+                  ? "bg-indigo-500 text-white"
+                  : "bg-slate-100 text-slate-600 hover:bg-slate-200"
               }`}
             >
               {period}m
@@ -1209,15 +1797,46 @@ const PredictionChart = ({ data }) => {
         </div>
       </div>
       <ResponsiveContainer width="100%" height={200}>
-        <ComposedChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+        <ComposedChart
+          data={chartData}
+          margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+        >
           <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
           <XAxis dataKey="name" tick={{ fontSize: 10 }} />
-          <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => formatCompactCurrency(v)} />
-          <Tooltip formatter={(v) => formatCurrency(v)} contentStyle={{ backgroundColor: "white", border: "1px solid #e2e8f0", borderRadius: "8px", padding: "8px 12px" }} />
+          <YAxis
+            tick={{ fontSize: 10 }}
+            tickFormatter={(v) => formatCompactCurrency(v)}
+          />
+          <Tooltip
+            formatter={(v) => formatCurrency(v)}
+            contentStyle={{
+              backgroundColor: "white",
+              border: "1px solid #e2e8f0",
+              borderRadius: "8px",
+              padding: "8px 12px",
+            }}
+          />
           <Legend />
-          <Bar dataKey="actual" fill={COLORS.success} radius={[4, 4, 0, 0]} name="Actual Sales" />
-          <Line dataKey="predicted" stroke={COLORS.secondary} strokeWidth={2} strokeDasharray="5 5" dot={{ fill: COLORS.secondary, r: 4 }} name="Predicted Sales" />
-          <Area dataKey="predicted" fill={COLORS.secondary} fillOpacity={0.1} stroke="none" />
+          <Bar
+            dataKey="actual"
+            fill={COLORS.success}
+            radius={[4, 4, 0, 0]}
+            name="Actual Sales"
+          />
+          <Line
+            dataKey="predicted"
+            stroke={COLORS.secondary}
+            strokeWidth={2}
+            strokeDasharray="5 5"
+            dot={{ fill: COLORS.secondary, r: 4 }}
+            name="Predicted Sales"
+          />
+          <Area
+            dataKey="predicted"
+            fill={COLORS.secondary}
+            fillOpacity={0.1}
+            stroke="none"
+          />
         </ComposedChart>
       </ResponsiveContainer>
     </div>
@@ -1227,30 +1846,66 @@ const PredictionChart = ({ data }) => {
 // Marketing Chart
 const MarketingChart = ({ data }) => {
   if (!data || data.length === 0) {
-    return <div className="text-center text-slate-400 py-8">No marketing data</div>;
+    return (
+      <div className="text-center text-slate-400 py-8">No marketing data</div>
+    );
   }
 
   return (
     <ResponsiveContainer width="100%" height={300}>
-      <ComposedChart data={data} margin={{ top: 20, right: 30, left: 20, bottom: 60 }}>
+      <ComposedChart
+        data={data}
+        margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
+      >
         <CartesianGrid strokeDasharray="3 3" />
-        <XAxis dataKey="name" tick={{ fontSize: 9 }} angle={-25} textAnchor="end" height={60} />
+        <XAxis
+          dataKey="name"
+          tick={{ fontSize: 9 }}
+          angle={-25}
+          textAnchor="end"
+          height={60}
+        />
         <YAxis yAxisId="left" tickFormatter={(v) => formatCompactCurrency(v)} />
         <YAxis yAxisId="right" orientation="right" />
         <Tooltip
           formatter={(v, name) => {
-            if (name === 'Order Value') return formatCurrency(v);
-            if (name === 'Sales Revenue') return formatCurrency(v);
-            if (name === 'Avg Order Value') return formatCurrency(v);
-            if (name === 'Orders') return formatNumber(v);
+            if (name === "Order Value") return formatCurrency(v);
+            if (name === "Sales Revenue") return formatCurrency(v);
+            if (name === "Avg Order Value") return formatCurrency(v);
+            if (name === "Orders") return formatNumber(v);
             return v;
           }}
-          contentStyle={{ backgroundColor: "white", border: "1px solid #e2e8f0", borderRadius: "8px", padding: "8px 12px" }}
+          contentStyle={{
+            backgroundColor: "white",
+            border: "1px solid #e2e8f0",
+            borderRadius: "8px",
+            padding: "8px 12px",
+          }}
         />
         <Legend />
-        <Bar dataKey="orderValue" fill={COLORS.primary} name="Order Value" yAxisId="left" radius={[4, 4, 0, 0]} />
-        <Bar dataKey="value" fill={COLORS.success} name="Sales Revenue" yAxisId="left" radius={[4, 4, 0, 0]} />
-        <Line type="monotone" dataKey="orders" stroke={COLORS.warning} strokeWidth={2} dot={{ fill: COLORS.warning, r: 4 }} name="Orders" yAxisId="right" />
+        <Bar
+          dataKey="orderValue"
+          fill={COLORS.primary}
+          name="Order Value"
+          yAxisId="left"
+          radius={[4, 4, 0, 0]}
+        />
+        <Bar
+          dataKey="value"
+          fill={COLORS.success}
+          name="Sales Revenue"
+          yAxisId="left"
+          radius={[4, 4, 0, 0]}
+        />
+        <Line
+          type="monotone"
+          dataKey="orders"
+          stroke={COLORS.warning}
+          strokeWidth={2}
+          dot={{ fill: COLORS.warning, r: 4 }}
+          name="Orders"
+          yAxisId="right"
+        />
       </ComposedChart>
     </ResponsiveContainer>
   );
@@ -1259,30 +1914,59 @@ const MarketingChart = ({ data }) => {
 // Category Chart - Show TOTAL values only
 const CategoryChart = ({ data }) => {
   if (!data || data.length === 0) {
-    return <div className="text-center text-slate-400 py-8">No category data</div>;
+    return (
+      <div className="text-center text-slate-400 py-8">No category data</div>
+    );
   }
 
   return (
     <ResponsiveContainer width="100%" height={300}>
-      <BarChart data={data} margin={{ top: 20, right: 30, left: 20, bottom: 60 }}>
+      <BarChart
+        data={data}
+        margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
+      >
         <CartesianGrid strokeDasharray="3 3" />
-        <XAxis dataKey="name" tick={{ fontSize: 9 }} angle={-25} textAnchor="end" height={60} />
+        <XAxis
+          dataKey="name"
+          tick={{ fontSize: 9 }}
+          angle={-25}
+          textAnchor="end"
+          height={60}
+        />
         <YAxis tickFormatter={(v) => formatCompactCurrency(v)} />
         <Tooltip
           formatter={(v, name) => {
-            if (name === 'Order Value') return formatCurrency(v);
-            if (name === 'Sales Revenue') return formatCurrency(v);
+            if (name === "Order Value") return formatCurrency(v);
+            if (name === "Sales Revenue") return formatCurrency(v);
             return v;
           }}
-          contentStyle={{ backgroundColor: "white", border: "1px solid #e2e8f0", borderRadius: "8px", padding: "8px 12px" }}
+          contentStyle={{
+            backgroundColor: "white",
+            border: "1px solid #e2e8f0",
+            borderRadius: "8px",
+            padding: "8px 12px",
+          }}
         />
         <Legend />
-        <Bar dataKey="value" fill={COLORS.emerald} radius={[4, 4, 0, 0]} name="Sales Revenue">
+        <Bar
+          dataKey="value"
+          fill={COLORS.emerald}
+          radius={[4, 4, 0, 0]}
+          name="Sales Revenue"
+        >
           {data.map((entry, index) => (
-            <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+            <Cell
+              key={`cell-${index}`}
+              fill={CHART_COLORS[index % CHART_COLORS.length]}
+            />
           ))}
         </Bar>
-        <Bar dataKey="orderValue" fill={COLORS.primary} radius={[4, 4, 0, 0]} name="Order Value" />
+        <Bar
+          dataKey="orderValue"
+          fill={COLORS.primary}
+          radius={[4, 4, 0, 0]}
+          name="Order Value"
+        />
       </BarChart>
     </ResponsiveContainer>
   );
@@ -1296,25 +1980,52 @@ const BuyerChart = ({ data }) => {
 
   return (
     <ResponsiveContainer width="100%" height={300}>
-      <BarChart data={data} layout="vertical" margin={{ top: 20, right: 30, left: 120, bottom: 5 }}>
+      <BarChart
+        data={data}
+        layout="vertical"
+        margin={{ top: 20, right: 30, left: 120, bottom: 5 }}
+      >
         <CartesianGrid strokeDasharray="3 3" />
         <XAxis type="number" tickFormatter={(v) => formatCompactCurrency(v)} />
-        <YAxis dataKey="name" type="category" tick={{ fontSize: 9 }} width={120} />
+        <YAxis
+          dataKey="name"
+          type="category"
+          tick={{ fontSize: 9 }}
+          width={120}
+        />
         <Tooltip
           formatter={(v, name) => {
-            if (name === 'Order Value') return formatCurrency(v);
-            if (name === 'Sales Revenue') return formatCurrency(v);
+            if (name === "Order Value") return formatCurrency(v);
+            if (name === "Sales Revenue") return formatCurrency(v);
             return v;
           }}
-          contentStyle={{ backgroundColor: "white", border: "1px solid #e2e8f0", borderRadius: "8px", padding: "8px 12px" }}
+          contentStyle={{
+            backgroundColor: "white",
+            border: "1px solid #e2e8f0",
+            borderRadius: "8px",
+            padding: "8px 12px",
+          }}
         />
         <Legend />
-        <Bar dataKey="value" fill={COLORS.success} radius={[0, 4, 4, 0]} name="Sales Revenue">
+        <Bar
+          dataKey="value"
+          fill={COLORS.success}
+          radius={[0, 4, 4, 0]}
+          name="Sales Revenue"
+        >
           {data.map((entry, index) => (
-            <Cell key={`cell-${index}`} fill={CHART_COLORS[(index + 5) % CHART_COLORS.length]} />
+            <Cell
+              key={`cell-${index}`}
+              fill={CHART_COLORS[(index + 5) % CHART_COLORS.length]}
+            />
           ))}
         </Bar>
-        <Bar dataKey="orderValue" fill={COLORS.primary} radius={[0, 4, 4, 0]} name="Order Value" />
+        <Bar
+          dataKey="orderValue"
+          fill={COLORS.primary}
+          radius={[0, 4, 4, 0]}
+          name="Order Value"
+        />
       </BarChart>
     </ResponsiveContainer>
   );
@@ -1326,12 +2037,12 @@ const RadarChartComponent = ({ data }) => {
     return <div className="text-center text-slate-400 py-8">No radar data</div>;
   }
 
-  const maxRevenue = Math.max(...data.map(d => d.Revenue || 0));
-  const maxOrders = Math.max(...data.map(d => d.Orders || 0));
-  const maxCustomers = Math.max(...data.map(d => d.Customers || 0));
-  const maxCategories = Math.max(...data.map(d => d.Categories || 0));
+  const maxRevenue = Math.max(...data.map((d) => d.Revenue || 0));
+  const maxOrders = Math.max(...data.map((d) => d.Orders || 0));
+  const maxCustomers = Math.max(...data.map((d) => d.Customers || 0));
+  const maxCategories = Math.max(...data.map((d) => d.Categories || 0));
 
-  const scaledData = data.map(m => ({
+  const scaledData = data.map((m) => ({
     subject: m.subject,
     A: maxRevenue > 0 ? (m.Revenue / maxRevenue) * 100 : 0,
     B: maxOrders > 0 ? (m.Orders / maxOrders) * 100 : 0,
@@ -1345,80 +2056,87 @@ const RadarChartComponent = ({ data }) => {
 
   return (
     <ResponsiveContainer width="100%" height={350}>
-      <RadarChart data={scaledData} margin={{ top: 20, right: 30, left: 30, bottom: 20 }}>
+      <RadarChart
+        data={scaledData}
+        margin={{ top: 20, right: 30, left: 30, bottom: 20 }}
+      >
         <PolarGrid stroke="#e2e8f0" />
-        <PolarAngleAxis 
-          dataKey="subject" 
-          tick={{ 
-            fontSize: 9, 
-            fill: '#1E293B',
+        <PolarAngleAxis
+          dataKey="subject"
+          tick={{
+            fontSize: 9,
+            fill: "#1E293B",
             fontWeight: 500,
           }}
           tickLine={false}
         />
-        <PolarRadiusAxis 
-          angle={30} 
-          domain={[0, 100]} 
-          tick={{ 
-            fontSize: 8, 
-            fill: '#94A3B8' 
+        <PolarRadiusAxis
+          angle={30}
+          domain={[0, 100]}
+          tick={{
+            fontSize: 8,
+            fill: "#94A3B8",
           }}
           tickFormatter={(v) => `${Math.round(v)}%`}
         />
-        <Radar 
-          name="Sales Revenue" 
-          dataKey="A" 
-          stroke="#10B981" 
-          fill="#10B981" 
+        <Radar
+          name="Sales Revenue"
+          dataKey="A"
+          stroke="#10B981"
+          fill="#10B981"
           fillOpacity={0.2}
           strokeWidth={2}
         />
-        <Radar 
-          name="Orders" 
-          dataKey="B" 
-          stroke="#4F46E5" 
-          fill="#4F46E5" 
+        <Radar
+          name="Orders"
+          dataKey="B"
+          stroke="#4F46E5"
+          fill="#4F46E5"
           fillOpacity={0.2}
           strokeWidth={2}
         />
-        <Radar 
-          name="Customers" 
-          dataKey="C" 
-          stroke="#F59E0B" 
-          fill="#F59E0B" 
+        <Radar
+          name="Customers"
+          dataKey="C"
+          stroke="#F59E0B"
+          fill="#F59E0B"
           fillOpacity={0.2}
           strokeWidth={2}
         />
-        <Radar 
-          name="Categories" 
-          dataKey="D" 
-          stroke="#EC4899" 
-          fill="#EC4899" 
+        <Radar
+          name="Categories"
+          dataKey="D"
+          stroke="#EC4899"
+          fill="#EC4899"
           fillOpacity={0.2}
           strokeWidth={2}
         />
         <Tooltip
           formatter={(value, name, props) => {
             const payload = props.payload;
-            if (name === 'Sales Revenue') return [`${formatCurrency(payload.actualRevenue || 0)}`, name];
-            if (name === 'Orders') return [`${formatNumber(payload.actualOrders || 0)}`, name];
-            if (name === 'Customers') return [`${formatNumber(payload.actualCustomers || 0)}`, name];
-            if (name === 'Categories') return [`${formatNumber(payload.actualCategories || 0)}`, name];
+            if (name === "Sales Revenue")
+              return [`${formatCurrency(payload.actualRevenue || 0)}`, name];
+            if (name === "Orders")
+              return [`${formatNumber(payload.actualOrders || 0)}`, name];
+            if (name === "Customers")
+              return [`${formatNumber(payload.actualCustomers || 0)}`, name];
+            if (name === "Categories")
+              return [`${formatNumber(payload.actualCategories || 0)}`, name];
             return [value, name];
           }}
-          contentStyle={{ 
-            backgroundColor: "white", 
-            border: "1px solid #e2e8f0", 
-            borderRadius: "8px", 
+          contentStyle={{
+            backgroundColor: "white",
+            border: "1px solid #e2e8f0",
+            borderRadius: "8px",
             padding: "10px 14px",
-            boxShadow: "0 4px 6px -1px rgba(0,0,0,0.1)"
+            boxShadow: "0 4px 6px -1px rgba(0,0,0,0.1)",
           }}
         />
-        <Legend 
-          wrapperStyle={{ 
-            fontSize: '11px', 
-            paddingTop: '15px',
-            fontWeight: 500
+        <Legend
+          wrapperStyle={{
+            fontSize: "11px",
+            paddingTop: "15px",
+            fontWeight: 500,
           }}
           iconType="circle"
           iconSize={8}
@@ -1431,40 +2149,56 @@ const RadarChartComponent = ({ data }) => {
 // Efficiency Chart Component
 const EfficiencyChartComponent = ({ data }) => {
   if (!data || data.length === 0) {
-    return <div className="text-center text-slate-400 py-8">No efficiency data</div>;
+    return (
+      <div className="text-center text-slate-400 py-8">No efficiency data</div>
+    );
   }
 
   return (
     <ResponsiveContainer width="100%" height={300}>
       <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
         <CartesianGrid strokeDasharray="3 3" />
-        <XAxis 
-          type="number" 
-          dataKey="orders" 
-          name="Orders" 
-          label={{ value: 'Orders', position: 'bottom' }} 
+        <XAxis
+          type="number"
+          dataKey="orders"
+          name="Orders"
+          label={{ value: "Orders", position: "bottom" }}
         />
-        <YAxis 
-          type="number" 
-          dataKey="efficiency" 
-          name="Efficiency" 
+        <YAxis
+          type="number"
+          dataKey="efficiency"
+          name="Efficiency"
           tickFormatter={(v) => {
             if (v >= 1000) return `$${(v / 1000).toFixed(1)}K`;
             return `$${v}`;
           }}
-          label={{ value: 'Efficiency (per order)', angle: -90, position: 'left' }} 
+          label={{
+            value: "Efficiency (per order)",
+            angle: -90,
+            position: "left",
+          }}
         />
         <ZAxis type="number" dataKey="revenue" range={[50, 400]} />
         <Tooltip
           formatter={(v, name) => {
-            if (name === 'Efficiency') return formatCurrency(v);
-            if (name === 'Orders') return formatNumber(v);
-            if (name === 'Revenue') return formatCurrency(v);
+            if (name === "Efficiency") return formatCurrency(v);
+            if (name === "Orders") return formatNumber(v);
+            if (name === "Revenue") return formatCurrency(v);
             return v;
           }}
-          contentStyle={{ backgroundColor: "white", border: "1px solid #e2e8f0", borderRadius: "8px", padding: "8px 12px" }}
+          contentStyle={{
+            backgroundColor: "white",
+            border: "1px solid #e2e8f0",
+            borderRadius: "8px",
+            padding: "8px 12px",
+          }}
         />
-        <Scatter name="Sales Persons" data={data} fill={COLORS.primary} shape="circle" />
+        <Scatter
+          name="Sales Persons"
+          data={data}
+          fill={COLORS.primary}
+          shape="circle"
+        />
       </ScatterChart>
     </ResponsiveContainer>
   );
@@ -1473,6 +2207,7 @@ const EfficiencyChartComponent = ({ data }) => {
 // ============================================================
 // FIXED: Channel Performance Matrix - Sort by TOTAL, tier by AVG
 // ============================================================
+// In ChannelPerformanceMatrix component
 const ChannelPerformanceMatrix = ({ data }) => {
   if (!data || data.length === 0) {
     return <div className="text-center text-slate-400 py-8">No channel data</div>;
@@ -1494,36 +2229,17 @@ const ChannelPerformanceMatrix = ({ data }) => {
         </thead>
         <tbody>
           {data.map((channel, index) => {
-            const avgOrderValue = parseFloat(channel.avgOrderValue.replace(/[$,]/g, ''));
+            // ✅ Use the tier from data instead of recalculating
             const deliveryRate = parseFloat(channel.deliveryRate);
-            
-            let performanceTier = '';
-            let tierColor = '';
-            let tierBg = '';
-            
-            if (avgOrderValue > 30000 && (deliveryRate > 50 || avgOrderValue > 18000)) {
-              performanceTier = '🌟 Excellent';
-              tierColor = 'text-purple-700';
-              tierBg = 'bg-purple-100';
-            } else if (avgOrderValue > 1000) {
-              performanceTier = '📊 Average';
-              tierColor = 'text-amber-700';
-              tierBg = 'bg-amber-100';
-            } else {
-              performanceTier = '⚠️ Needs Improvement';
-              tierColor = 'text-red-700';
-              tierBg = 'bg-red-100';
-            }
-            
             const isCritical = channel.orderTrend < -10;
-            
+
             return (
-              <motion.tr 
+              <motion.tr
                 key={channel.channel}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.05 }}
-                className={`border-b border-slate-100 hover:bg-slate-50 transition-colors ${isCritical ? 'bg-red-50' : ''}`}
+                className={`border-b border-slate-100 hover:bg-slate-50 transition-colors ${isCritical ? "bg-red-50" : ""}`}
               >
                 <td className="py-2 px-3 text-slate-700 font-medium">
                   <div className="flex items-center gap-2">
@@ -1537,13 +2253,14 @@ const ChannelPerformanceMatrix = ({ data }) => {
                 <td className="text-right py-2 px-3 font-semibold text-emerald-600">{channel.revenue}</td>
                 <td className="text-right py-2 px-3 text-slate-600">{channel.orders}</td>
                 <td className="text-right py-2 px-3">
-                  <span className={`font-medium ${deliveryRate >= 70 ? 'text-emerald-600' : deliveryRate >= 50 ? 'text-amber-600' : 'text-red-600'}`}>
+                  <span className={`font-medium ${deliveryRate >= 70 ? "text-emerald-600" : deliveryRate >= 50 ? "text-amber-600" : "text-red-600"}`}>
                     {channel.deliveryRate}
                   </span>
                 </td>
                 <td className="text-center py-2 px-3">
-                  <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-medium ${tierBg} ${tierColor}`}>
-                    {performanceTier}
+                  <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-medium ${channel.tierBg} text-${channel.tierColor}`}>
+                    <channel.tierIcon className="w-3 h-3" style={{ color: channel.tierColor }} />
+                    {channel.tier}
                   </span>
                 </td>
               </motion.tr>
@@ -1560,36 +2277,46 @@ const ChannelPerformanceMatrix = ({ data }) => {
 // ============================================================
 const RevenueDistributionPie = ({ data }) => {
   if (!data || data.length === 0) {
-    return <div className="text-center text-slate-400 py-8">No data available</div>;
+    return (
+      <div className="text-center text-slate-400 py-8">No data available</div>
+    );
   }
 
-  const pieData = data.map(channel => ({
+  const pieData = data.map((channel) => ({
     name: channel.channel,
-    value: parseFloat(channel.orderValue.replace(/[$,]/g, '')),
+    value: parseFloat(channel.orderValue.replace(/[$,]/g, "")),
     color: channel.color,
   }));
 
   const totalRevenue = pieData.reduce((sum, d) => sum + d.value, 0);
 
-  const renderCustomLabel = ({ name, percent, cx, cy, midAngle, innerRadius, outerRadius }) => {
+  const renderCustomLabel = ({
+    name,
+    percent,
+    cx,
+    cy,
+    midAngle,
+    innerRadius,
+    outerRadius,
+  }) => {
     const RADIAN = Math.PI / 180;
     const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
     const x = cx + radius * Math.cos(-midAngle * RADIAN);
     const y = cy + radius * Math.sin(-midAngle * RADIAN);
-    
+
     if (percent < 0.05) return null;
-    
+
     return (
-      <text 
-        x={x} 
-        y={y} 
-        fill="#1E293B" 
-        textAnchor={x > cx ? 'start' : 'end'} 
+      <text
+        x={x}
+        y={y}
+        fill="#1E293B"
+        textAnchor={x > cx ? "start" : "end"}
         dominantBaseline="central"
         fontSize={9}
         fontWeight="500"
       >
-        {`${name.split(' ').slice(0, 2).join(' ')} ${(percent * 100).toFixed(0)}%`}
+        {`${name.split(" ").slice(0, 2).join(" ")} ${(percent * 100).toFixed(0)}%`}
       </text>
     );
   };
@@ -1610,15 +2337,26 @@ const RevenueDistributionPie = ({ data }) => {
             paddingAngle={2}
           >
             {pieData.map((entry, index) => (
-              <Cell key={`cell-${index}`} fill={entry.color || CHART_COLORS[index % CHART_COLORS.length]} />
+              <Cell
+                key={`cell-${index}`}
+                fill={entry.color || CHART_COLORS[index % CHART_COLORS.length]}
+              />
             ))}
           </Pie>
           <Tooltip
-            formatter={(v, name) => [`${formatCurrency(v)} (${((v/totalRevenue)*100).toFixed(1)}%)`, name]}
-            contentStyle={{ backgroundColor: "white", border: "1px solid #e2e8f0", borderRadius: "8px", padding: "8px 12px" }}
+            formatter={(v, name) => [
+              `${formatCurrency(v)} (${((v / totalRevenue) * 100).toFixed(1)}%)`,
+              name,
+            ]}
+            contentStyle={{
+              backgroundColor: "white",
+              border: "1px solid #e2e8f0",
+              borderRadius: "8px",
+              padding: "8px 12px",
+            }}
           />
-          <Legend 
-            wrapperStyle={{ fontSize: '10px' }}
+          <Legend
+            wrapperStyle={{ fontSize: "10px" }}
             verticalAlign="bottom"
             height={36}
           />
@@ -1636,25 +2374,51 @@ const RevenueDistributionPie = ({ data }) => {
 // ============================================================
 const OrderVsSalesChart = ({ data }) => {
   if (!data || data.length === 0) {
-    return <div className="h-[280px] flex items-center justify-center text-slate-400 flex-col gap-2">
-      <div className="text-4xl">📊</div>
-      <p>No data available</p>
-    </div>;
+    return (
+      <div className="h-[280px] flex items-center justify-center text-slate-400 flex-col gap-2">
+        <div className="text-4xl">📊</div>
+        <p>No data available</p>
+      </div>
+    );
   }
 
   return (
     <ResponsiveContainer width="100%" height={280}>
-      <BarChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 60 }}>
+      <BarChart
+        data={data}
+        margin={{ top: 10, right: 10, left: 0, bottom: 60 }}
+      >
         <CartesianGrid strokeDasharray="3 3" />
-        <XAxis dataKey="name" tick={{ fontSize: 9 }} angle={-25} textAnchor="end" height={60} />
+        <XAxis
+          dataKey="name"
+          tick={{ fontSize: 9 }}
+          angle={-25}
+          textAnchor="end"
+          height={60}
+        />
         <YAxis tickFormatter={(v) => formatCompactCurrency(v)} />
         <Tooltip
           formatter={(v) => formatCurrency(v)}
-          contentStyle={{ backgroundColor: "white", border: "1px solid #e2e8f0", borderRadius: "8px", padding: "8px 12px" }}
+          contentStyle={{
+            backgroundColor: "white",
+            border: "1px solid #e2e8f0",
+            borderRadius: "8px",
+            padding: "8px 12px",
+          }}
         />
         <Legend />
-        <Bar dataKey="orderValue" fill={COLORS.indigo} name="Order Value" radius={[4, 4, 0, 0]} />
-        <Bar dataKey="saleValue" fill={COLORS.emerald} name="Sales Revenue" radius={[4, 4, 0, 0]} />
+        <Bar
+          dataKey="orderValue"
+          fill={COLORS.indigo}
+          name="Order Value"
+          radius={[4, 4, 0, 0]}
+        />
+        <Bar
+          dataKey="saleValue"
+          fill={COLORS.emerald}
+          name="Sales Revenue"
+          radius={[4, 4, 0, 0]}
+        />
       </BarChart>
     </ResponsiveContainer>
   );
@@ -1664,13 +2428,14 @@ const OrderVsSalesChart = ({ data }) => {
 // MAIN HOME COMPONENT
 // ============================================================
 function Home() {
-  const { cndata, setcndata, loading, contextLoading, apiKey } = useContext(GetDataContext);
+  const { cndata, setcndata, loading, contextLoading, apiKey } =
+    useContext(GetDataContext);
   const apiData = useMemo(() => cndata?.apiData || [], [cndata]);
 
   const [selectedYear, setSelectedYear] = useState("All");
   const [selectedMonth, setSelectedMonth] = useState("All");
   const [selectedMarketing, setSelectedMarketing] = useState("All");
-  const [viewMode, setViewMode] = useState('monthly');
+  const [viewMode, setViewMode] = useState("monthly");
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showFilters, setShowFilters] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
@@ -1678,153 +2443,210 @@ function Home() {
   const [autoLoadProgress, setAutoLoadProgress] = useState(0);
   const [autoLoadStatus, setAutoLoadStatus] = useState("");
   const [autoLoadAttempted, setAutoLoadAttempted] = useState(false);
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = useState("overview");
   const [isFullscreen, setIsFullscreen] = useState(false);
   const autoLoadRef = useRef(false);
   const cancelTokenRef = useRef(null);
   const [dateRange, setDateRange] = useState({
-  startDate: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
-  endDate: new Date(),
-});
-const [showDatePicker, setShowDatePicker] = useState(false);
-const [isFetchingRange, setIsFetchingRange] = useState(false);
-const [rangeFetchProgress, setRangeFetchProgress] = useState(0);
-const [rangeFetchStatus, setRangeFetchStatus] = useState("");
-const fetchDataByDateRange = async (startDate, endDate) => {
-  if (!apiKey) {
-    toast.error("API key not available");
-    return;
-  }
-
-  setIsFetchingRange(true);
-  setRangeFetchProgress(0);
-  setRangeFetchStatus("Preparing to fetch data...");
-
-  const source = axios.CancelToken.source();
-  cancelTokenRef.current = source;
-
-  try {
-    const stDate = startDate.toISOString().split("T")[0];
-    const edDate = endDate.toISOString().split("T")[0];
-    
-    setRangeFetchProgress(10);
-    setRangeFetchStatus(`Fetching orders from ${stDate} to ${edDate}...`);
-
-    // Fetch order data
-    const orderReportResponse = await axios.get(
-      `https://tpl-api.ebs365.info/api/OrderReport/BI_OrderRelatedInformationReport?CompanyID=1&ProductCategoryID=0&ProductSubCategoryID=0&MarketingID=0&CustomerID=0&BuyerID=0&JobCardID=0&StartDate=${stDate}&EndDate=${edDate}&CommandID=5&EmpID=0`,
-      { headers: { Authorization: `${apiKey}` }, timeout: 300000, cancelToken: source.token }
-    );
-
-    const orderData = orderReportResponse.data || [];
-    setRangeFetchProgress(30);
-
-    if (!Array.isArray(orderData) || orderData.length === 0) {
-      toast.warning(`No data found for the selected date range.`);
-      setIsFetchingRange(false);
-      setRangeFetchStatus("");
+    startDate: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+    endDate: new Date(),
+  });
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [isFetchingRange, setIsFetchingRange] = useState(false);
+  const [rangeFetchProgress, setRangeFetchProgress] = useState(0);
+  const [rangeFetchStatus, setRangeFetchStatus] = useState("");
+  const fetchDataByDateRange = async (startDate, endDate) => {
+    if (!apiKey) {
+      toast.error("API key not available");
       return;
     }
 
-    setRangeFetchProgress(40);
-    setRangeFetchStatus(`Found ${orderData.length} orders...`);
-
-    setRangeFetchProgress(55);
-    setRangeFetchStatus("Fetching supporting data...");
-
-    const apiConfig = {
-      headers: { Authorization: `${apiKey}` },
-      timeout: 90000,
-      cancelToken: source.token,
-    };
-
-    const [challanRes, bblcRes, invoiceRes, piRes, challanReceiveRes] = await Promise.allSettled([
-      axios.get(`https://tpl-api.ebs365.info/api/Challan/GetDeliveryChalanDashboard?CompanyID=1&ProductCategoryID=0&CustomerID=0&MarkettingID=0&StatusID=7&StartDate=${stDate}&EndDate=${edDate}`, apiConfig),
-      axios.get(`https://tpl-api.ebs365.info/api/BBLC/GetBBLCDashboard?CustomerID=0&CompanyID=1&StartDate=${stDate}&EndDate=${edDate}`, apiConfig),
-      axios.get(`https://tpl-api.ebs365.info/api/CommercialInvoice/GetInvoiceDashboard?CompanyID=1&CustomerID=0&StartDate=${stDate}&EndDate=${edDate}`, apiConfig),
-      axios.get(`https://tpl-api.ebs365.info/api/CustomerPI/GetCustomerPIDashboard?CompanyID=1&CustomerID=0&MarketingID=0&StartDate=${stDate}&EndDate=${edDate}`, apiConfig),
-      axios.get(`https://tpl-api.ebs365.info/api/Challan/GetDeliveryChalanReceiveDashboard?CompanyID=1&ProductCategoryID=0&CustomerID=0&MarkettingID=0&Status=Receive-Complete&StartDate=${stDate}&EndDate=${edDate}`, apiConfig),
-    ]);
-
-    setRangeFetchProgress(75);
-    setRangeFetchStatus("Processing data...");
-
-    const challanData = challanRes.status === "fulfilled" && challanRes.value?.data ? challanRes.value.data : [];
-    const bblcData = bblcRes.status === "fulfilled" && bblcRes.value?.data ? bblcRes.value.data : [];
-    const invoiceData = invoiceRes.status === "fulfilled" && invoiceRes.value?.data ? invoiceRes.value.data : [];
-    const piCompanyData = piRes.status === "fulfilled" && piRes.value?.data ? piRes.value.data : [];
-    const challanReceiveData = challanReceiveRes.status === "fulfilled" && challanReceiveRes.value?.data ? challanReceiveRes.value.data : [];
-
-    setRangeFetchProgress(90);
-    setRangeFetchStatus("Updating dashboard...");
-
-    setcndata((prevState) => ({
-      ...prevState,
-      apiData: orderData,
-      groupedData: [],
-      grupChallan: challanData,
-      bblcData: bblcData,
-      invoiceData: invoiceData,
-      piCompanyData: piCompanyData,
-      workOrderIdMap: {},
-      challanReceiveMap: {},
-      rawChallanReceiveData: challanReceiveData,
-      workOrderStatus: "date-range-loaded",
-      _lastFetch: {
-        timestamp: new Date().toISOString(),
-        startDate: stDate,
-        endDate: edDate,
-        orderCount: orderData.length,
-        challanCount: challanData.length,
-        workOrderStatus: "date-range-loaded",
-        autoLoaded: false,
-        dateRange: true,
-      },
-    }));
-
-    setRangeFetchProgress(100);
-    setRangeFetchStatus(`✅ Loaded ${orderData.length} orders for date range!`);
-    toast.success(`✅ Loaded ${orderData.length} orders from ${stDate} to ${edDate}`);
-    
-    // Auto-select year and month filters to "All" to show all data
-    setSelectedYear("All");
-    setSelectedMonth("All");
-
-  } catch (err) {
-    if (axios.isCancel(err)) return;
-    console.error("Date range fetch error:", err);
-    toast.error("Failed to fetch data for the selected date range.");
-    setRangeFetchStatus("❌ Error fetching data");
-  } finally {
-    setIsFetchingRange(false);
+    setIsFetchingRange(true);
     setRangeFetchProgress(0);
-    cancelTokenRef.current = null;
-    setTimeout(() => setRangeFetchStatus(""), 3000);
-  }
-};
-  const data = useComprehensiveData(apiData, selectedYear, selectedMonth, selectedMarketing);
+    setRangeFetchStatus("Preparing to fetch data...");
+
+    const source = axios.CancelToken.source();
+    cancelTokenRef.current = source;
+
+    try {
+      const stDate = startDate.toISOString().split("T")[0];
+      const edDate = endDate.toISOString().split("T")[0];
+
+      setRangeFetchProgress(10);
+      setRangeFetchStatus(`Fetching orders from ${stDate} to ${edDate}...`);
+
+      // Fetch order data
+      const orderReportResponse = await axios.get(
+        `https://tpl-api.ebs365.info/api/OrderReport/BI_OrderRelatedInformationReport?CompanyID=1&ProductCategoryID=0&ProductSubCategoryID=0&MarketingID=0&CustomerID=0&BuyerID=0&JobCardID=0&StartDate=${stDate}&EndDate=${edDate}&CommandID=5&EmpID=0`,
+        {
+          headers: { Authorization: `${apiKey}` },
+          timeout: 300000,
+          cancelToken: source.token,
+        },
+      );
+
+      const orderData = orderReportResponse.data || [];
+      setRangeFetchProgress(30);
+
+      if (!Array.isArray(orderData) || orderData.length === 0) {
+        toast.warning(`No data found for the selected date range.`);
+        setIsFetchingRange(false);
+        setRangeFetchStatus("");
+        return;
+      }
+
+      setRangeFetchProgress(40);
+      setRangeFetchStatus(`Found ${orderData.length} orders...`);
+
+      setRangeFetchProgress(55);
+      setRangeFetchStatus("Fetching supporting data...");
+
+      const apiConfig = {
+        headers: { Authorization: `${apiKey}` },
+        timeout: 90000,
+        cancelToken: source.token,
+      };
+
+      const [challanRes, bblcRes, invoiceRes, piRes, challanReceiveRes] =
+        await Promise.allSettled([
+          axios.get(
+            `https://tpl-api.ebs365.info/api/Challan/GetDeliveryChalanDashboard?CompanyID=1&ProductCategoryID=0&CustomerID=0&MarkettingID=0&StatusID=7&StartDate=${stDate}&EndDate=${edDate}`,
+            apiConfig,
+          ),
+          axios.get(
+            `https://tpl-api.ebs365.info/api/BBLC/GetBBLCDashboard?CustomerID=0&CompanyID=1&StartDate=${stDate}&EndDate=${edDate}`,
+            apiConfig,
+          ),
+          axios.get(
+            `https://tpl-api.ebs365.info/api/CommercialInvoice/GetInvoiceDashboard?CompanyID=1&CustomerID=0&StartDate=${stDate}&EndDate=${edDate}`,
+            apiConfig,
+          ),
+          axios.get(
+            `https://tpl-api.ebs365.info/api/CustomerPI/GetCustomerPIDashboard?CompanyID=1&CustomerID=0&MarketingID=0&StartDate=${stDate}&EndDate=${edDate}`,
+            apiConfig,
+          ),
+          axios.get(
+            `https://tpl-api.ebs365.info/api/Challan/GetDeliveryChalanReceiveDashboard?CompanyID=1&ProductCategoryID=0&CustomerID=0&MarkettingID=0&Status=Receive-Complete&StartDate=${stDate}&EndDate=${edDate}`,
+            apiConfig,
+          ),
+        ]);
+
+      setRangeFetchProgress(75);
+      setRangeFetchStatus("Processing data...");
+
+      const challanData =
+        challanRes.status === "fulfilled" && challanRes.value?.data
+          ? challanRes.value.data
+          : [];
+      const bblcData =
+        bblcRes.status === "fulfilled" && bblcRes.value?.data
+          ? bblcRes.value.data
+          : [];
+      const invoiceData =
+        invoiceRes.status === "fulfilled" && invoiceRes.value?.data
+          ? invoiceRes.value.data
+          : [];
+      const piCompanyData =
+        piRes.status === "fulfilled" && piRes.value?.data
+          ? piRes.value.data
+          : [];
+      const challanReceiveData =
+        challanReceiveRes.status === "fulfilled" &&
+        challanReceiveRes.value?.data
+          ? challanReceiveRes.value.data
+          : [];
+
+      setRangeFetchProgress(90);
+      setRangeFetchStatus("Updating dashboard...");
+
+      setcndata((prevState) => ({
+        ...prevState,
+        apiData: orderData,
+        groupedData: [],
+        grupChallan: challanData,
+        bblcData: bblcData,
+        invoiceData: invoiceData,
+        piCompanyData: piCompanyData,
+        workOrderIdMap: {},
+        challanReceiveMap: {},
+        rawChallanReceiveData: challanReceiveData,
+        workOrderStatus: "date-range-loaded",
+        _lastFetch: {
+          timestamp: new Date().toISOString(),
+          startDate: stDate,
+          endDate: edDate,
+          orderCount: orderData.length,
+          challanCount: challanData.length,
+          workOrderStatus: "date-range-loaded",
+          autoLoaded: false,
+          dateRange: true,
+        },
+      }));
+
+      setRangeFetchProgress(100);
+      setRangeFetchStatus(
+        `✅ Loaded ${orderData.length} orders for date range!`,
+      );
+      toast.success(
+        `✅ Loaded ${orderData.length} orders from ${stDate} to ${edDate}`,
+      );
+
+      // Auto-select year and month filters to "All" to show all data
+      setSelectedYear("All");
+      setSelectedMonth("All");
+    } catch (err) {
+      if (axios.isCancel(err)) return;
+      console.error("Date range fetch error:", err);
+      toast.error("Failed to fetch data for the selected date range.");
+      setRangeFetchStatus("❌ Error fetching data");
+    } finally {
+      setIsFetchingRange(false);
+      setRangeFetchProgress(0);
+      cancelTokenRef.current = null;
+      setTimeout(() => setRangeFetchStatus(""), 3000);
+    }
+  };
+  const data = useComprehensiveData(
+    apiData,
+    selectedYear,
+    selectedMonth,
+    selectedMarketing,
+  );
 
   const marketingNames = useMemo(() => {
     if (!apiData || !Array.isArray(apiData)) return ["All"];
-    const names = new Set(apiData.map(item => item.MarketingName || 'Unknown').filter(Boolean));
+    const names = new Set(
+      apiData.map((item) => item.MarketingName || "Unknown").filter(Boolean),
+    );
     return ["All", ...Array.from(names)];
   }, [apiData]);
 
   const getChartData = () => {
-    switch(viewMode) {
-      case 'daily': return data.dailyData || [];
-      case 'weekly': return data.weeklyData || [];
-      case 'monthly': 
-      default: return data.monthlyData || [];
+    switch (viewMode) {
+      case "daily":
+        return data.dailyData || [];
+      case "weekly":
+        return data.weeklyData || [];
+      case "monthly":
+      default:
+        return data.monthlyData || [];
     }
   };
 
   const chartData = getChartData();
 
   const getGrowthChartData = () => {
-    if (viewMode === 'monthly' && data.growthData && data.growthData.length >= 2) {
+    if (
+      viewMode === "monthly" &&
+      data.growthData &&
+      data.growthData.length >= 2
+    ) {
       return data.growthData;
-    } else if (viewMode === 'weekly' && data.weeklyGrowthData && data.weeklyGrowthData.length >= 2) {
+    } else if (
+      viewMode === "weekly" &&
+      data.weeklyGrowthData &&
+      data.weeklyGrowthData.length >= 2
+    ) {
       return data.weeklyGrowthData;
     } else if (data.dailyGrowthData && data.dailyGrowthData.length >= 3) {
       return data.dailyGrowthData;
@@ -1840,17 +2662,23 @@ const fetchDataByDateRange = async (startDate, endDate) => {
     const startDate = new Date(now.getFullYear(), now.getMonth(), 1);
     const endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
     return {
-      startDate, endDate,
+      startDate,
+      endDate,
       stDate: startDate.toISOString().split("T")[0],
       edDate: endDate.toISOString().split("T")[0],
       month: now.toLocaleString("default", { month: "short" }),
-      year: now.getFullYear()
+      year: now.getFullYear(),
     };
   };
 
   const fetchCurrentMonthData = async (force = false) => {
     if (autoLoadRef.current && !force) return;
-    if (!force && cndata?.apiData && cndata.apiData.length > 0 && cndata?._lastFetch) {
+    if (
+      !force &&
+      cndata?.apiData &&
+      cndata.apiData.length > 0 &&
+      cndata?._lastFetch
+    ) {
       const lastFetchTime = new Date(cndata._lastFetch.timestamp);
       const now = new Date();
       const hoursSinceLastFetch = (now - lastFetchTime) / (1000 * 60 * 60);
@@ -1879,7 +2707,11 @@ const fetchDataByDateRange = async (startDate, endDate) => {
 
       const orderReportResponse = await axios.get(
         `https://tpl-api.ebs365.info/api/OrderReport/BI_OrderRelatedInformationReport?CompanyID=1&ProductCategoryID=0&ProductSubCategoryID=0&MarketingID=0&CustomerID=0&BuyerID=0&JobCardID=0&StartDate=${stDate}&EndDate=${edDate}&CommandID=5&EmpID=0`,
-        { headers: { Authorization: `${apiKey}` }, timeout: 300000, cancelToken: source.token }
+        {
+          headers: { Authorization: `${apiKey}` },
+          timeout: 300000,
+          cancelToken: source.token,
+        },
       );
 
       const orderData = orderReportResponse.data || [];
@@ -1905,22 +2737,54 @@ const fetchDataByDateRange = async (startDate, endDate) => {
         cancelToken: source.token,
       };
 
-      const [challanRes, bblcRes, invoiceRes, piRes, challanReceiveRes] = await Promise.allSettled([
-        axios.get(`https://tpl-api.ebs365.info/api/Challan/GetDeliveryChalanDashboard?CompanyID=1&ProductCategoryID=0&CustomerID=0&MarkettingID=0&StatusID=7&StartDate=${stDate}&EndDate=${edDate}`, apiConfig),
-        axios.get(`https://tpl-api.ebs365.info/api/BBLC/GetBBLCDashboard?CustomerID=0&CompanyID=1&StartDate=${stDate}&EndDate=${edDate}`, apiConfig),
-        axios.get(`https://tpl-api.ebs365.info/api/CommercialInvoice/GetInvoiceDashboard?CompanyID=1&CustomerID=0&StartDate=${stDate}&EndDate=${edDate}`, apiConfig),
-        axios.get(`https://tpl-api.ebs365.info/api/CustomerPI/GetCustomerPIDashboard?CompanyID=1&CustomerID=0&MarketingID=0&StartDate=${stDate}&EndDate=${edDate}`, apiConfig),
-        axios.get(`https://tpl-api.ebs365.info/api/Challan/GetDeliveryChalanReceiveDashboard?CompanyID=1&ProductCategoryID=0&CustomerID=0&MarkettingID=0&Status=Receive-Complete&StartDate=${stDate}&EndDate=${edDate}`, apiConfig),
-      ]);
+      const [challanRes, bblcRes, invoiceRes, piRes, challanReceiveRes] =
+        await Promise.allSettled([
+          axios.get(
+            `https://tpl-api.ebs365.info/api/Challan/GetDeliveryChalanDashboard?CompanyID=1&ProductCategoryID=0&CustomerID=0&MarkettingID=0&StatusID=7&StartDate=${stDate}&EndDate=${edDate}`,
+            apiConfig,
+          ),
+          axios.get(
+            `https://tpl-api.ebs365.info/api/BBLC/GetBBLCDashboard?CustomerID=0&CompanyID=1&StartDate=${stDate}&EndDate=${edDate}`,
+            apiConfig,
+          ),
+          axios.get(
+            `https://tpl-api.ebs365.info/api/CommercialInvoice/GetInvoiceDashboard?CompanyID=1&CustomerID=0&StartDate=${stDate}&EndDate=${edDate}`,
+            apiConfig,
+          ),
+          axios.get(
+            `https://tpl-api.ebs365.info/api/CustomerPI/GetCustomerPIDashboard?CompanyID=1&CustomerID=0&MarketingID=0&StartDate=${stDate}&EndDate=${edDate}`,
+            apiConfig,
+          ),
+          axios.get(
+            `https://tpl-api.ebs365.info/api/Challan/GetDeliveryChalanReceiveDashboard?CompanyID=1&ProductCategoryID=0&CustomerID=0&MarkettingID=0&Status=Receive-Complete&StartDate=${stDate}&EndDate=${edDate}`,
+            apiConfig,
+          ),
+        ]);
 
       setAutoLoadProgress(75);
       setAutoLoadStatus("Processing data...");
 
-      const challanData = challanRes.status === "fulfilled" && challanRes.value?.data ? challanRes.value.data : [];
-      const bblcData = bblcRes.status === "fulfilled" && bblcRes.value?.data ? bblcRes.value.data : [];
-      const invoiceData = invoiceRes.status === "fulfilled" && invoiceRes.value?.data ? invoiceRes.value.data : [];
-      const piCompanyData = piRes.status === "fulfilled" && piRes.value?.data ? piRes.value.data : [];
-      const challanReceiveData = challanReceiveRes.status === "fulfilled" && challanReceiveRes.value?.data ? challanReceiveRes.value.data : [];
+      const challanData =
+        challanRes.status === "fulfilled" && challanRes.value?.data
+          ? challanRes.value.data
+          : [];
+      const bblcData =
+        bblcRes.status === "fulfilled" && bblcRes.value?.data
+          ? bblcRes.value.data
+          : [];
+      const invoiceData =
+        invoiceRes.status === "fulfilled" && invoiceRes.value?.data
+          ? invoiceRes.value.data
+          : [];
+      const piCompanyData =
+        piRes.status === "fulfilled" && piRes.value?.data
+          ? piRes.value.data
+          : [];
+      const challanReceiveData =
+        challanReceiveRes.status === "fulfilled" &&
+        challanReceiveRes.value?.data
+          ? challanReceiveRes.value.data
+          : [];
 
       setAutoLoadProgress(90);
       setAutoLoadStatus("Updating dashboard...");
@@ -1951,10 +2815,13 @@ const fetchDataByDateRange = async (startDate, endDate) => {
       }));
 
       setAutoLoadProgress(100);
-      setAutoLoadStatus(`✅ Loaded ${orderData.length} orders for ${month} ${year}!`);
+      setAutoLoadStatus(
+        `✅ Loaded ${orderData.length} orders for ${month} ${year}!`,
+      );
       setAutoLoadAttempted(true);
-      toast.success(`✅ Auto-loaded ${orderData.length} orders for ${month} ${year}`);
-
+      toast.success(
+        `✅ Auto-loaded ${orderData.length} orders for ${month} ${year}`,
+      );
     } catch (err) {
       if (axios.isCancel(err)) return;
       console.error("Auto-load error:", err);
@@ -1977,7 +2844,9 @@ const fetchDataByDateRange = async (startDate, endDate) => {
     const shouldAutoLoad = () => {
       if (autoLoadAttempted || !apiKey || autoLoadRef.current) return false;
       if (cndata?.apiData && cndata.apiData.length > 0 && cndata?._lastFetch) {
-        const hoursSinceLastFetch = (new Date() - new Date(cndata._lastFetch.timestamp)) / (1000 * 60 * 60);
+        const hoursSinceLastFetch =
+          (new Date() - new Date(cndata._lastFetch.timestamp)) /
+          (1000 * 60 * 60);
         if (hoursSinceLastFetch < 1) {
           setAutoLoadAttempted(true);
           return false;
@@ -2001,30 +2870,32 @@ const fetchDataByDateRange = async (startDate, endDate) => {
     toast.info("Exporting dashboard data...");
     setTimeout(() => toast.success("Data exported successfully!"), 1000);
   };
-const handleDateRangeSubmit = () => {
-  if (dateRange.startDate && dateRange.endDate) {
-    // Validate date range (max 1 year to prevent overload)
-    const diffTime = Math.abs(dateRange.endDate - dateRange.startDate);
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    if (diffDays > 365) {
-      toast.warning("Date range exceeds 365 days. Please select a smaller range.");
-      return;
+  const handleDateRangeSubmit = () => {
+    if (dateRange.startDate && dateRange.endDate) {
+      // Validate date range (max 1 year to prevent overload)
+      const diffTime = Math.abs(dateRange.endDate - dateRange.startDate);
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      if (diffDays > 365) {
+        toast.warning(
+          "Date range exceeds 365 days. Please select a smaller range.",
+        );
+        return;
+      }
+      fetchDataByDateRange(dateRange.startDate, dateRange.endDate);
+    } else {
+      toast.warning("Please select both start and end dates.");
     }
-    fetchDataByDateRange(dateRange.startDate, dateRange.endDate);
-  } else {
-    toast.warning("Please select both start and end dates.");
-  }
-};
+  };
 
-// Add this quick date range preset handler
-const handleQuickRange = (days) => {
-  const endDate = new Date();
-  const startDate = new Date();
-  startDate.setDate(startDate.getDate() - days);
-  setDateRange({ startDate, endDate });
-  // Auto-fetch after setting
-  setTimeout(() => fetchDataByDateRange(startDate, endDate), 300);
-};
+  // Add this quick date range preset handler
+  const handleQuickRange = (days) => {
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days);
+    setDateRange({ startDate, endDate });
+    // Auto-fetch after setting
+    setTimeout(() => fetchDataByDateRange(startDate, endDate), 300);
+  };
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
       document.documentElement.requestFullscreen();
@@ -2037,49 +2908,163 @@ const handleQuickRange = (days) => {
 
   const years = useMemo(() => {
     if (!apiData || apiData.length === 0) return ["All"];
-    const uniqueYears = Array.from(new Set(apiData.map(item => new Date(item.OrderReceiveDate).getFullYear())));
+    const uniqueYears = Array.from(
+      new Set(
+        apiData.map((item) => new Date(item.OrderReceiveDate).getFullYear()),
+      ),
+    );
     return ["All", ...uniqueYears.sort((a, b) => b - a)];
   }, [apiData]);
 
   const months = useMemo(() => {
     if (!apiData || apiData.length === 0) return ["All"];
-    
-    const yearFiltered = selectedYear === "All"
-      ? apiData
-      : apiData.filter(
-          (item) => new Date(item.OrderReceiveDate).getFullYear() === Number(selectedYear)
-        );
-    
+
+    const yearFiltered =
+      selectedYear === "All"
+        ? apiData
+        : apiData.filter(
+            (item) =>
+              new Date(item.OrderReceiveDate).getFullYear() ===
+              Number(selectedYear),
+          );
+
     const uniqueMonths = Array.from(
       new Set(
         yearFiltered.map((item) =>
           new Date(item.OrderReceiveDate).toLocaleString("default", {
             month: "short",
-          })
-        )
-      )
+          }),
+        ),
+      ),
     );
-    
-    const monthOrder = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    const sortedMonths = uniqueMonths.sort((a, b) => monthOrder.indexOf(a) - monthOrder.indexOf(b));
+
+    const monthOrder = [
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "May",
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sep",
+      "Oct",
+      "Nov",
+      "Dec",
+    ];
+    const sortedMonths = uniqueMonths.sort(
+      (a, b) => monthOrder.indexOf(a) - monthOrder.indexOf(b),
+    );
     return ["All", ...sortedMonths];
   }, [apiData, selectedYear]);
 
   // KPI Config
   const kpiConfig = [
-    { id: "orders", title: "Total Orders", value: data.totalOrders, icon: FaShoppingCart, color: COLORS.primary, subtitle: `${data.totalCustomers} customers` },
-    { id: "orderValue", title: "Total Order Value", value: formatCurrency(data.totals.orderValue), icon: RiMoneyDollarCircleFill, color: COLORS.indigo, subtitle: formatCompactCurrency(data.totals.orderValue) },
-    { id: "avgOrderValue", title: "Avg Order Value", value: formatCurrency(data.performanceMetrics?.avgOrderValue || 0), icon: FaDollarSign, color: COLORS.cyan, subtitle: `per order` },
-    { id: "salesValue", title: "Sales Revenue", value: formatCurrency(data.totals.saleValue), icon: FaMoneyBillWave, color: COLORS.emerald, subtitle: formatCompactCurrency(data.totals.saleValue), growth: data.salesGrowth },
-    { id: "avgSaleValue", title: "Avg Sale Value", value: formatCurrency(data.performanceMetrics?.avgSaleValue || 0), icon: FaDollarSign, color: COLORS.teal, subtitle: `per delivered order` },
-    { id: "salesQty", title: "Sales Qty", value: formatNumber(data.totals.saleQty), icon: TbTruckDelivery, color: COLORS.success, subtitle: `${data.deliveryPercent.toFixed(0)}% delivered` },
-    { id: "balance", title: "Balance Qty", value: formatNumber(data.totals.balanceQty), icon: FaBoxOpen, color: COLORS.danger, subtitle: `${((data.totals.balanceQty / (data.totals.orderQty || 1)) * 100).toFixed(0)}% pending` },
-    { id: "balanceValue", title: "Balance Value", value: formatCurrency(data.totals.balanceValue), icon: FaExclamationTriangle, color: COLORS.rose, subtitle: formatCompactCurrency(data.totals.balanceValue) },
-    { id: "marketing", title: "Sales Persons", value: data.totalMarketing, icon: FaUserTie, color: COLORS.violet, subtitle: `active sellers` },
-    { id: "categories", title: "Categories", value: data.totalCategories, icon: FaTag, color: COLORS.teal, subtitle: `${data.categoryData.reduce((sum, c) => sum + (c.subCategories || 0), 0)} sub-categories` },
-    { id: "buyers", title: "Buyers", value: data.totalBuyers, icon: FaStore, color: COLORS.orange, subtitle: `active buyers` },
-    { id: "deliveryRate", title: "Delivery Rate", value: `${data.deliveryPercent.toFixed(0)}%`, icon: FaPercentage, color: getStatusColor(data.deliveryPercent), subtitle: `${data.valuePercent.toFixed(0)}% value` },
-    { id: "customerValue", title: "Avg Customer Value", value: formatCurrency(data.performanceMetrics?.avgCustomerValue || 0), icon: FaUsers, color: COLORS.pink, subtitle: `per customer` },
+    {
+      id: "orders",
+      title: "Total Orders",
+      value: data.totalOrders,
+      icon: FaShoppingCart,
+      color: COLORS.primary,
+      subtitle: `${data.totalCustomers} customers`,
+    },
+    {
+      id: "orderValue",
+      title: "Total Order Value",
+      value: formatCurrency(data.totals.orderValue),
+      icon: RiMoneyDollarCircleFill,
+      color: COLORS.indigo,
+      subtitle: formatCompactCurrency(data.totals.orderValue),
+    },
+    {
+      id: "avgOrderValue",
+      title: "Avg Order Value",
+      value: formatCurrency(data.performanceMetrics?.avgOrderValue || 0),
+      icon: FaDollarSign,
+      color: COLORS.cyan,
+      subtitle: `per order`,
+    },
+    {
+      id: "salesValue",
+      title: "Sales Revenue",
+      value: formatCurrency(data.totals.saleValue),
+      icon: FaMoneyBillWave,
+      color: COLORS.emerald,
+      subtitle: formatCompactCurrency(data.totals.saleValue),
+      growth: data.salesGrowth,
+    },
+    {
+      id: "avgSaleValue",
+      title: "Avg Sale Value",
+      value: formatCurrency(data.performanceMetrics?.avgSaleValue || 0),
+      icon: FaDollarSign,
+      color: COLORS.teal,
+      subtitle: `per delivered order`,
+    },
+    {
+      id: "salesQty",
+      title: "Sales Qty",
+      value: formatNumber(data.totals.saleQty),
+      icon: TbTruckDelivery,
+      color: COLORS.success,
+      subtitle: `${data.deliveryPercent.toFixed(0)}% delivered`,
+    },
+    {
+      id: "balance",
+      title: "Balance Qty",
+      value: formatNumber(data.totals.balanceQty),
+      icon: FaBoxOpen,
+      color: COLORS.danger,
+      subtitle: `${((data.totals.balanceQty / (data.totals.orderQty || 1)) * 100).toFixed(0)}% pending`,
+    },
+    {
+      id: "balanceValue",
+      title: "Balance Value",
+      value: formatCurrency(data.totals.balanceValue),
+      icon: FaExclamationTriangle,
+      color: COLORS.rose,
+      subtitle: formatCompactCurrency(data.totals.balanceValue),
+    },
+    {
+      id: "marketing",
+      title: "Sales Persons",
+      value: data.totalMarketing,
+      icon: FaUserTie,
+      color: COLORS.violet,
+      subtitle: `active sellers`,
+    },
+    {
+      id: "categories",
+      title: "Categories",
+      value: data.totalCategories,
+      icon: FaTag,
+      color: COLORS.teal,
+      subtitle: `${data.categoryData.reduce((sum, c) => sum + (c.subCategories || 0), 0)} sub-categories`,
+    },
+    {
+      id: "buyers",
+      title: "Buyers",
+      value: data.totalBuyers,
+      icon: FaStore,
+      color: COLORS.orange,
+      subtitle: `active buyers`,
+    },
+    {
+      id: "deliveryRate",
+      title: "Delivery Rate",
+      value: `${data.deliveryPercent.toFixed(0)}%`,
+      icon: FaPercentage,
+      color: getStatusColor(data.deliveryPercent),
+      subtitle: `${data.valuePercent.toFixed(0)}% value`,
+    },
+    {
+      id: "customerValue",
+      title: "Avg Customer Value",
+      value: formatCurrency(data.performanceMetrics?.avgCustomerValue || 0),
+      icon: FaUsers,
+      color: COLORS.pink,
+      subtitle: `per customer`,
+    },
   ];
 
   if (isLoading || contextLoading) {
@@ -2091,8 +3076,12 @@ const handleQuickRange = (days) => {
             <div className="absolute inset-0 border-4 border-indigo-500 rounded-full border-t-transparent animate-spin" />
             <div className="absolute inset-2 border-4 border-emerald-500 rounded-full border-b-transparent animate-spin" />
           </div>
-          <h2 className="text-xl font-semibold text-slate-700">Loading Dashboard</h2>
-          <p className="text-sm text-slate-400 mt-1">Preparing your analytics...</p>
+          <h2 className="text-xl font-semibold text-slate-700">
+            Loading Dashboard
+          </h2>
+          <p className="text-sm text-slate-400 mt-1">
+            Preparing your analytics...
+          </p>
         </div>
       </div>
     );
@@ -2108,158 +3097,183 @@ const handleQuickRange = (days) => {
           transition={{ duration: 0.5 }}
           className="flex flex-col md:flex-row md:items-center md:justify-between gap-4"
         >
-        <div className="relative">
-  <button
-    onClick={() => setShowDatePicker(!showDatePicker)}
-    className="px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-sm font-medium text-slate-700 hover:border-indigo-300 hover:shadow-md transition-all duration-200 flex items-center gap-2 min-w-[160px]"
-  >
-    <CalendarRange className="w-4 h-4 text-indigo-500" />
-    <span className="truncate">
-      {dateRange.startDate && dateRange.endDate 
-        ? `${dateRange.startDate.toLocaleDateString()} - ${dateRange.endDate.toLocaleDateString()}`
-        : "Select Date Range"}
-    </span>
-  </button>
-  {cndata?._lastFetch?.dateRange && (
-  <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-indigo-50 text-indigo-600 rounded-full text-xs font-medium border border-indigo-200">
-    <CalendarRange className="w-3 h-3" />
-    {new Date(cndata._lastFetch.startDate).toLocaleDateString()} - {new Date(cndata._lastFetch.endDate).toLocaleDateString()}
-    <button
-      onClick={() => setSelectedYear("All")}
-      className="ml-1 hover:text-indigo-800"
-    >
-      ✕
-    </button>
-  </span>
-)}
-  {showDatePicker && (
-    <div className="absolute top-full left-0 mt-2 z-50 bg-white rounded-2xl shadow-2xl border border-slate-200 p-4 w-[480px]">
-      <div className="flex flex-col gap-4">
-        <div className="flex items-center justify-between">
-          <h4 className="text-sm font-semibold text-slate-700">Select Date Range</h4>
-          <button 
-            onClick={() => setShowDatePicker(false)}
-            className="p-1 hover:bg-slate-100 rounded-lg transition-all"
-          >
-            <X className="w-4 h-4 text-slate-400" />
-          </button>
-        </div>
-        
-        <div className="flex flex-col sm:flex-row gap-4">
-          <div className="flex-1">
-            <label className="text-xs text-slate-500 block mb-1">Start Date</label>
-            <DatePicker
-              selected={dateRange.startDate}
-              onChange={(date) => setDateRange(prev => ({ ...prev, startDate: date }))}
-              selectsStart
-              startDate={dateRange.startDate}
-              endDate={dateRange.endDate}
-              className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              dateFormat="MMM d, yyyy"
-              placeholderText="Select start date"
-            />
-          </div>
-          <div className="flex-1">
-            <label className="text-xs text-slate-500 block mb-1">End Date</label>
-            <DatePicker
-              selected={dateRange.endDate}
-              onChange={(date) => setDateRange(prev => ({ ...prev, endDate: date }))}
-              selectsEnd
-              startDate={dateRange.startDate}
-              endDate={dateRange.endDate}
-              minDate={dateRange.startDate}
-              className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              dateFormat="MMM d, yyyy"
-              placeholderText="Select end date"
-            />
-          </div>
-        </div>
-
-        <div className="flex flex-wrap gap-2">
-          <button
-            onClick={() => handleQuickRange(7)}
-            className="px-3 py-1.5 text-xs font-medium bg-slate-100 hover:bg-slate-200 rounded-lg transition-all"
-          >
-            Last 7 days
-          </button>
-          <button
-            onClick={() => handleQuickRange(30)}
-            className="px-3 py-1.5 text-xs font-medium bg-slate-100 hover:bg-slate-200 rounded-lg transition-all"
-          >
-            Last 30 days
-          </button>
-          <button
-            onClick={() => handleQuickRange(90)}
-            className="px-3 py-1.5 text-xs font-medium bg-slate-100 hover:bg-slate-200 rounded-lg transition-all"
-          >
-            Last 90 days
-          </button>
-          <button
-            onClick={() => {
-              const now = new Date();
-              const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
-              setDateRange({ startDate: firstDay, endDate: now });
-              setTimeout(() => fetchDataByDateRange(firstDay, now), 300);
-            }}
-            className="px-3 py-1.5 text-xs font-medium bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded-lg transition-all"
-          >
-            This Month
-          </button>
-          <button
-            onClick={() => {
-              const now = new Date();
-              const firstDay = new Date(now.getFullYear(), 0, 1);
-              setDateRange({ startDate: firstDay, endDate: now });
-              setTimeout(() => fetchDataByDateRange(firstDay, now), 300);
-            }}
-            className="px-3 py-1.5 text-xs font-medium bg-purple-50 hover:bg-purple-100 text-purple-600 rounded-lg transition-all"
-          >
-            Year to Date
-          </button>
-        </div>
-
-        <div className="flex gap-2 pt-2 border-t border-slate-100">
-          <button
-            onClick={handleDateRangeSubmit}
-            disabled={isFetchingRange}
-            className="flex-1 px-4 py-2.5 bg-gradient-to-r from-indigo-500 to-purple-600 text-white text-sm font-medium rounded-xl hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-          >
-            {isFetchingRange ? (
-              <>
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                Loading...
-              </>
-            ) : (
-              <>
-                <CalendarIcon className="w-4 h-4" />
-                Fetch Data
-              </>
+          <div className="relative">
+            <button
+              onClick={() => setShowDatePicker(!showDatePicker)}
+              className="px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-sm font-medium text-slate-700 hover:border-indigo-300 hover:shadow-md transition-all duration-200 flex items-center gap-2 min-w-[160px]"
+            >
+              <CalendarRange className="w-4 h-4 text-indigo-500" />
+              <span className="truncate">
+                {dateRange.startDate && dateRange.endDate
+                  ? `${dateRange.startDate.toLocaleDateString()} - ${dateRange.endDate.toLocaleDateString()}`
+                  : "Select Date Range"}
+              </span>
+            </button>
+            {cndata?._lastFetch?.dateRange && (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-indigo-50 text-indigo-600 rounded-full text-xs font-medium border border-indigo-200">
+                <CalendarRange className="w-3 h-3" />
+                {new Date(
+                  cndata._lastFetch.startDate,
+                ).toLocaleDateString()} -{" "}
+                {new Date(cndata._lastFetch.endDate).toLocaleDateString()}
+                <button
+                  onClick={() => setSelectedYear("All")}
+                  className="ml-1 hover:text-indigo-800"
+                >
+                  ✕
+                </button>
+              </span>
             )}
-          </button>
-          <button
-            onClick={() => setShowDatePicker(false)}
-            className="px-4 py-2.5 bg-slate-100 text-slate-600 text-sm font-medium rounded-xl hover:bg-slate-200 transition-all duration-200"
-          >
-            Cancel
-          </button>
-        </div>
+            {showDatePicker && (
+              <div className="absolute top-full left-0 mt-2 z-50 bg-white rounded-2xl shadow-2xl border border-slate-200 p-4 w-[480px]">
+                <div className="flex flex-col gap-4">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-sm font-semibold text-slate-700">
+                      Select Date Range
+                    </h4>
+                    <button
+                      onClick={() => setShowDatePicker(false)}
+                      className="p-1 hover:bg-slate-100 rounded-lg transition-all"
+                    >
+                      <X className="w-4 h-4 text-slate-400" />
+                    </button>
+                  </div>
 
-        {isFetchingRange && (
-          <div className="mt-2">
-            <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
-              <motion.div
-                className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-purple-500"
-                style={{ width: `${rangeFetchProgress}%` }}
-                transition={{ duration: 0.3 }}
-              />
-            </div>
-            <p className="text-xs text-slate-400 mt-1 text-center">{rangeFetchStatus}</p>
+                  <div className="flex flex-col sm:flex-row gap-4">
+                    <div className="flex-1">
+                      <label className="text-xs text-slate-500 block mb-1">
+                        Start Date
+                      </label>
+                      <DatePicker
+                        selected={dateRange.startDate}
+                        onChange={(date) =>
+                          setDateRange((prev) => ({ ...prev, startDate: date }))
+                        }
+                        selectsStart
+                        startDate={dateRange.startDate}
+                        endDate={dateRange.endDate}
+                        className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        dateFormat="MMM d, yyyy"
+                        placeholderText="Select start date"
+                      />
+                    </div>
+                    <div className="flex-1">
+                      <label className="text-xs text-slate-500 block mb-1">
+                        End Date
+                      </label>
+                      <DatePicker
+                        selected={dateRange.endDate}
+                        onChange={(date) =>
+                          setDateRange((prev) => ({ ...prev, endDate: date }))
+                        }
+                        selectsEnd
+                        startDate={dateRange.startDate}
+                        endDate={dateRange.endDate}
+                        minDate={dateRange.startDate}
+                        className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        dateFormat="MMM d, yyyy"
+                        placeholderText="Select end date"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={() => handleQuickRange(7)}
+                      className="px-3 py-1.5 text-xs font-medium bg-slate-100 hover:bg-slate-200 rounded-lg transition-all"
+                    >
+                      Last 7 days
+                    </button>
+                    <button
+                      onClick={() => handleQuickRange(30)}
+                      className="px-3 py-1.5 text-xs font-medium bg-slate-100 hover:bg-slate-200 rounded-lg transition-all"
+                    >
+                      Last 30 days
+                    </button>
+                    <button
+                      onClick={() => handleQuickRange(90)}
+                      className="px-3 py-1.5 text-xs font-medium bg-slate-100 hover:bg-slate-200 rounded-lg transition-all"
+                    >
+                      Last 90 days
+                    </button>
+                    <button
+                      onClick={() => {
+                        const now = new Date();
+                        const firstDay = new Date(
+                          now.getFullYear(),
+                          now.getMonth(),
+                          1,
+                        );
+                        setDateRange({ startDate: firstDay, endDate: now });
+                        setTimeout(
+                          () => fetchDataByDateRange(firstDay, now),
+                          300,
+                        );
+                      }}
+                      className="px-3 py-1.5 text-xs font-medium bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded-lg transition-all"
+                    >
+                      This Month
+                    </button>
+                    <button
+                      onClick={() => {
+                        const now = new Date();
+                        const firstDay = new Date(now.getFullYear(), 0, 1);
+                        setDateRange({ startDate: firstDay, endDate: now });
+                        setTimeout(
+                          () => fetchDataByDateRange(firstDay, now),
+                          300,
+                        );
+                      }}
+                      className="px-3 py-1.5 text-xs font-medium bg-purple-50 hover:bg-purple-100 text-purple-600 rounded-lg transition-all"
+                    >
+                      Year to Date
+                    </button>
+                  </div>
+
+                  <div className="flex gap-2 pt-2 border-t border-slate-100">
+                    <button
+                      onClick={handleDateRangeSubmit}
+                      disabled={isFetchingRange}
+                      className="flex-1 px-4 py-2.5 bg-gradient-to-r from-indigo-500 to-purple-600 text-white text-sm font-medium rounded-xl hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    >
+                      {isFetchingRange ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          Loading...
+                        </>
+                      ) : (
+                        <>
+                          <CalendarIcon className="w-4 h-4" />
+                          Fetch Data
+                        </>
+                      )}
+                    </button>
+                    <button
+                      onClick={() => setShowDatePicker(false)}
+                      className="px-4 py-2.5 bg-slate-100 text-slate-600 text-sm font-medium rounded-xl hover:bg-slate-200 transition-all duration-200"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+
+                  {isFetchingRange && (
+                    <div className="mt-2">
+                      <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                        <motion.div
+                          className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-purple-500"
+                          style={{ width: `${rangeFetchProgress}%` }}
+                          transition={{ duration: 0.3 }}
+                        />
+                      </div>
+                      <p className="text-xs text-slate-400 mt-1 text-center">
+                        {rangeFetchStatus}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
-        )}
-      </div>
-    </div>
-  )}
-</div>
           <div>
             <div className="flex items-center gap-3">
               <div className="p-2.5 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 shadow-lg shadow-indigo-200">
@@ -2271,10 +3285,18 @@ const handleQuickRange = (days) => {
                 </h1>
                 <p className="text-sm text-slate-400 flex items-center gap-1.5 flex-wrap">
                   <FaCircle className="w-1.5 h-1.5 text-emerald-500" />
-                  {data.totalOrders} orders • {data.totals.saleQty} delivered • {data.totalCustomers} customers • {data.totalMarketing} sales persons
+                  {data.totalOrders} orders • {data.totals.saleQty} delivered •{" "}
+                  {data.totalCustomers} customers • {data.totalMarketing} sales
+                  persons
                   {data.salesGrowth !== 0 && (
-                    <span className={`flex items-center gap-0.5 text-xs font-medium ${data.salesGrowth > 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                      {data.salesGrowth > 0 ? <FaArrowUp className="w-2 h-2" /> : <FaArrowDown className="w-2 h-2" />}
+                    <span
+                      className={`flex items-center gap-0.5 text-xs font-medium ${data.salesGrowth > 0 ? "text-emerald-600" : "text-red-600"}`}
+                    >
+                      {data.salesGrowth > 0 ? (
+                        <FaArrowUp className="w-2 h-2" />
+                      ) : (
+                        <FaArrowDown className="w-2 h-2" />
+                      )}
                       {data.salesGrowth.toFixed(1)}% sales growth
                     </span>
                   )}
@@ -2287,7 +3309,12 @@ const handleQuickRange = (days) => {
             <div className="flex items-center gap-2 bg-white/80 backdrop-blur-sm px-3 py-1.5 rounded-xl border border-slate-200/60 shadow-sm">
               <Calendar className="w-4 h-4 text-slate-400" />
               <span className="text-xs text-slate-600 whitespace-nowrap">
-                {new Date().toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" })}
+                {new Date().toLocaleDateString("en-US", {
+                  weekday: "short",
+                  month: "short",
+                  day: "numeric",
+                  year: "numeric",
+                })}
               </span>
             </div>
 
@@ -2295,7 +3322,11 @@ const handleQuickRange = (days) => {
               onClick={() => setShowFilters(!showFilters)}
               className="p-2 rounded-xl bg-white/80 backdrop-blur-sm border border-slate-200/60 shadow-sm hover:shadow-md transition-all duration-200"
             >
-              {showFilters ? <X className="w-4 h-4 text-slate-600" /> : <Filter className="w-4 h-4 text-slate-600" />}
+              {showFilters ? (
+                <X className="w-4 h-4 text-slate-600" />
+              ) : (
+                <Filter className="w-4 h-4 text-slate-600" />
+              )}
             </button>
 
             <button
@@ -2317,7 +3348,11 @@ const handleQuickRange = (days) => {
               onClick={toggleFullscreen}
               className="p-2 rounded-xl bg-white/80 backdrop-blur-sm border border-slate-200/60 shadow-sm hover:shadow-md transition-all duration-200"
             >
-              {isFullscreen ? <Minimize2 className="w-4 h-4 text-slate-600" /> : <Maximize2 className="w-4 h-4 text-slate-600" />}
+              {isFullscreen ? (
+                <Minimize2 className="w-4 h-4 text-slate-600" />
+              ) : (
+                <Maximize2 className="w-4 h-4 text-slate-600" />
+              )}
             </button>
           </div>
         </motion.div>
@@ -2340,11 +3375,17 @@ const handleQuickRange = (days) => {
                         <div className="absolute inset-0 border-2 border-indigo-500 rounded-full border-t-transparent animate-spin" />
                       </div>
                       <div>
-                        <p className="text-sm font-medium text-indigo-700">Auto-loading data</p>
-                        <p className="text-xs text-indigo-500">{autoLoadStatus}</p>
+                        <p className="text-sm font-medium text-indigo-700">
+                          Auto-loading data
+                        </p>
+                        <p className="text-xs text-indigo-500">
+                          {autoLoadStatus}
+                        </p>
                       </div>
                     </div>
-                    <span className="text-sm font-semibold text-indigo-600">{Math.round(autoLoadProgress)}%</span>
+                    <span className="text-sm font-semibold text-indigo-600">
+                      {Math.round(autoLoadProgress)}%
+                    </span>
                   </div>
                   <div className="w-full bg-indigo-100 rounded-full h-2 overflow-hidden">
                     <motion.div
@@ -2373,18 +3414,25 @@ const handleQuickRange = (days) => {
                 <div className="flex flex-wrap items-center gap-4">
                   <div className="flex items-center gap-2">
                     <Filter className="w-4 h-4 text-slate-400" />
-                    <span className="text-sm font-medium text-slate-700">Filters</span>
+                    <span className="text-sm font-medium text-slate-700">
+                      Filters
+                    </span>
                   </div>
                   <div className="h-6 w-px bg-slate-200 hidden sm:block" />
 
                   <div className="flex flex-wrap gap-3 flex-1">
                     <select
                       value={selectedYear}
-                      onChange={(e) => { setSelectedYear(e.target.value); setSelectedMonth("All"); }}
+                      onChange={(e) => {
+                        setSelectedYear(e.target.value);
+                        setSelectedMonth("All");
+                      }}
                       className="px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200 min-w-[140px]"
                     >
                       {years.map((y) => (
-                        <option key={y} value={y}>{y === "All" ? "📅 All Years" : `📅 ${y}`}</option>
+                        <option key={y} value={y}>
+                          {y === "All" ? "📅 All Years" : `📅 ${y}`}
+                        </option>
                       ))}
                     </select>
 
@@ -2395,7 +3443,9 @@ const handleQuickRange = (days) => {
                       disabled={selectedYear === "All" && months.length <= 1}
                     >
                       {months.map((m) => (
-                        <option key={m} value={m}>{m === "All" ? "📊 All Months" : `📊 ${m}`}</option>
+                        <option key={m} value={m}>
+                          {m === "All" ? "📊 All Months" : `📊 ${m}`}
+                        </option>
                       ))}
                     </select>
 
@@ -2405,7 +3455,9 @@ const handleQuickRange = (days) => {
                       className="px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200 min-w-[180px]"
                     >
                       {marketingNames.map((m) => (
-                        <option key={m} value={m}>{m === "All" ? "👤 All Sales Persons" : `👤 ${m}`}</option>
+                        <option key={m} value={m}>
+                          {m === "All" ? "👤 All Sales Persons" : `👤 ${m}`}
+                        </option>
                       ))}
                     </select>
 
@@ -2419,9 +3471,15 @@ const handleQuickRange = (days) => {
                       <option value="daily">📅 Daily View</option>
                     </select>
 
-                    {(selectedYear !== "All" || selectedMonth !== "All" || selectedMarketing !== "All") && (
+                    {(selectedYear !== "All" ||
+                      selectedMonth !== "All" ||
+                      selectedMarketing !== "All") && (
                       <button
-                        onClick={() => { setSelectedYear("All"); setSelectedMonth("All"); setSelectedMarketing("All"); }}
+                        onClick={() => {
+                          setSelectedYear("All");
+                          setSelectedMonth("All");
+                          setSelectedMarketing("All");
+                        }}
                         className="px-4 py-2.5 text-sm font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-xl transition-all duration-200"
                       >
                         ✕ Clear
@@ -2450,12 +3508,28 @@ const handleQuickRange = (days) => {
           <StatusIndicator status="inProgress" />
           <StatusIndicator status="pending" />
           <div className="ml-auto flex items-center gap-3 text-xs">
-            <span className="text-slate-400">Updated: {new Date().toLocaleTimeString()}</span>
+            <span className="text-slate-400">
+              Updated: {new Date().toLocaleTimeString()}
+            </span>
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
             <span className="text-slate-400">|</span>
-            <span className="text-slate-400">Delivery: <span style={{ color: getStatusColor(data.deliveryPercent) }}>{data.deliveryPercent.toFixed(0)}%</span></span>
+            <span className="text-slate-400">
+              Delivery:{" "}
+              <span style={{ color: getStatusColor(data.deliveryPercent) }}>
+                {data.deliveryPercent.toFixed(0)}%
+              </span>
+            </span>
             <span className="text-slate-400">|</span>
-            <span className="text-slate-400">Sales Growth: <span style={{ color: data.salesGrowth >= 0 ? COLORS.success : COLORS.danger }}>{data.salesGrowth.toFixed(1)}%</span></span>
+            <span className="text-slate-400">
+              Sales Growth:{" "}
+              <span
+                style={{
+                  color: data.salesGrowth >= 0 ? COLORS.success : COLORS.danger,
+                }}
+              >
+                {data.salesGrowth.toFixed(1)}%
+              </span>
+            </span>
           </div>
         </div>
 
@@ -2467,37 +3541,61 @@ const handleQuickRange = (days) => {
           className="bg-gradient-to-r from-indigo-50 to-purple-50 backdrop-blur-sm rounded-2xl shadow-lg border border-indigo-200/60 p-6"
         >
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-bold text-slate-800">📈 Growth Strategies</h3>
+            <h3 className="text-lg font-bold text-slate-800">
+              📈 Growth Strategies
+            </h3>
             <div className="flex items-center gap-4 text-xs">
-              <span className="flex items-center gap-1 text-emerald-600"><span className="w-2 h-2 rounded-full bg-emerald-500"></span>Completed +{formatCompactCurrency(data.growthMetrics?.completed || 0)}</span>
-              <span className="flex items-center gap-1 text-amber-600"><span className="w-2 h-2 rounded-full bg-amber-500"></span>Recurring -{formatCompactCurrency(data.growthMetrics?.recurring || 0)}</span>
-              <span className="flex items-center gap-1 text-red-600"><span className="w-2 h-2 rounded-full bg-red-500"></span>Pending +{formatCompactCurrency(data.growthMetrics?.pending || 0)}</span>
+              <span className="flex items-center gap-1 text-emerald-600">
+                <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                Completed +
+                {formatCompactCurrency(data.growthMetrics?.completed || 0)}
+              </span>
+              <span className="flex items-center gap-1 text-amber-600">
+                <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+                Recurring -
+                {formatCompactCurrency(data.growthMetrics?.recurring || 0)}
+              </span>
+              <span className="flex items-center gap-1 text-red-600">
+                <span className="w-2 h-2 rounded-full bg-red-500"></span>Pending
+                +{formatCompactCurrency(data.growthMetrics?.pending || 0)}
+              </span>
             </div>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="bg-white/80 rounded-xl p-4 text-center">
               <p className="text-xs text-slate-400">Completion Rate</p>
-              <p className="text-2xl font-bold text-emerald-600">{data.deliveryPercent.toFixed(0)}%</p>
+              <p className="text-2xl font-bold text-emerald-600">
+                {data.deliveryPercent.toFixed(0)}%
+              </p>
               <GrowthIndicator value={data.salesGrowth} />
             </div>
             <div className="bg-white/80 rounded-xl p-4 text-center">
               <p className="text-xs text-slate-400">Sales Growth</p>
-              <p className={`text-2xl font-bold ${data.salesGrowth >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>{data.salesGrowth.toFixed(1)}%</p>
+              <p
+                className={`text-2xl font-bold ${data.salesGrowth >= 0 ? "text-emerald-600" : "text-red-600"}`}
+              >
+                {data.salesGrowth.toFixed(1)}%
+              </p>
               <p className="text-xs text-slate-400">vs previous period</p>
             </div>
             <div className="bg-white/80 rounded-xl p-4 text-center">
               <p className="text-xs text-slate-400">Completed Value</p>
-              <p className="text-2xl font-bold text-emerald-600">{formatCompactCurrency(data.growthMetrics?.completed || 0)}</p>
+              <p className="text-2xl font-bold text-emerald-600">
+                {formatCompactCurrency(data.growthMetrics?.completed || 0)}
+              </p>
               <p className="text-xs text-emerald-500">+83.0%</p>
             </div>
             <div className="bg-white/80 rounded-xl p-4 text-center">
               <p className="text-xs text-slate-400">Pending Value</p>
-              <p className="text-2xl font-bold text-amber-600">{formatCompactCurrency(data.growthMetrics?.pending || 0)}</p>
+              <p className="text-2xl font-bold text-amber-600">
+                {formatCompactCurrency(data.growthMetrics?.pending || 0)}
+              </p>
               <p className="text-xs text-amber-500">+10.3%</p>
             </div>
           </div>
           <div className="mt-4 text-xs text-slate-500 text-center">
-            Business process starts from an owner invests cash on property in a business. Income is higher than outcome called "Profit".
+            Business process starts from an owner invests cash on property in a
+            business. Income is higher than outcome called "Profit".
           </div>
         </motion.div>
 
@@ -2515,14 +3613,24 @@ const handleQuickRange = (days) => {
           transition={{ duration: 0.4 }}
           className="flex flex-wrap gap-2 border-b border-slate-200 pb-2"
         >
-          {['overview', 'sales', 'categories', 'buyers', 'funnel', 'channels', 'analytics', 'predictive', 'insights'].map((tab) => (
+          {[
+            "overview",
+            "sales",
+            "categories",
+            "buyers",
+            "funnel",
+            "channels",
+            "analytics",
+            "predictive",
+            "insights",
+          ].map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
               className={`px-4 py-2 text-sm font-medium rounded-xl transition-all duration-200 ${
                 activeTab === tab
-                  ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-200'
-                  : 'text-slate-600 hover:bg-slate-100'
+                  ? "bg-indigo-500 text-white shadow-lg shadow-indigo-200"
+                  : "text-slate-600 hover:bg-slate-100"
               }`}
             >
               {tab.charAt(0).toUpperCase() + tab.slice(1)}
@@ -2540,39 +3648,87 @@ const handleQuickRange = (days) => {
             transition={{ duration: 0.4 }}
           >
             {/* Overview Tab */}
-            {activeTab === 'overview' && (
+            {activeTab === "overview" && (
               <div className="space-y-6">
                 <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-slate-200/60 p-4 md:p-6">
                   <div className="flex items-center justify-between mb-4">
                     <div>
-                      <h3 className="text-base font-semibold text-slate-800">Monthly Performance</h3>
-                      <p className="text-xs text-slate-400">Order vs Sales revenue trends</p>
+                      <h3 className="text-base font-semibold text-slate-800">
+                        Monthly Performance
+                      </h3>
+                      <p className="text-xs text-slate-400">
+                        Order vs Sales revenue trends
+                      </p>
                     </div>
                     <div className="flex items-center gap-3 text-xs">
-                      <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-indigo-500"></span>Order</span>
-                      <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-500"></span>Sales</span>
-                      <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-500"></span>Balance</span>
+                      <span className="flex items-center gap-1">
+                        <span className="w-2 h-2 rounded-full bg-indigo-500"></span>
+                        Order
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                        Sales
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <span className="w-2 h-2 rounded-full bg-red-500"></span>
+                        Balance
+                      </span>
                     </div>
                   </div>
                   {chartData && chartData.length > 0 ? (
                     <ResponsiveContainer width="100%" height={320}>
-                      <ComposedChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 5 }}>
+                      <ComposedChart
+                        data={chartData}
+                        margin={{ top: 10, right: 10, left: 0, bottom: 5 }}
+                      >
                         <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                         <XAxis dataKey="name" tick={{ fontSize: 10 }} />
-                        <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => formatCompactCurrency(v)} />
-                        <Tooltip 
-                          formatter={(v) => formatCurrency(v)} 
-                          contentStyle={{ backgroundColor: "white", border: "1px solid #e2e8f0", borderRadius: "10px", padding: "10px 14px" }} 
+                        <YAxis
+                          tick={{ fontSize: 10 }}
+                          tickFormatter={(v) => formatCompactCurrency(v)}
+                        />
+                        <Tooltip
+                          formatter={(v) => formatCurrency(v)}
+                          contentStyle={{
+                            backgroundColor: "white",
+                            border: "1px solid #e2e8f0",
+                            borderRadius: "10px",
+                            padding: "10px 14px",
+                          }}
                         />
                         <Legend />
-                        <Bar dataKey="orderValue" fill={COLORS.primary} radius={[4, 4, 0, 0]} name="Order Value" />
-                        <Bar dataKey="saleValue" fill={COLORS.success} radius={[4, 4, 0, 0]} name="Sales Revenue" />
-                        <Bar dataKey="balanceValue" fill={COLORS.danger} radius={[4, 4, 0, 0]} name="Balance Value" />
-                        <Line type="monotone" dataKey="deliveryRate" stroke={COLORS.warning} strokeWidth={2} dot={{ r: 4 }} name="Delivery %" />
+                        <Bar
+                          dataKey="orderValue"
+                          fill={COLORS.primary}
+                          radius={[4, 4, 0, 0]}
+                          name="Order Value"
+                        />
+                        <Bar
+                          dataKey="saleValue"
+                          fill={COLORS.success}
+                          radius={[4, 4, 0, 0]}
+                          name="Sales Revenue"
+                        />
+                        <Bar
+                          dataKey="balanceValue"
+                          fill={COLORS.danger}
+                          radius={[4, 4, 0, 0]}
+                          name="Balance Value"
+                        />
+                        <Line
+                          type="monotone"
+                          dataKey="deliveryRate"
+                          stroke={COLORS.warning}
+                          strokeWidth={2}
+                          dot={{ r: 4 }}
+                          name="Delivery %"
+                        />
                       </ComposedChart>
                     </ResponsiveContainer>
                   ) : (
-                    <div className="h-[320px] flex items-center justify-center text-slate-400">No data available</div>
+                    <div className="h-[320px] flex items-center justify-center text-slate-400">
+                      No data available
+                    </div>
                   )}
                 </div>
 
@@ -2584,8 +3740,14 @@ const handleQuickRange = (days) => {
                         <FaUsers className="w-5 h-5 text-indigo-500" />
                       </div>
                       <div>
-                        <p className="text-xs text-slate-400">Avg Order Value</p>
-                        <p className="text-lg font-bold text-slate-800">{formatCurrency(data.performanceMetrics?.avgOrderValue || 0)}</p>
+                        <p className="text-xs text-slate-400">
+                          Avg Order Value
+                        </p>
+                        <p className="text-lg font-bold text-slate-800">
+                          {formatCurrency(
+                            data.performanceMetrics?.avgOrderValue || 0,
+                          )}
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -2596,7 +3758,11 @@ const handleQuickRange = (days) => {
                       </div>
                       <div>
                         <p className="text-xs text-slate-400">Avg Sale Value</p>
-                        <p className="text-lg font-bold text-slate-800">{formatCurrency(data.performanceMetrics?.avgSaleValue || 0)}</p>
+                        <p className="text-lg font-bold text-slate-800">
+                          {formatCurrency(
+                            data.performanceMetrics?.avgSaleValue || 0,
+                          )}
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -2606,8 +3772,14 @@ const handleQuickRange = (days) => {
                         <RiUserStarFill className="w-5 h-5 text-purple-500" />
                       </div>
                       <div>
-                        <p className="text-xs text-slate-400">Avg Customer Value</p>
-                        <p className="text-lg font-bold text-slate-800">{formatCurrency(data.performanceMetrics?.avgCustomerValue || 0)}</p>
+                        <p className="text-xs text-slate-400">
+                          Avg Customer Value
+                        </p>
+                        <p className="text-lg font-bold text-slate-800">
+                          {formatCurrency(
+                            data.performanceMetrics?.avgCustomerValue || 0,
+                          )}
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -2617,8 +3789,16 @@ const handleQuickRange = (days) => {
                         <FaBox className="w-5 h-5 text-orange-500" />
                       </div>
                       <div>
-                        <p className="text-xs text-slate-400">Order-to-Delivery</p>
-                        <p className="text-lg font-bold text-slate-800">{((data.performanceMetrics?.orderToDeliveryRatio || 0) * 100).toFixed(0)}%</p>
+                        <p className="text-xs text-slate-400">
+                          Order-to-Delivery
+                        </p>
+                        <p className="text-lg font-bold text-slate-800">
+                          {(
+                            (data.performanceMetrics?.orderToDeliveryRatio ||
+                              0) * 100
+                          ).toFixed(0)}
+                          %
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -2627,42 +3807,70 @@ const handleQuickRange = (days) => {
                 {/* Top Performing Marketing & Category Performance - Sorted by TOTAL */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-slate-200/60 p-4">
-                    <h3 className="text-sm font-semibold text-slate-800 mb-3">🏆 Top Performing Sales Persons</h3>
+                    <h3 className="text-sm font-semibold text-slate-800 mb-3">
+                      🏆 Top Performing Sales Persons
+                    </h3>
                     <div className="space-y-2">
                       {data.topPerformingMarketing.slice(0, 5).map((m, i) => {
-                        const avgValue = parseFloat(m.avgOrderValue.replace(/[$,]/g, ''));
-                        const tier = getPerformanceTier(avgValue, parseFloat(m.deliveryRate));
-                        const Icon = tier.icon;
-                        return (
-                          <div key={m.name} className={`flex items-center justify-between text-sm p-2 rounded-lg ${tier.bg}`}>
-                            <div className="flex items-center gap-2">
-                              <Icon className={`w-4 h-4`} style={{ color: tier.color }} />
-                              <span className="text-slate-700 font-medium">{m.name}</span>
-                            </div>
-                            <div className="flex items-center gap-3">
-                              <span className="text-[10px] text-slate-400">{m.orders} orders</span>
-                              <span className="text-[10px] text-slate-400">{m.deliveryRate}</span>
-                              <span className="font-semibold text-emerald-600">{formatCompactCurrency(m.orderValue)}</span>
-                            </div>
-                          </div>
-                        );
-                      })}
+  const avgValue = parseFloat(m.avgOrderValue.replace(/[$,]/g, ""));
+  // ✅ Pass ALL parameters
+  const tier = getPerformanceTier(
+    avgValue, 
+    parseFloat(m.deliveryRate),
+    m.orderValue,      // Total Order Value
+    m.orders,          // Number of Orders
+    selectedYear,      // Time context
+    selectedMonth      // Time context
+  );
+  const Icon = tier.icon;
+  return (
+    <div
+      key={m.name}
+      className={`flex items-center justify-between text-sm p-2 rounded-lg ${tier.bg}`}
+    >
+      <div className="flex items-center gap-2">
+        <Icon className={`w-4 h-4`} style={{ color: tier.color }} />
+        <span className="text-slate-700 font-medium">{m.name}</span>
+      </div>
+      <div className="flex items-center gap-3">
+        <span className="text-[10px] text-slate-400">{m.orders} orders</span>
+        <span className="text-[10px] text-slate-400">{m.deliveryRate}</span>
+        <span className="font-semibold text-emerald-600">
+          {formatCompactCurrency(m.orderValue)}
+        </span>
+      </div>
+    </div>
+  );
+})}
                     </div>
                   </div>
 
                   <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-slate-200/60 p-4">
-                    <h3 className="text-sm font-semibold text-slate-800 mb-3">📊 Top Categories by Sales</h3>
+                    <h3 className="text-sm font-semibold text-slate-800 mb-3">
+                      📊 Top Categories by Sales
+                    </h3>
                     <div className="space-y-2">
                       {data.categoryPerformance.slice(0, 5).map((c, i) => (
-                        <div key={c.name} className="flex items-center justify-between text-sm p-2 rounded-lg hover:bg-slate-50">
+                        <div
+                          key={c.name}
+                          className="flex items-center justify-between text-sm p-2 rounded-lg hover:bg-slate-50"
+                        >
                           <div className="flex items-center gap-2">
-                            <span className="text-xs font-bold text-slate-400 w-5">#{i+1}</span>
+                            <span className="text-xs font-bold text-slate-400 w-5">
+                              #{i + 1}
+                            </span>
                             <span className="text-slate-700">{c.name}</span>
                           </div>
                           <div className="flex items-center gap-3">
-                            <span className="text-[10px] text-slate-400">{c.orders} orders</span>
-                            <span className="text-[10px] text-slate-400">{c.deliveryRate}</span>
-                            <span className="font-semibold text-emerald-600">{formatCompactCurrency(c.orderValue)}</span>
+                            <span className="text-[10px] text-slate-400">
+                              {c.orders} orders
+                            </span>
+                            <span className="text-[10px] text-slate-400">
+                              {c.deliveryRate}
+                            </span>
+                            <span className="font-semibold text-emerald-600">
+                              {formatCompactCurrency(c.orderValue)}
+                            </span>
                           </div>
                         </div>
                       ))}
@@ -2674,43 +3882,90 @@ const handleQuickRange = (days) => {
                 <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-slate-200/60 p-4 md:p-6">
                   <div className="flex items-center justify-between mb-4">
                     <div>
-                      <h3 className="text-base font-semibold text-slate-800">Monthly Growth Rate</h3>
-                      <p className="text-xs text-slate-400">Month-over-month growth percentage</p>
+                      <h3 className="text-base font-semibold text-slate-800">
+                        Monthly Growth Rate
+                      </h3>
+                      <p className="text-xs text-slate-400">
+                        Month-over-month growth percentage
+                      </p>
                     </div>
                     <div className="flex items-center gap-3 text-xs">
-                      <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-500"></span>Sales Growth</span>
-                      <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-indigo-500"></span>Order Growth</span>
+                      <span className="flex items-center gap-1">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                        Sales Growth
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <span className="w-2 h-2 rounded-full bg-indigo-500"></span>
+                        Order Growth
+                      </span>
                     </div>
                   </div>
                   {hasEnoughData ? (
                     <ResponsiveContainer width="100%" height={280}>
-                      <BarChart data={growthChartData} margin={{ top: 30, right: 30, left: 20, bottom: 20 }}>
+                      <BarChart
+                        data={growthChartData}
+                        margin={{ top: 30, right: 30, left: 20, bottom: 20 }}
+                      >
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis dataKey="month" />
                         <YAxis tickFormatter={(v) => `${v.toFixed(0)}%`} />
                         <Tooltip
                           formatter={(v) => `${v.toFixed(1)}%`}
-                          contentStyle={{ backgroundColor: "white", border: "1px solid #e2e8f0", borderRadius: "8px", padding: "8px 12px" }}
+                          contentStyle={{
+                            backgroundColor: "white",
+                            border: "1px solid #e2e8f0",
+                            borderRadius: "8px",
+                            padding: "8px 12px",
+                          }}
                         />
                         <Legend />
-                        <Bar dataKey="salesGrowth" name="Sales Growth %" radius={[4, 4, 0, 0]}>
+                        <Bar
+                          dataKey="salesGrowth"
+                          name="Sales Growth %"
+                          radius={[4, 4, 0, 0]}
+                        >
                           {growthChartData.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={entry.salesGrowth >= 0 ? COLORS.success : COLORS.danger} />
+                            <Cell
+                              key={`cell-${index}`}
+                              fill={
+                                entry.salesGrowth >= 0
+                                  ? COLORS.success
+                                  : COLORS.danger
+                              }
+                            />
                           ))}
                         </Bar>
-                        <Bar dataKey="orderGrowth" name="Order Growth %" radius={[4, 4, 0, 0]} fill={COLORS.primary}>
+                        <Bar
+                          dataKey="orderGrowth"
+                          name="Order Growth %"
+                          radius={[4, 4, 0, 0]}
+                          fill={COLORS.primary}
+                        >
                           {growthChartData.map((entry, index) => (
-                            <Cell key={`cell-order-${index}`} fill={entry.orderGrowth >= 0 ? COLORS.indigo : COLORS.rose} />
+                            <Cell
+                              key={`cell-order-${index}`}
+                              fill={
+                                entry.orderGrowth >= 0
+                                  ? COLORS.indigo
+                                  : COLORS.rose
+                              }
+                            />
                           ))}
                         </Bar>
-                        <ReferenceLine y={0} stroke={COLORS.gray} strokeDasharray="3 3" />
+                        <ReferenceLine
+                          y={0}
+                          stroke={COLORS.gray}
+                          strokeDasharray="3 3"
+                        />
                       </BarChart>
                     </ResponsiveContainer>
                   ) : (
                     <div className="h-[280px] flex items-center justify-center text-slate-400 flex-col gap-2">
                       <div className="text-4xl">📊</div>
                       <p>Not enough data for growth comparison</p>
-                      <p className="text-xs">Need at least 2 months, 2 weeks, or 3 days of data</p>
+                      <p className="text-xs">
+                        Need at least 2 months, 2 weeks, or 3 days of data
+                      </p>
                     </div>
                   )}
                 </div>
@@ -2718,40 +3973,67 @@ const handleQuickRange = (days) => {
             )}
 
             {/* Sales Tab */}
-            {activeTab === 'sales' && (
+            {activeTab === "sales" && (
               <div className="space-y-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h2 className="text-lg font-bold text-slate-800">Sales Person Performance</h2>
-                    <p className="text-xs text-slate-400">Order Value vs Sales Revenue by Sales Person</p>
+                    <h2 className="text-lg font-bold text-slate-800">
+                      Sales Person Performance
+                    </h2>
+                    <p className="text-xs text-slate-400">
+                      Order Value vs Sales Revenue by Sales Person
+                    </p>
                   </div>
                   <div className="flex items-center gap-3 text-xs">
-                    <span className="flex items-center gap-1 text-indigo-600"><span className="w-2 h-2 rounded-full bg-indigo-500"></span>Order Value</span>
-                    <span className="flex items-center gap-1 text-emerald-600"><span className="w-2 h-2 rounded-full bg-emerald-500"></span>Sales Revenue</span>
+                    <span className="flex items-center gap-1 text-indigo-600">
+                      <span className="w-2 h-2 rounded-full bg-indigo-500"></span>
+                      Order Value
+                    </span>
+                    <span className="flex items-center gap-1 text-emerald-600">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                      Sales Revenue
+                    </span>
                   </div>
                 </div>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-slate-200/60 p-4 md:p-6">
-                    <h3 className="text-base font-semibold text-slate-800 mb-3">Order & Sales Revenue by Sales Person</h3>
-                    <p className="text-xs text-slate-400 mb-4">Top performing sales persons</p>
+                    <h3 className="text-base font-semibold text-slate-800 mb-3">
+                      Order & Sales Revenue by Sales Person
+                    </h3>
+                    <p className="text-xs text-slate-400 mb-4">
+                      Top performing sales persons
+                    </p>
                     <MarketingChart data={data.marketingData} />
                   </div>
                   <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-slate-200/60 p-4 md:p-6">
-                    <h3 className="text-base font-semibold text-slate-800 mb-3">Sales Person Comparison</h3>
-                    <p className="text-xs text-slate-400 mb-4">Multi-dimensional performance</p>
+                    <h3 className="text-base font-semibold text-slate-800 mb-3">
+                      Sales Person Comparison
+                    </h3>
+                    <p className="text-xs text-slate-400 mb-4">
+                      Multi-dimensional performance
+                    </p>
                     <RadarChartComponent data={data.radarData} />
                   </div>
                   <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-slate-200/60 p-4 md:p-6 lg:col-span-2">
-                    <h3 className="text-base font-semibold text-slate-800 mb-3">Sales Efficiency Matrix</h3>
-                    <p className="text-xs text-slate-400 mb-4">Orders vs Sales Revenue efficiency</p>
+                    <h3 className="text-base font-semibold text-slate-800 mb-3">
+                      Sales Efficiency Matrix
+                    </h3>
+                    <p className="text-xs text-slate-400 mb-4">
+                      Orders vs Sales Revenue efficiency
+                    </p>
                     <EfficiencyChartComponent data={data.efficiencyData} />
                   </div>
-                  
+
                   {/* FIXED: Order vs Sales Comparison - Only Order Value & Sales Revenue */}
                   <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-slate-200/60 p-4 md:p-6 lg:col-span-2">
-                    <h3 className="text-base font-semibold text-slate-800 mb-3">Order vs Sales Comparison</h3>
-                    <p className="text-xs text-slate-400 mb-4">Bar chart showing Order Value vs Sales Revenue</p>
-                    {data.salesVsOrderData && data.salesVsOrderData.length > 0 ? (
+                    <h3 className="text-base font-semibold text-slate-800 mb-3">
+                      Order vs Sales Comparison
+                    </h3>
+                    <p className="text-xs text-slate-400 mb-4">
+                      Bar chart showing Order Value vs Sales Revenue
+                    </p>
+                    {data.salesVsOrderData &&
+                    data.salesVsOrderData.length > 0 ? (
                       <OrderVsSalesChart data={data.salesVsOrderData} />
                     ) : (
                       <div className="h-[280px] flex items-center justify-center text-slate-400 flex-col gap-2">
@@ -2763,42 +4045,89 @@ const handleQuickRange = (days) => {
 
                   {/* FIXED: Sales Person Ranking - Sort by TOTAL */}
                   <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-slate-200/60 p-4 md:p-6 lg:col-span-2">
-                    <h3 className="text-base font-semibold text-slate-800 mb-3">🏅 Sales Person Ranking</h3>
-                    <p className="text-xs text-slate-400 mb-4">Ranked by Total Order Value with Delivery Performance</p>
+                    <h3 className="text-base font-semibold text-slate-800 mb-3">
+                      🏅 Sales Person Ranking
+                    </h3>
+                    <p className="text-xs text-slate-400 mb-4">
+                      Ranked by Total Order Value with Delivery Performance
+                    </p>
                     <div className="overflow-x-auto">
                       <table className="w-full text-sm">
                         <thead>
                           <tr className="border-b border-slate-200">
-                            <th className="text-left py-2 px-3 text-xs font-medium text-slate-400">Rank</th>
-                            <th className="text-left py-2 px-3 text-xs font-medium text-slate-400">Sales Person</th>
-                            <th className="text-right py-2 px-3 text-xs font-medium text-slate-400">Total Order Value</th>
-                            <th className="text-right py-2 px-3 text-xs font-medium text-slate-400">Avg Order Value</th>
-                            <th className="text-right py-2 px-3 text-xs font-medium text-slate-400">Sales Revenue</th>
-                            <th className="text-right py-2 px-3 text-xs font-medium text-slate-400">Orders</th>
-                            <th className="text-right py-2 px-3 text-xs font-medium text-slate-400">Delivery %</th>
-                            <th className="text-right py-2 px-3 text-xs font-medium text-slate-400">Tier</th>
+                            <th className="text-left py-2 px-3 text-xs font-medium text-slate-400">
+                              Rank
+                            </th>
+                            <th className="text-left py-2 px-3 text-xs font-medium text-slate-400">
+                              Sales Person
+                            </th>
+                            <th className="text-right py-2 px-3 text-xs font-medium text-slate-400">
+                              Total Order Value
+                            </th>
+                            <th className="text-right py-2 px-3 text-xs font-medium text-slate-400">
+                              Avg Order Value
+                            </th>
+                            <th className="text-right py-2 px-3 text-xs font-medium text-slate-400">
+                              Sales Revenue
+                            </th>
+                            <th className="text-right py-2 px-3 text-xs font-medium text-slate-400">
+                              Orders
+                            </th>
+                            <th className="text-right py-2 px-3 text-xs font-medium text-slate-400">
+                              Delivery %
+                            </th>
+                            <th className="text-right py-2 px-3 text-xs font-medium text-slate-400">
+                              Tier
+                            </th>
                           </tr>
                         </thead>
                         <tbody>
                           {data.salesPersonRanking.map((m) => {
                             const Icon = m.tierIcon;
                             return (
-                              <tr key={m.name} className="border-b border-slate-100 hover:bg-slate-50">
-                                <td className="py-2 px-3 text-slate-600">{m.badge}</td>
-                                <td className="py-2 px-3 text-slate-700 font-medium">{m.name}</td>
-                                <td className="text-right py-2 px-3 font-semibold text-indigo-600">{m.orderValue}</td>
-                                <td className="text-right py-2 px-3 text-slate-600">{m.avgOrderValue}</td>
-                                <td className="text-right py-2 px-3 text-emerald-600">{m.revenue}</td>
-                                <td className="text-right py-2 px-3 text-slate-600">{m.orders}</td>
+                              <tr
+                                key={m.name}
+                                className="border-b border-slate-100 hover:bg-slate-50"
+                              >
+                                <td className="py-2 px-3 text-slate-600">
+                                  {m.badge}
+                                </td>
+                                <td className="py-2 px-3 text-slate-700 font-medium">
+                                  {m.name}
+                                </td>
+                                <td className="text-right py-2 px-3 font-semibold text-indigo-600">
+                                  {m.orderValue}
+                                </td>
+                                <td className="text-right py-2 px-3 text-slate-600">
+                                  {m.avgOrderValue}
+                                </td>
+                                <td className="text-right py-2 px-3 text-emerald-600">
+                                  {m.revenue}
+                                </td>
+                                <td className="text-right py-2 px-3 text-slate-600">
+                                  {m.orders}
+                                </td>
                                 <td className="text-right py-2 px-3">
-                                  <span className={`font-medium ${parseFloat(m.deliveryRate) >= 70 ? 'text-emerald-600' : parseFloat(m.deliveryRate) >= 50 ? 'text-amber-600' : 'text-red-600'}`}>
+                                  <span
+                                    className={`font-medium ${parseFloat(m.deliveryRate) >= 70 ? "text-emerald-600" : parseFloat(m.deliveryRate) >= 50 ? "text-amber-600" : "text-red-600"}`}
+                                  >
                                     {m.deliveryRate}
                                   </span>
                                 </td>
                                 <td className="text-right py-2 px-3">
-                                  <div className={`inline-flex items-center gap-1 px-2 py-1 rounded-full ${m.tierBg}`}>
-                                    <Icon className="w-3 h-3" style={{ color: m.tierColor }} />
-                                    <span className="text-[10px] font-medium" style={{ color: m.tierColor }}>{m.tier}</span>
+                                  <div
+                                    className={`inline-flex items-center gap-1 px-2 py-1 rounded-full ${m.tierBg}`}
+                                  >
+                                    <Icon
+                                      className="w-3 h-3"
+                                      style={{ color: m.tierColor }}
+                                    />
+                                    <span
+                                      className="text-[10px] font-medium"
+                                      style={{ color: m.tierColor }}
+                                    >
+                                      {m.tier}
+                                    </span>
                                   </div>
                                 </td>
                               </tr>
@@ -2813,38 +4142,63 @@ const handleQuickRange = (days) => {
             )}
 
             {/* Categories Tab - Show TOTAL values */}
-            {activeTab === 'categories' && (
+            {activeTab === "categories" && (
               <div className="space-y-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h2 className="text-lg font-bold text-slate-800">Category Analysis</h2>
-                    <p className="text-xs text-slate-400">Sales revenue by product category</p>
+                    <h2 className="text-lg font-bold text-slate-800">
+                      Category Analysis
+                    </h2>
+                    <p className="text-xs text-slate-400">
+                      Sales revenue by product category
+                    </p>
                   </div>
                 </div>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-slate-200/60 p-4 md:p-6">
-                    <h3 className="text-base font-semibold text-slate-800 mb-3">Sales Revenue by Category</h3>
-                    <p className="text-xs text-slate-400 mb-4">Top product categories by delivered revenue</p>
+                    <h3 className="text-base font-semibold text-slate-800 mb-3">
+                      Sales Revenue by Category
+                    </h3>
+                    <p className="text-xs text-slate-400 mb-4">
+                      Top product categories by delivered revenue
+                    </p>
                     <CategoryChart data={data.categoryData} />
                   </div>
                   <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-slate-200/60 p-4 md:p-6">
-                    <h3 className="text-base font-semibold text-slate-800 mb-3">Top Sub-Categories</h3>
-                    <p className="text-xs text-slate-400 mb-4">Detailed product breakdown</p>
+                    <h3 className="text-base font-semibold text-slate-800 mb-3">
+                      Top Sub-Categories
+                    </h3>
+                    <p className="text-xs text-slate-400 mb-4">
+                      Detailed product breakdown
+                    </p>
                     <div className="space-y-3 max-h-[300px] overflow-y-auto">
                       {data.topSubCategories.slice(0, 10).map((sub, index) => (
                         <div key={sub.name}>
                           <div className="flex items-center justify-between text-sm mb-1">
                             <div className="flex items-center gap-2">
-                              <span className="text-xs font-bold text-slate-400 w-5">#{index + 1}</span>
-                              <span className="text-slate-700 truncate max-w-[150px]" title={sub.name}>{sub.name}</span>
-                              <span className="text-[10px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">{sub.category}</span>
+                              <span className="text-xs font-bold text-slate-400 w-5">
+                                #{index + 1}
+                              </span>
+                              <span
+                                className="text-slate-700 truncate max-w-[150px]"
+                                title={sub.name}
+                              >
+                                {sub.name}
+                              </span>
+                              <span className="text-[10px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">
+                                {sub.category}
+                              </span>
                             </div>
-                            <span className="font-semibold text-emerald-600">{formatCompactCurrency(sub.orderValue)}</span>
+                            <span className="font-semibold text-emerald-600">
+                              {formatCompactCurrency(sub.orderValue)}
+                            </span>
                           </div>
                           <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
                             <div
                               className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-500"
-                              style={{ width: `${(sub.orderValue / (data.topSubCategories[0]?.orderValue || 1)) * 100}%` }}
+                              style={{
+                                width: `${(sub.orderValue / (data.topSubCategories[0]?.orderValue || 1)) * 100}%`,
+                              }}
                             />
                           </div>
                         </div>
@@ -2852,28 +4206,51 @@ const handleQuickRange = (days) => {
                     </div>
                   </div>
                   <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-slate-200/60 p-4 md:p-6">
-                    <h3 className="text-base font-semibold text-slate-800 mb-3">Sales Distribution</h3>
-                    <p className="text-xs text-slate-400 mb-4">Distribution of sales values</p>
+                    <h3 className="text-base font-semibold text-slate-800 mb-3">
+                      Sales Distribution
+                    </h3>
+                    <p className="text-xs text-slate-400 mb-4">
+                      Distribution of sales values
+                    </p>
                     <ResponsiveContainer width="100%" height={280}>
-                      <BarChart data={data.distributionData} margin={{ top: 10, right: 10, left: 0, bottom: 5 }}>
+                      <BarChart
+                        data={data.distributionData}
+                        margin={{ top: 10, right: 10, left: 0, bottom: 5 }}
+                      >
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis dataKey="range" tick={{ fontSize: 9 }} />
                         <YAxis />
                         <Tooltip
                           formatter={(v) => `${v} orders`}
-                          contentStyle={{ backgroundColor: "white", border: "1px solid #e2e8f0", borderRadius: "8px", padding: "8px 12px" }}
+                          contentStyle={{
+                            backgroundColor: "white",
+                            border: "1px solid #e2e8f0",
+                            borderRadius: "8px",
+                            padding: "8px 12px",
+                          }}
                         />
-                        <Bar dataKey="count" fill={COLORS.emerald} radius={[4, 4, 0, 0]}>
+                        <Bar
+                          dataKey="count"
+                          fill={COLORS.emerald}
+                          radius={[4, 4, 0, 0]}
+                        >
                           {data.distributionData.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                            <Cell
+                              key={`cell-${index}`}
+                              fill={CHART_COLORS[index % CHART_COLORS.length]}
+                            />
                           ))}
                         </Bar>
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
                   <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-slate-200/60 p-4 md:p-6">
-                    <h3 className="text-base font-semibold text-slate-800 mb-3">Order Size Distribution</h3>
-                    <p className="text-xs text-slate-400 mb-4">Breakdown of order sizes by sales value</p>
+                    <h3 className="text-base font-semibold text-slate-800 mb-3">
+                      Order Size Distribution
+                    </h3>
+                    <p className="text-xs text-slate-400 mb-4">
+                      Breakdown of order sizes by sales value
+                    </p>
                     <ResponsiveContainer width="100%" height={250}>
                       <PieChart>
                         <Pie
@@ -2883,16 +4260,26 @@ const handleQuickRange = (days) => {
                           innerRadius={50}
                           outerRadius={90}
                           dataKey="value"
-                          label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                          label={({ name, percent }) =>
+                            `${name} ${(percent * 100).toFixed(0)}%`
+                          }
                           labelLine={false}
                         >
                           {data.orderSizeDistribution.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                            <Cell
+                              key={`cell-${index}`}
+                              fill={CHART_COLORS[index % CHART_COLORS.length]}
+                            />
                           ))}
                         </Pie>
                         <Tooltip
                           formatter={(v) => `${v} orders`}
-                          contentStyle={{ backgroundColor: "white", border: "1px solid #e2e8f0", borderRadius: "8px", padding: "8px 12px" }}
+                          contentStyle={{
+                            backgroundColor: "white",
+                            border: "1px solid #e2e8f0",
+                            borderRadius: "8px",
+                            padding: "8px 12px",
+                          }}
                         />
                       </PieChart>
                     </ResponsiveContainer>
@@ -2902,35 +4289,58 @@ const handleQuickRange = (days) => {
             )}
 
             {/* Buyers Tab - Show TOTAL values */}
-            {activeTab === 'buyers' && (
+            {activeTab === "buyers" && (
               <div className="space-y-6">
-                <h2 className="text-lg font-bold text-slate-800">Buyer Analysis</h2>
+                <h2 className="text-lg font-bold text-slate-800">
+                  Buyer Analysis
+                </h2>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-slate-200/60 p-4 md:p-6">
-                    <h3 className="text-base font-semibold text-slate-800 mb-3">Top Buyers by Sales</h3>
-                    <p className="text-xs text-slate-400 mb-4">Highest sales revenue buyers</p>
+                    <h3 className="text-base font-semibold text-slate-800 mb-3">
+                      Top Buyers by Sales
+                    </h3>
+                    <p className="text-xs text-slate-400 mb-4">
+                      Highest sales revenue buyers
+                    </p>
                     <BuyerChart data={data.topBuyers} />
                   </div>
                   <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-slate-200/60 p-4 md:p-6">
-                    <h3 className="text-base font-semibold text-slate-800 mb-3">Top Customers by Sales</h3>
-                    <p className="text-xs text-slate-400 mb-4">By sales revenue</p>
+                    <h3 className="text-base font-semibold text-slate-800 mb-3">
+                      Top Customers by Sales
+                    </h3>
+                    <p className="text-xs text-slate-400 mb-4">
+                      By sales revenue
+                    </p>
                     <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2">
                       {data.topCustomers.slice(0, 10).map((customer, index) => (
                         <div key={customer.name}>
                           <div className="flex items-center justify-between text-sm mb-1">
                             <div className="flex items-center gap-2">
-                              <span className="text-xs font-bold text-slate-400 w-5">#{index + 1}</span>
-                              <span className="text-slate-700 truncate max-w-[150px]" title={customer.name}>{customer.name}</span>
+                              <span className="text-xs font-bold text-slate-400 w-5">
+                                #{index + 1}
+                              </span>
+                              <span
+                                className="text-slate-700 truncate max-w-[150px]"
+                                title={customer.name}
+                              >
+                                {customer.name}
+                              </span>
                             </div>
                             <div className="flex items-center gap-3">
-                              <span className="text-[10px] text-slate-400">{customer.orders} orders</span>
-                              <span className="font-semibold text-emerald-600">{formatCompactCurrency(customer.orderValue)}</span>
+                              <span className="text-[10px] text-slate-400">
+                                {customer.orders} orders
+                              </span>
+                              <span className="font-semibold text-emerald-600">
+                                {formatCompactCurrency(customer.orderValue)}
+                              </span>
                             </div>
                           </div>
                           <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
                             <div
                               className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-500"
-                              style={{ width: `${(customer.orderValue / (data.topCustomers[0]?.orderValue || 1)) * 100}%` }}
+                              style={{
+                                width: `${(customer.orderValue / (data.topCustomers[0]?.orderValue || 1)) * 100}%`,
+                              }}
                             />
                           </div>
                         </div>
@@ -2938,22 +4348,34 @@ const handleQuickRange = (days) => {
                     </div>
                   </div>
                   <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-slate-200/60 p-4 md:p-6">
-                    <h3 className="text-base font-semibold text-slate-800 mb-3">Customer Loyalty</h3>
-                    <p className="text-xs text-slate-400 mb-4">Top customers with loyalty scores</p>
+                    <h3 className="text-base font-semibold text-slate-800 mb-3">
+                      Customer Loyalty
+                    </h3>
+                    <p className="text-xs text-slate-400 mb-4">
+                      Top customers with loyalty scores
+                    </p>
                     <div className="space-y-3">
                       {data.customerLoyalty.map((c, index) => (
                         <div key={c.name}>
                           <div className="flex items-center justify-between text-sm mb-1">
-                            <span className="text-slate-700 truncate max-w-[120px]">{c.name}</span>
+                            <span className="text-slate-700 truncate max-w-[120px]">
+                              {c.name}
+                            </span>
                             <div className="flex items-center gap-3">
-                              <span className="text-[10px] text-slate-400">{c.orders} orders</span>
-                              <span className="font-semibold text-emerald-600">{formatCompactCurrency(c.orderValue)}</span>
+                              <span className="text-[10px] text-slate-400">
+                                {c.orders} orders
+                              </span>
+                              <span className="font-semibold text-emerald-600">
+                                {formatCompactCurrency(c.orderValue)}
+                              </span>
                             </div>
                           </div>
                           <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
                             <div
                               className="h-full rounded-full bg-gradient-to-r from-amber-500 to-emerald-500"
-                              style={{ width: `${Math.min(c.loyaltyScore, 100)}%` }}
+                              style={{
+                                width: `${Math.min(c.loyaltyScore, 100)}%`,
+                              }}
                             />
                           </div>
                         </div>
@@ -2961,86 +4383,155 @@ const handleQuickRange = (days) => {
                     </div>
                   </div>
                   <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-slate-200/60 p-4 md:p-6">
-                    <h3 className="text-base font-semibold text-slate-800 mb-3">Customer Segmentation</h3>
-                    <p className="text-xs text-slate-400 mb-4">VIP, Regular & Occasional customers</p>
-                    
+                    <h3 className="text-base font-semibold text-slate-800 mb-3">
+                      Customer Segmentation
+                    </h3>
+                    <p className="text-xs text-slate-400 mb-4">
+                      VIP, Regular & Occasional customers
+                    </p>
+
                     {/* VIP Customers */}
                     <div className="mb-3">
-                      <div className="flex items-center justify-between p-2 bg-purple-50 rounded-lg cursor-pointer hover:bg-purple-100 transition-all" 
-                           onClick={() => {
-                             const vipList = document.getElementById('vip-customers-list');
-                             if (vipList) vipList.classList.toggle('hidden');
-                           }}>
-                        <span className="text-sm font-medium text-purple-700">👑 VIP Customers</span>
+                      <div
+                        className="flex items-center justify-between p-2 bg-purple-50 rounded-lg cursor-pointer hover:bg-purple-100 transition-all"
+                        onClick={() => {
+                          const vipList =
+                            document.getElementById("vip-customers-list");
+                          if (vipList) vipList.classList.toggle("hidden");
+                        }}
+                      >
+                        <span className="text-sm font-medium text-purple-700">
+                          👑 VIP Customers
+                        </span>
                         <div className="flex items-center gap-3">
-                          <span className="text-sm font-bold text-purple-600">{data.customerSegmentation?.vip?.length || 0}</span>
+                          <span className="text-sm font-bold text-purple-600">
+                            {data.customerSegmentation?.vip?.length || 0}
+                          </span>
                           <span className="text-xs text-purple-400">▼</span>
                         </div>
                       </div>
-                      <div id="vip-customers-list" className="mt-2 space-y-1 max-h-[120px] overflow-y-auto">
+                      <div
+                        id="vip-customers-list"
+                        className="mt-2 space-y-1 max-h-[120px] overflow-y-auto"
+                      >
                         {data.customerSegmentation?.vip?.length > 0 ? (
                           data.customerSegmentation.vip.map((customer, idx) => (
-                            <div key={idx} className="flex items-center justify-between text-xs p-1.5 bg-purple-50/50 rounded">
-                              <span className="text-purple-700">{customer.name}</span>
-                              <span className="text-purple-600 font-semibold">{customer.orderValue}</span>
+                            <div
+                              key={idx}
+                              className="flex items-center justify-between text-xs p-1.5 bg-purple-50/50 rounded"
+                            >
+                              <span className="text-purple-700">
+                                {customer.name}
+                              </span>
+                              <span className="text-purple-600 font-semibold">
+                                {customer.orderValue}
+                              </span>
                             </div>
                           ))
                         ) : (
-                          <div className="text-xs text-slate-400 p-2">No VIP customers</div>
+                          <div className="text-xs text-slate-400 p-2">
+                            No VIP customers
+                          </div>
                         )}
                       </div>
                     </div>
 
                     {/* Regular Customers */}
                     <div className="mb-3">
-                      <div className="flex items-center justify-between p-2 bg-blue-50 rounded-lg cursor-pointer hover:bg-blue-100 transition-all"
-                           onClick={() => {
-                             const regularList = document.getElementById('regular-customers-list');
-                             if (regularList) regularList.classList.toggle('hidden');
-                           }}>
-                        <span className="text-sm font-medium text-blue-700">📋 Regular Customers</span>
+                      <div
+                        className="flex items-center justify-between p-2 bg-blue-50 rounded-lg cursor-pointer hover:bg-blue-100 transition-all"
+                        onClick={() => {
+                          const regularList = document.getElementById(
+                            "regular-customers-list",
+                          );
+                          if (regularList)
+                            regularList.classList.toggle("hidden");
+                        }}
+                      >
+                        <span className="text-sm font-medium text-blue-700">
+                          📋 Regular Customers
+                        </span>
                         <div className="flex items-center gap-3">
-                          <span className="text-sm font-bold text-blue-600">{data.customerSegmentation?.regular?.length || 0}</span>
+                          <span className="text-sm font-bold text-blue-600">
+                            {data.customerSegmentation?.regular?.length || 0}
+                          </span>
                           <span className="text-xs text-blue-400">▼</span>
                         </div>
                       </div>
-                      <div id="regular-customers-list" className="mt-2 space-y-1 max-h-[120px] overflow-y-auto">
+                      <div
+                        id="regular-customers-list"
+                        className="mt-2 space-y-1 max-h-[120px] overflow-y-auto"
+                      >
                         {data.customerSegmentation?.regular?.length > 0 ? (
-                          data.customerSegmentation.regular.map((customer, idx) => (
-                            <div key={idx} className="flex items-center justify-between text-xs p-1.5 bg-blue-50/50 rounded">
-                              <span className="text-blue-700">{customer.name}</span>
-                              <span className="text-blue-600 font-semibold">{customer.orderValue}</span>
-                            </div>
-                          ))
+                          data.customerSegmentation.regular.map(
+                            (customer, idx) => (
+                              <div
+                                key={idx}
+                                className="flex items-center justify-between text-xs p-1.5 bg-blue-50/50 rounded"
+                              >
+                                <span className="text-blue-700">
+                                  {customer.name}
+                                </span>
+                                <span className="text-blue-600 font-semibold">
+                                  {customer.orderValue}
+                                </span>
+                              </div>
+                            ),
+                          )
                         ) : (
-                          <div className="text-xs text-slate-400 p-2">No regular customers</div>
+                          <div className="text-xs text-slate-400 p-2">
+                            No regular customers
+                          </div>
                         )}
                       </div>
                     </div>
 
                     {/* Occasional Customers */}
                     <div className="mb-3">
-                      <div className="flex items-center justify-between p-2 bg-slate-50 rounded-lg cursor-pointer hover:bg-slate-100 transition-all"
-                           onClick={() => {
-                             const occasionalList = document.getElementById('occasional-customers-list');
-                             if (occasionalList) occasionalList.classList.toggle('hidden');
-                           }}>
-                        <span className="text-sm font-medium text-slate-700">🔄 Occasional Customers</span>
+                      <div
+                        className="flex items-center justify-between p-2 bg-slate-50 rounded-lg cursor-pointer hover:bg-slate-100 transition-all"
+                        onClick={() => {
+                          const occasionalList = document.getElementById(
+                            "occasional-customers-list",
+                          );
+                          if (occasionalList)
+                            occasionalList.classList.toggle("hidden");
+                        }}
+                      >
+                        <span className="text-sm font-medium text-slate-700">
+                          🔄 Occasional Customers
+                        </span>
                         <div className="flex items-center gap-3">
-                          <span className="text-sm font-bold text-slate-600">{data.customerSegmentation?.occasional?.length || 0}</span>
+                          <span className="text-sm font-bold text-slate-600">
+                            {data.customerSegmentation?.occasional?.length || 0}
+                          </span>
                           <span className="text-xs text-slate-400">▼</span>
                         </div>
                       </div>
-                      <div id="occasional-customers-list" className="mt-2 space-y-1 max-h-[120px] overflow-y-auto">
+                      <div
+                        id="occasional-customers-list"
+                        className="mt-2 space-y-1 max-h-[120px] overflow-y-auto"
+                      >
                         {data.customerSegmentation?.occasional?.length > 0 ? (
-                          data.customerSegmentation.occasional.map((customer, idx) => (
-                            <div key={idx} className="flex items-center justify-between text-xs p-1.5 bg-slate-50/50 rounded">
-                              <span className="text-slate-700">{customer.name}</span>
-                              <span className="text-slate-600 font-semibold">{customer.orderValue}</span>
-                            </div>
-                          ))
+                          data.customerSegmentation.occasional.map(
+                            (customer, idx) => (
+                              <div
+                                key={idx}
+                                className="flex items-center justify-between text-xs p-1.5 bg-slate-50/50 rounded"
+                              >
+                                <span className="text-slate-700">
+                                  {customer.name}
+                                </span>
+                                <span className="text-slate-600 font-semibold">
+                                  {customer.orderValue}
+                                </span>
+                              </div>
+                            ),
+                          )
                         ) : (
-                          <div className="text-xs text-slate-400 p-2">No occasional customers</div>
+                          <div className="text-xs text-slate-400 p-2">
+                            No occasional customers
+                          </div>
                         )}
                       </div>
                     </div>
@@ -3054,21 +4545,31 @@ const handleQuickRange = (days) => {
             )}
 
             {/* Funnel Tab */}
-            {activeTab === 'funnel' && (
+            {activeTab === "funnel" && (
               <div className="space-y-6">
-                <h2 className="text-lg font-bold text-slate-800">Order Funnel Analysis</h2>
+                <h2 className="text-lg font-bold text-slate-800">
+                  Order Funnel Analysis
+                </h2>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-slate-200/60 p-4 md:p-6">
-                    <h3 className="text-base font-semibold text-slate-800 mb-3">Order Funnel Stages</h3>
-                    <p className="text-xs text-slate-400 mb-4">Order → Delivered → Pending</p>
+                    <h3 className="text-base font-semibold text-slate-800 mb-3">
+                      Order Funnel Stages
+                    </h3>
+                    <p className="text-xs text-slate-400 mb-4">
+                      Order → Delivered → Pending
+                    </p>
                     <FunnelChartComponent data={data.orderFunnelData} />
                     <div className="mt-4 text-xs text-slate-500 text-center">
                       Overall Delivery Rate: {data.deliveryPercent.toFixed(2)}%
                     </div>
                   </div>
                   <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-slate-200/60 p-4 md:p-6">
-                    <h3 className="text-base font-semibold text-slate-800 mb-3">Order Status Distribution</h3>
-                    <p className="text-xs text-slate-400 mb-4">Current order status breakdown</p>
+                    <h3 className="text-base font-semibold text-slate-800 mb-3">
+                      Order Status Distribution
+                    </h3>
+                    <p className="text-xs text-slate-400 mb-4">
+                      Current order status breakdown
+                    </p>
                     <ResponsiveContainer width="100%" height={300}>
                       <PieChart>
                         <Pie
@@ -3078,7 +4579,9 @@ const handleQuickRange = (days) => {
                           innerRadius={60}
                           outerRadius={100}
                           dataKey="value"
-                          label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                          label={({ name, percent }) =>
+                            `${name} ${(percent * 100).toFixed(0)}%`
+                          }
                           labelLine={true}
                         >
                           {data.completionData.map((entry, index) => (
@@ -3087,27 +4590,56 @@ const handleQuickRange = (days) => {
                         </Pie>
                         <Tooltip
                           formatter={(v) => `${v} orders`}
-                          contentStyle={{ backgroundColor: "white", border: "1px solid #e2e8f0", borderRadius: "8px", padding: "8px 12px" }}
+                          contentStyle={{
+                            backgroundColor: "white",
+                            border: "1px solid #e2e8f0",
+                            borderRadius: "8px",
+                            padding: "8px 12px",
+                          }}
                         />
                       </PieChart>
                     </ResponsiveContainer>
                   </div>
                   <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-slate-200/60 p-4 md:p-6 lg:col-span-2">
-                    <h3 className="text-base font-semibold text-slate-800 mb-3">Funnel Efficiency Metrics</h3>
+                    <h3 className="text-base font-semibold text-slate-800 mb-3">
+                      Funnel Efficiency Metrics
+                    </h3>
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                       <div className="bg-indigo-50 rounded-xl p-4 text-center">
-                        <p className="text-xs text-slate-400">Orders Received</p>
-                        <p className="text-2xl font-bold text-indigo-600">{formatNumber(data.totals.orderQty)}</p>
+                        <p className="text-xs text-slate-400">
+                          Orders Received
+                        </p>
+                        <p className="text-2xl font-bold text-indigo-600">
+                          {formatNumber(data.totals.orderQty)}
+                        </p>
                       </div>
                       <div className="bg-emerald-50 rounded-xl p-4 text-center">
                         <p className="text-xs text-slate-400">Delivered</p>
-                        <p className="text-2xl font-bold text-emerald-600">{formatNumber(data.totals.saleQty)}</p>
-                        <p className="text-xs text-emerald-500">{((data.totals.saleQty / (data.totals.orderQty || 1)) * 100).toFixed(0)}% conversion</p>
+                        <p className="text-2xl font-bold text-emerald-600">
+                          {formatNumber(data.totals.saleQty)}
+                        </p>
+                        <p className="text-xs text-emerald-500">
+                          {(
+                            (data.totals.saleQty /
+                              (data.totals.orderQty || 1)) *
+                            100
+                          ).toFixed(0)}
+                          % conversion
+                        </p>
                       </div>
                       <div className="bg-red-50 rounded-xl p-4 text-center">
                         <p className="text-xs text-slate-400">Pending</p>
-                        <p className="text-2xl font-bold text-red-600">{formatNumber(data.totals.balanceQty)}</p>
-                        <p className="text-xs text-red-500">{((data.totals.balanceQty / (data.totals.orderQty || 1)) * 100).toFixed(0)}% pending</p>
+                        <p className="text-2xl font-bold text-red-600">
+                          {formatNumber(data.totals.balanceQty)}
+                        </p>
+                        <p className="text-xs text-red-500">
+                          {(
+                            (data.totals.balanceQty /
+                              (data.totals.orderQty || 1)) *
+                            100
+                          ).toFixed(0)}
+                          % pending
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -3116,22 +4648,29 @@ const handleQuickRange = (days) => {
             )}
 
             {/* Channels Tab */}
-            {activeTab === 'channels' && (
+            {activeTab === "channels" && (
               <div className="space-y-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h2 className="text-lg font-bold text-slate-800">Sales Person Performance</h2>
-                    <p className="text-xs text-slate-400">Order Value vs Sales Revenue by Sales Person</p>
+                    <h2 className="text-lg font-bold text-slate-800">
+                      Sales Person Performance
+                    </h2>
+                    <p className="text-xs text-slate-400">
+                      Order Value vs Sales Revenue by Sales Person
+                    </p>
                   </div>
                   <div className="flex items-center gap-4 text-xs">
                     <span className="flex items-center gap-1 text-indigo-600">
-                      <span className="w-2 h-2 rounded-full bg-indigo-500"></span>Order Value
+                      <span className="w-2 h-2 rounded-full bg-indigo-500"></span>
+                      Order Value
                     </span>
                     <span className="flex items-center gap-1 text-emerald-600">
-                      <span className="w-2 h-2 rounded-full bg-emerald-500"></span>Sales Revenue
+                      <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                      Sales Revenue
                     </span>
                     <span className="flex items-center gap-1 text-red-600">
-                      <span className="w-2 h-2 rounded-full bg-red-500"></span>Leakage
+                      <span className="w-2 h-2 rounded-full bg-red-500"></span>
+                      Leakage
                     </span>
                   </div>
                 </div>
@@ -3139,19 +4678,37 @@ const handleQuickRange = (days) => {
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   {/* Revenue Distribution - No overlapping labels */}
                   <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-slate-200/60 p-4 md:p-6">
-                    <h3 className="text-base font-semibold text-slate-800 mb-3">Revenue Distribution</h3>
-                    <p className="text-xs text-slate-400 mb-4">Sales revenue distribution by sales person</p>
-                    <RevenueDistributionPie data={data.channelPerformanceData} />
+                    <h3 className="text-base font-semibold text-slate-800 mb-3">
+                      Revenue Distribution
+                    </h3>
+                    <p className="text-xs text-slate-400 mb-4">
+                      Sales revenue distribution by sales person
+                    </p>
+                    <RevenueDistributionPie
+                      data={data.channelPerformanceData}
+                    />
                     <div className="mt-4 text-xs text-slate-500 text-center">
-                      Total Revenue: {formatCurrency(data.channelPerformanceData.reduce((sum, d) => sum + parseFloat(d.revenue.replace(/[$,]/g, '')), 0))}
+                      Total Revenue:{" "}
+                      {formatCurrency(
+                        data.channelPerformanceData.reduce(
+                          (sum, d) =>
+                            sum + parseFloat(d.revenue.replace(/[$,]/g, "")),
+                          0,
+                        ),
+                      )}
                     </div>
                   </div>
 
                   {/* FIXED: Order vs Sales Comparison - Only Order Value & Sales Revenue */}
                   <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-slate-200/60 p-4 md:p-6">
-                    <h3 className="text-base font-semibold text-slate-800 mb-3">Order vs Sales Comparison</h3>
-                    <p className="text-xs text-slate-400 mb-4">Bar chart showing Order Value vs Sales Revenue</p>
-                    {data.channelPerformanceData && data.channelPerformanceData.length > 0 ? (
+                    <h3 className="text-base font-semibold text-slate-800 mb-3">
+                      Order vs Sales Comparison
+                    </h3>
+                    <p className="text-xs text-slate-400 mb-4">
+                      Bar chart showing Order Value vs Sales Revenue
+                    </p>
+                    {data.channelPerformanceData &&
+                    data.channelPerformanceData.length > 0 ? (
                       <OrderVsSalesChart data={data.channelPerformanceData} />
                     ) : (
                       <div className="h-[280px] flex items-center justify-center text-slate-400 flex-col gap-2">
@@ -3163,27 +4720,44 @@ const handleQuickRange = (days) => {
 
                   {/* FIXED: Sales Performance Matrix - Sort by TOTAL, tier by AVG */}
                   <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-slate-200/60 p-4 md:p-6 lg:col-span-2">
-                    <h3 className="text-base font-semibold text-slate-800 mb-3">Sales Performance Matrix</h3>
-                    <p className="text-xs text-slate-400 mb-4">Detailed breakdown with Order Value, Sales Revenue & Leakage</p>
-                    <ChannelPerformanceMatrix data={data.channelPerformanceData} />
+                    <h3 className="text-base font-semibold text-slate-800 mb-3">
+                      Sales Performance Matrix
+                    </h3>
+                    <p className="text-xs text-slate-400 mb-4">
+                      Detailed breakdown with Order Value, Sales Revenue &
+                      Leakage
+                    </p>
+                    <ChannelPerformanceMatrix
+                      data={data.channelPerformanceData}
+                    />
                   </div>
                 </div>
               </div>
             )}
 
             {/* Analytics Tab */}
-            {activeTab === 'analytics' && (
+            {activeTab === "analytics" && (
               <div className="space-y-6">
-                <h2 className="text-lg font-bold text-slate-800">Advanced Analytics</h2>
+                <h2 className="text-lg font-bold text-slate-800">
+                  Advanced Analytics
+                </h2>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-slate-200/60 p-4 md:p-6">
-                    <h3 className="text-base font-semibold text-slate-800 mb-3">Order Funnel Analysis</h3>
-                    <p className="text-xs text-slate-400 mb-4">Order → Delivered → Pending</p>
+                    <h3 className="text-base font-semibold text-slate-800 mb-3">
+                      Order Funnel Analysis
+                    </h3>
+                    <p className="text-xs text-slate-400 mb-4">
+                      Order → Delivered → Pending
+                    </p>
                     <FunnelChartComponent data={data.orderFunnelData} />
                   </div>
                   <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-slate-200/60 p-4 md:p-6">
-                    <h3 className="text-base font-semibold text-slate-800 mb-3">Order Completion Status</h3>
-                    <p className="text-xs text-slate-400 mb-4">Current order status distribution</p>
+                    <h3 className="text-base font-semibold text-slate-800 mb-3">
+                      Order Completion Status
+                    </h3>
+                    <p className="text-xs text-slate-400 mb-4">
+                      Current order status distribution
+                    </p>
                     <ResponsiveContainer width="100%" height={280}>
                       <PieChart>
                         <Pie
@@ -3193,7 +4767,9 @@ const handleQuickRange = (days) => {
                           innerRadius={60}
                           outerRadius={90}
                           dataKey="value"
-                          label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                          label={({ name, percent }) =>
+                            `${name} ${(percent * 100).toFixed(0)}%`
+                          }
                           labelLine={false}
                         >
                           {data.completionData.map((entry, index) => (
@@ -3202,110 +4778,221 @@ const handleQuickRange = (days) => {
                         </Pie>
                         <Tooltip
                           formatter={(v) => `${v} orders`}
-                          contentStyle={{ backgroundColor: "white", border: "1px solid #e2e8f0", borderRadius: "8px", padding: "8px 12px" }}
+                          contentStyle={{
+                            backgroundColor: "white",
+                            border: "1px solid #e2e8f0",
+                            borderRadius: "8px",
+                            padding: "8px 12px",
+                          }}
                         />
                       </PieChart>
                     </ResponsiveContainer>
                   </div>
-                  
+
                   {/* Monthly Growth Rate - Shows ALL months */}
                   <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-slate-200/60 p-4 md:p-6">
-                    <h3 className="text-base font-semibold text-slate-800 mb-3">Monthly Growth Rate</h3>
-                    <p className="text-xs text-slate-400 mb-4">Month-over-month growth percentage</p>
+                    <h3 className="text-base font-semibold text-slate-800 mb-3">
+                      Monthly Growth Rate
+                    </h3>
+                    <p className="text-xs text-slate-400 mb-4">
+                      Month-over-month growth percentage
+                    </p>
                     {data.growthData && data.growthData.length >= 2 ? (
                       <ResponsiveContainer width="100%" height={280}>
-                        <BarChart data={data.growthData} margin={{ top: 30, right: 30, left: 20, bottom: 20 }}>
+                        <BarChart
+                          data={data.growthData}
+                          margin={{ top: 30, right: 30, left: 20, bottom: 20 }}
+                        >
                           <CartesianGrid strokeDasharray="3 3" />
                           <XAxis dataKey="month" />
                           <YAxis tickFormatter={(v) => `${v.toFixed(0)}%`} />
                           <Tooltip
                             formatter={(v) => `${v.toFixed(1)}%`}
-                            contentStyle={{ backgroundColor: "white", border: "1px solid #e2e8f0", borderRadius: "8px", padding: "8px 12px" }}
+                            contentStyle={{
+                              backgroundColor: "white",
+                              border: "1px solid #e2e8f0",
+                              borderRadius: "8px",
+                              padding: "8px 12px",
+                            }}
                           />
                           <Legend />
-                          <Bar dataKey="salesGrowth" name="Sales Growth %" radius={[4, 4, 0, 0]}>
+                          <Bar
+                            dataKey="salesGrowth"
+                            name="Sales Growth %"
+                            radius={[4, 4, 0, 0]}
+                          >
                             {data.growthData.map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={entry.salesGrowth >= 0 ? COLORS.success : COLORS.danger} />
+                              <Cell
+                                key={`cell-${index}`}
+                                fill={
+                                  entry.salesGrowth >= 0
+                                    ? COLORS.success
+                                    : COLORS.danger
+                                }
+                              />
                             ))}
                           </Bar>
-                          <Bar dataKey="orderGrowth" name="Order Growth %" radius={[4, 4, 0, 0]} fill={COLORS.primary}>
+                          <Bar
+                            dataKey="orderGrowth"
+                            name="Order Growth %"
+                            radius={[4, 4, 0, 0]}
+                            fill={COLORS.primary}
+                          >
                             {data.growthData.map((entry, index) => (
-                              <Cell key={`cell-order-${index}`} fill={entry.orderGrowth >= 0 ? COLORS.indigo : COLORS.rose} />
+                              <Cell
+                                key={`cell-order-${index}`}
+                                fill={
+                                  entry.orderGrowth >= 0
+                                    ? COLORS.indigo
+                                    : COLORS.rose
+                                }
+                              />
                             ))}
                           </Bar>
-                          <ReferenceLine y={0} stroke={COLORS.gray} strokeDasharray="3 3" />
+                          <ReferenceLine
+                            y={0}
+                            stroke={COLORS.gray}
+                            strokeDasharray="3 3"
+                          />
                         </BarChart>
                       </ResponsiveContainer>
-                    ) : data.weeklyGrowthData && data.weeklyGrowthData.length >= 2 ? (
+                    ) : data.weeklyGrowthData &&
+                      data.weeklyGrowthData.length >= 2 ? (
                       <ResponsiveContainer width="100%" height={280}>
-                        <BarChart data={data.weeklyGrowthData} margin={{ top: 30, right: 30, left: 20, bottom: 20 }}>
+                        <BarChart
+                          data={data.weeklyGrowthData}
+                          margin={{ top: 30, right: 30, left: 20, bottom: 20 }}
+                        >
                           <CartesianGrid strokeDasharray="3 3" />
                           <XAxis dataKey="month" />
                           <YAxis tickFormatter={(v) => `${v.toFixed(0)}%`} />
                           <Tooltip
                             formatter={(v) => `${v.toFixed(1)}%`}
-                            contentStyle={{ backgroundColor: "white", border: "1px solid #e2e8f0", borderRadius: "8px", padding: "8px 12px" }}
+                            contentStyle={{
+                              backgroundColor: "white",
+                              border: "1px solid #e2e8f0",
+                              borderRadius: "8px",
+                              padding: "8px 12px",
+                            }}
                           />
                           <Legend />
-                          <Bar dataKey="salesGrowth" name="Weekly Growth %" radius={[4, 4, 0, 0]}>
+                          <Bar
+                            dataKey="salesGrowth"
+                            name="Weekly Growth %"
+                            radius={[4, 4, 0, 0]}
+                          >
                             {data.weeklyGrowthData.map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={entry.salesGrowth >= 0 ? COLORS.success : COLORS.danger} />
+                              <Cell
+                                key={`cell-${index}`}
+                                fill={
+                                  entry.salesGrowth >= 0
+                                    ? COLORS.success
+                                    : COLORS.danger
+                                }
+                              />
                             ))}
                           </Bar>
-                          <ReferenceLine y={0} stroke={COLORS.gray} strokeDasharray="3 3" />
+                          <ReferenceLine
+                            y={0}
+                            stroke={COLORS.gray}
+                            strokeDasharray="3 3"
+                          />
                         </BarChart>
                       </ResponsiveContainer>
-                    ) : data.dailyGrowthData && data.dailyGrowthData.length >= 3 ? (
+                    ) : data.dailyGrowthData &&
+                      data.dailyGrowthData.length >= 3 ? (
                       <ResponsiveContainer width="100%" height={280}>
-                        <BarChart data={data.dailyGrowthData} margin={{ top: 30, right: 30, left: 20, bottom: 20 }}>
+                        <BarChart
+                          data={data.dailyGrowthData}
+                          margin={{ top: 30, right: 30, left: 20, bottom: 20 }}
+                        >
                           <CartesianGrid strokeDasharray="3 3" />
                           <XAxis dataKey="month" />
                           <YAxis tickFormatter={(v) => `${v.toFixed(0)}%`} />
                           <Tooltip
                             formatter={(v) => `${v.toFixed(1)}%`}
-                            contentStyle={{ backgroundColor: "white", border: "1px solid #e2e8f0", borderRadius: "8px", padding: "8px 12px" }}
+                            contentStyle={{
+                              backgroundColor: "white",
+                              border: "1px solid #e2e8f0",
+                              borderRadius: "8px",
+                              padding: "8px 12px",
+                            }}
                           />
                           <Legend />
-                          <Bar dataKey="salesGrowth" name="3-Day Growth %" radius={[4, 4, 0, 0]}>
+                          <Bar
+                            dataKey="salesGrowth"
+                            name="3-Day Growth %"
+                            radius={[4, 4, 0, 0]}
+                          >
                             {data.dailyGrowthData.map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={entry.salesGrowth >= 0 ? COLORS.success : COLORS.danger} />
+                              <Cell
+                                key={`cell-${index}`}
+                                fill={
+                                  entry.salesGrowth >= 0
+                                    ? COLORS.success
+                                    : COLORS.danger
+                                }
+                              />
                             ))}
                           </Bar>
-                          <ReferenceLine y={0} stroke={COLORS.gray} strokeDasharray="3 3" />
+                          <ReferenceLine
+                            y={0}
+                            stroke={COLORS.gray}
+                            strokeDasharray="3 3"
+                          />
                         </BarChart>
                       </ResponsiveContainer>
                     ) : (
                       <div className="h-[280px] flex items-center justify-center text-slate-400 flex-col gap-2">
                         <div className="text-4xl">📊</div>
                         <p>Not enough data for growth comparison</p>
-                        <p className="text-xs">Need at least 2 months, 2 weeks, or 3 days of data</p>
+                        <p className="text-xs">
+                          Need at least 2 months, 2 weeks, or 3 days of data
+                        </p>
                       </div>
                     )}
                   </div>
-                  
+
                   <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-slate-200/60 p-4 md:p-6">
-                    <h3 className="text-base font-semibold text-slate-800 mb-3">Correlation Matrix</h3>
-                    <p className="text-xs text-slate-400 mb-4">Key metric relationships</p>
+                    <h3 className="text-base font-semibold text-slate-800 mb-3">
+                      Correlation Matrix
+                    </h3>
+                    <p className="text-xs text-slate-400 mb-4">
+                      Key metric relationships
+                    </p>
                     <div className="space-y-3">
                       {data.correlationData.map((item, index) => (
                         <div key={index} className="bg-slate-50 rounded-lg p-3">
                           <div className="flex items-center justify-between">
-                            <span className="text-sm text-slate-600">{item.name}</span>
+                            <span className="text-sm text-slate-600">
+                              {item.name}
+                            </span>
                             <div className="flex items-center gap-3 flex-1 ml-4">
-                              <div 
+                              <div
                                 className="flex-1 h-2 rounded-full overflow-hidden"
-                                style={{ backgroundColor: item.value > 0 ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)' }}
+                                style={{
+                                  backgroundColor:
+                                    item.value > 0
+                                      ? "rgba(16, 185, 129, 0.2)"
+                                      : "rgba(239, 68, 68, 0.2)",
+                                }}
                               >
-                                <div 
+                                <div
                                   className="h-full rounded-full transition-all duration-500"
-                                  style={{ 
+                                  style={{
                                     width: `${Math.min(Math.abs(item.value) * 100, 100)}%`,
-                                    backgroundColor: item.value > 0 ? COLORS.success : COLORS.danger
+                                    backgroundColor:
+                                      item.value > 0
+                                        ? COLORS.success
+                                        : COLORS.danger,
                                   }}
                                 />
                               </div>
-                              <span className={`text-xs font-medium min-w-[40px] ${item.value > 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                                {item.value > 0 ? '+' : ''}{item.value.toFixed(2)}
+                              <span
+                                className={`text-xs font-medium min-w-[40px] ${item.value > 0 ? "text-emerald-600" : "text-red-600"}`}
+                              >
+                                {item.value > 0 ? "+" : ""}
+                                {item.value.toFixed(2)}
                               </span>
                             </div>
                           </div>
@@ -3314,30 +5001,65 @@ const handleQuickRange = (days) => {
                     </div>
                   </div>
                   <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-slate-200/60 p-4 md:p-6">
-                    <h3 className="text-base font-semibold text-slate-800 mb-3">Peak Order Hours</h3>
-                    <p className="text-xs text-slate-400 mb-4">Order volume and sales by hour</p>
+                    <h3 className="text-base font-semibold text-slate-800 mb-3">
+                      Peak Order Hours
+                    </h3>
+                    <p className="text-xs text-slate-400 mb-4">
+                      Order volume and sales by hour
+                    </p>
                     <ResponsiveContainer width="100%" height={250}>
-                      <ComposedChart data={data.peakHoursData} margin={{ top: 10, right: 10, left: 0, bottom: 5 }}>
+                      <ComposedChart
+                        data={data.peakHoursData}
+                        margin={{ top: 10, right: 10, left: 0, bottom: 5 }}
+                      >
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis dataKey="hour" tick={{ fontSize: 8 }} />
                         <YAxis yAxisId="left" />
-                        <YAxis yAxisId="right" orientation="right" tickFormatter={(v) => formatCompactCurrency(v)} />
+                        <YAxis
+                          yAxisId="right"
+                          orientation="right"
+                          tickFormatter={(v) => formatCompactCurrency(v)}
+                        />
                         <Tooltip
                           formatter={(v, name) => {
-                            if (name === 'Sales Revenue') return formatCurrency(v);
+                            if (name === "Sales Revenue")
+                              return formatCurrency(v);
                             return `${v} orders`;
                           }}
-                          contentStyle={{ backgroundColor: "white", border: "1px solid #e2e8f0", borderRadius: "8px", padding: "8px 12px" }}
+                          contentStyle={{
+                            backgroundColor: "white",
+                            border: "1px solid #e2e8f0",
+                            borderRadius: "8px",
+                            padding: "8px 12px",
+                          }}
                         />
                         <Legend />
-                        <Bar dataKey="orders" fill={COLORS.primary} name="Orders" yAxisId="left" radius={[4, 4, 0, 0]} />
-                        <Line type="monotone" dataKey="saleRevenue" stroke={COLORS.success} strokeWidth={2} dot={{ r: 3 }} name="Sales Revenue" yAxisId="right" />
+                        <Bar
+                          dataKey="orders"
+                          fill={COLORS.primary}
+                          name="Orders"
+                          yAxisId="left"
+                          radius={[4, 4, 0, 0]}
+                        />
+                        <Line
+                          type="monotone"
+                          dataKey="saleRevenue"
+                          stroke={COLORS.success}
+                          strokeWidth={2}
+                          dot={{ r: 3 }}
+                          name="Sales Revenue"
+                          yAxisId="right"
+                        />
                       </ComposedChart>
                     </ResponsiveContainer>
                   </div>
                   <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-slate-200/60 p-4 md:p-6">
-                    <h3 className="text-base font-semibold text-slate-800 mb-3">Revenue Leakage</h3>
-                    <p className="text-xs text-slate-400 mb-4">Revenue breakdown by delivery status</p>
+                    <h3 className="text-base font-semibold text-slate-800 mb-3">
+                      Revenue Leakage
+                    </h3>
+                    <p className="text-xs text-slate-400 mb-4">
+                      Revenue breakdown by delivery status
+                    </p>
                     <ResponsiveContainer width="100%" height={250}>
                       <PieChart>
                         <Pie
@@ -3347,7 +5069,9 @@ const handleQuickRange = (days) => {
                           innerRadius={50}
                           outerRadius={90}
                           dataKey="value"
-                          label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                          label={({ name, percent }) =>
+                            `${name} ${(percent * 100).toFixed(0)}%`
+                          }
                           labelLine={false}
                         >
                           {data.revenueLeakage.map((entry, index) => (
@@ -3356,7 +5080,12 @@ const handleQuickRange = (days) => {
                         </Pie>
                         <Tooltip
                           formatter={(v) => formatCurrency(v)}
-                          contentStyle={{ backgroundColor: "white", border: "1px solid #e2e8f0", borderRadius: "8px", padding: "8px 12px" }}
+                          contentStyle={{
+                            backgroundColor: "white",
+                            border: "1px solid #e2e8f0",
+                            borderRadius: "8px",
+                            padding: "8px 12px",
+                          }}
                         />
                       </PieChart>
                     </ResponsiveContainer>
@@ -3366,63 +5095,160 @@ const handleQuickRange = (days) => {
             )}
 
             {/* Predictive Tab */}
-            {activeTab === 'predictive' && (
+            {activeTab === "predictive" && (
               <div className="space-y-6">
-                <h2 className="text-lg font-bold text-slate-800">Predictive Analytics</h2>
+                <h2 className="text-lg font-bold text-slate-800">
+                  Predictive Analytics
+                </h2>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-slate-200/60 p-4 md:p-6 lg:col-span-2">
-                    <h3 className="text-base font-semibold text-slate-800 mb-3">Sales Revenue Forecast</h3>
-                    <p className="text-xs text-slate-400 mb-4">3-month prediction based on historical sales trends</p>
+                    <h3 className="text-base font-semibold text-slate-800 mb-3">
+                      Sales Revenue Forecast
+                    </h3>
+                    <p className="text-xs text-slate-400 mb-4">
+                      3-month prediction based on historical sales trends
+                    </p>
                     <PredictionChart data={data.monthlyData} />
                   </div>
                   <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-slate-200/60 p-4 md:p-6">
-                    <h3 className="text-base font-semibold text-slate-800 mb-3">Seasonal Pattern</h3>
-                    <p className="text-xs text-slate-400 mb-4">Monthly recurring sales patterns</p>
+                    <h3 className="text-base font-semibold text-slate-800 mb-3">
+                      Seasonal Pattern
+                    </h3>
+                    <p className="text-xs text-slate-400 mb-4">
+                      Monthly recurring sales patterns
+                    </p>
                     <ResponsiveContainer width="100%" height={280}>
-                      <LineChart data={data.seasonalData} margin={{ top: 10, right: 10, left: 0, bottom: 5 }}>
+                      <LineChart
+                        data={data.seasonalData}
+                        margin={{ top: 10, right: 10, left: 0, bottom: 5 }}
+                      >
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis dataKey="month" />
-                        <YAxis tickFormatter={(v) => formatCompactCurrency(v)} />
-                        <Tooltip formatter={(v) => formatCurrency(v)} contentStyle={{ backgroundColor: "white", border: "1px solid #e2e8f0", borderRadius: "8px", padding: "8px 12px" }} />
-                        <Line type="monotone" dataKey="value" stroke={COLORS.emerald} strokeWidth={2} dot={{ fill: COLORS.emerald, r: 4 }} />
-                        <ReferenceLine y={data.seasonalData.reduce((sum, d) => sum + d.value, 0) / (data.seasonalData.length || 1)} stroke={COLORS.warning} strokeDasharray="3 3" label="Avg" />
+                        <YAxis
+                          tickFormatter={(v) => formatCompactCurrency(v)}
+                        />
+                        <Tooltip
+                          formatter={(v) => formatCurrency(v)}
+                          contentStyle={{
+                            backgroundColor: "white",
+                            border: "1px solid #e2e8f0",
+                            borderRadius: "8px",
+                            padding: "8px 12px",
+                          }}
+                        />
+                        <Line
+                          type="monotone"
+                          dataKey="value"
+                          stroke={COLORS.emerald}
+                          strokeWidth={2}
+                          dot={{ fill: COLORS.emerald, r: 4 }}
+                        />
+                        <ReferenceLine
+                          y={
+                            data.seasonalData.reduce(
+                              (sum, d) => sum + d.value,
+                              0,
+                            ) / (data.seasonalData.length || 1)
+                          }
+                          stroke={COLORS.warning}
+                          strokeDasharray="3 3"
+                          label="Avg"
+                        />
                       </LineChart>
                     </ResponsiveContainer>
                   </div>
                   <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-slate-200/60 p-4 md:p-6">
-                    <h3 className="text-base font-semibold text-slate-800 mb-3">Marketing Performance Scatter</h3>
-                    <p className="text-xs text-slate-400 mb-4">Orders vs Sales Revenue by sales person</p>
+                    <h3 className="text-base font-semibold text-slate-800 mb-3">
+                      Marketing Performance Scatter
+                    </h3>
+                    <p className="text-xs text-slate-400 mb-4">
+                      Orders vs Sales Revenue by sales person
+                    </p>
                     <ResponsiveContainer width="100%" height={280}>
-                      <ScatterChart margin={{ top: 10, right: 10, bottom: 10, left: 10 }}>
+                      <ScatterChart
+                        margin={{ top: 10, right: 10, bottom: 10, left: 10 }}
+                      >
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis type="number" dataKey="x" name="Orders" />
-                        <YAxis type="number" dataKey="y" name="Sales Revenue" tickFormatter={(v) => formatCompactCurrency(v)} />
+                        <YAxis
+                          type="number"
+                          dataKey="y"
+                          name="Sales Revenue"
+                          tickFormatter={(v) => formatCompactCurrency(v)}
+                        />
                         <ZAxis type="number" dataKey="z" range={[50, 400]} />
                         <Tooltip
                           formatter={(v) => formatCurrency(v)}
-                          contentStyle={{ backgroundColor: "white", border: "1px solid #e2e8f0", borderRadius: "8px", padding: "8px 12px" }}
+                          contentStyle={{
+                            backgroundColor: "white",
+                            border: "1px solid #e2e8f0",
+                            borderRadius: "8px",
+                            padding: "8px 12px",
+                          }}
                         />
-                        <Scatter name="Sales Persons" data={data.scatterData} fill={COLORS.primary} shape="circle" />
+                        <Scatter
+                          name="Sales Persons"
+                          data={data.scatterData}
+                          fill={COLORS.primary}
+                          shape="circle"
+                        />
                       </ScatterChart>
                     </ResponsiveContainer>
                   </div>
                   <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-slate-200/60 p-4 md:p-6 lg:col-span-2">
-                    <h3 className="text-base font-semibold text-slate-800 mb-3">Year-over-Year Comparison</h3>
-                    <p className="text-xs text-slate-400 mb-4">Current year vs last year sales performance</p>
+                    <h3 className="text-base font-semibold text-slate-800 mb-3">
+                      Year-over-Year Comparison
+                    </h3>
+                    <p className="text-xs text-slate-400 mb-4">
+                      Current year vs last year sales performance
+                    </p>
                     <ResponsiveContainer width="100%" height={250}>
-                      <ComposedChart data={data.yoyComparison} margin={{ top: 10, right: 10, left: 0, bottom: 5 }}>
+                      <ComposedChart
+                        data={data.yoyComparison}
+                        margin={{ top: 10, right: 10, left: 0, bottom: 5 }}
+                      >
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis dataKey="month" />
-                        <YAxis yAxisId="left" tickFormatter={(v) => formatCompactCurrency(v)} />
-                        <YAxis yAxisId="right" orientation="right" tickFormatter={(v) => `${v.toFixed(0)}%`} />
+                        <YAxis
+                          yAxisId="left"
+                          tickFormatter={(v) => formatCompactCurrency(v)}
+                        />
+                        <YAxis
+                          yAxisId="right"
+                          orientation="right"
+                          tickFormatter={(v) => `${v.toFixed(0)}%`}
+                        />
                         <Tooltip
                           formatter={(v) => formatCurrency(v)}
-                          contentStyle={{ backgroundColor: "white", border: "1px solid #e2e8f0", borderRadius: "8px", padding: "8px 12px" }}
+                          contentStyle={{
+                            backgroundColor: "white",
+                            border: "1px solid #e2e8f0",
+                            borderRadius: "8px",
+                            padding: "8px 12px",
+                          }}
                         />
                         <Legend />
-                        <Bar dataKey="currentYear" fill={COLORS.success} name="Current Year Sales" yAxisId="left" />
-                        <Bar dataKey="lastYear" fill={COLORS.gray} name="Last Year Sales" yAxisId="left" />
-                        <Line type="monotone" dataKey="growth" stroke={COLORS.warning} strokeWidth={2} dot={{ r: 4 }} name="Growth %" yAxisId="right" />
+                        <Bar
+                          dataKey="currentYear"
+                          fill={COLORS.success}
+                          name="Current Year Sales"
+                          yAxisId="left"
+                        />
+                        <Bar
+                          dataKey="lastYear"
+                          fill={COLORS.gray}
+                          name="Last Year Sales"
+                          yAxisId="left"
+                        />
+                        <Line
+                          type="monotone"
+                          dataKey="growth"
+                          stroke={COLORS.warning}
+                          strokeWidth={2}
+                          dot={{ r: 4 }}
+                          name="Growth %"
+                          yAxisId="right"
+                        />
                       </ComposedChart>
                     </ResponsiveContainer>
                   </div>
@@ -3431,113 +5257,194 @@ const handleQuickRange = (days) => {
             )}
 
             {/* Insights Tab */}
-            {activeTab === 'insights' && (
+            {activeTab === "insights" && (
               <div className="space-y-6">
-                <h2 className="text-lg font-bold text-slate-800">Business Insights</h2>
+                <h2 className="text-lg font-bold text-slate-800">
+                  Business Insights
+                </h2>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-slate-200/60 p-4">
-                    <h3 className="text-base font-semibold text-slate-800 mb-3">📊 SWOT Analysis</h3>
+                    <h3 className="text-base font-semibold text-slate-800 mb-3">
+                      📊 SWOT Analysis
+                    </h3>
                     <div className="grid grid-cols-2 gap-3">
                       <div className="bg-emerald-50 p-3 rounded-lg border border-emerald-200">
-                        <h4 className="text-xs font-bold text-emerald-700">💪 Strengths</h4>
+                        <h4 className="text-xs font-bold text-emerald-700">
+                          💪 Strengths
+                        </h4>
                         <ul className="mt-1 space-y-1">
-                          {data.swotAnalysis?.strengths?.slice(0, 3).map((s, i) => (
-                            <li key={i} className="text-[10px] text-emerald-600">✓ {s}</li>
-                          ))}
+                          {data.swotAnalysis?.strengths
+                            ?.slice(0, 3)
+                            .map((s, i) => (
+                              <li
+                                key={i}
+                                className="text-[10px] text-emerald-600"
+                              >
+                                ✓ {s}
+                              </li>
+                            ))}
                         </ul>
                       </div>
                       <div className="bg-red-50 p-3 rounded-lg border border-red-200">
-                        <h4 className="text-xs font-bold text-red-700">⚠️ Weaknesses</h4>
+                        <h4 className="text-xs font-bold text-red-700">
+                          ⚠️ Weaknesses
+                        </h4>
                         <ul className="mt-1 space-y-1">
-                          {data.swotAnalysis?.weaknesses?.slice(0, 3).map((s, i) => (
-                            <li key={i} className="text-[10px] text-red-600">✗ {s}</li>
-                          ))}
+                          {data.swotAnalysis?.weaknesses
+                            ?.slice(0, 3)
+                            .map((s, i) => (
+                              <li key={i} className="text-[10px] text-red-600">
+                                ✗ {s}
+                              </li>
+                            ))}
                         </ul>
                       </div>
                       <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
-                        <h4 className="text-xs font-bold text-blue-700">🚀 Opportunities</h4>
+                        <h4 className="text-xs font-bold text-blue-700">
+                          🚀 Opportunities
+                        </h4>
                         <ul className="mt-1 space-y-1">
-                          {data.swotAnalysis?.opportunities?.slice(0, 3).map((s, i) => (
-                            <li key={i} className="text-[10px] text-blue-600">→ {s}</li>
-                          ))}
+                          {data.swotAnalysis?.opportunities
+                            ?.slice(0, 3)
+                            .map((s, i) => (
+                              <li key={i} className="text-[10px] text-blue-600">
+                                → {s}
+                              </li>
+                            ))}
                         </ul>
                       </div>
                       <div className="bg-amber-50 p-3 rounded-lg border border-amber-200">
-                        <h4 className="text-xs font-bold text-amber-700">🔥 Threats</h4>
+                        <h4 className="text-xs font-bold text-amber-700">
+                          🔥 Threats
+                        </h4>
                         <ul className="mt-1 space-y-1">
-                          {data.swotAnalysis?.threats?.slice(0, 3).map((s, i) => (
-                            <li key={i} className="text-[10px] text-amber-600">• {s}</li>
-                          ))}
+                          {data.swotAnalysis?.threats
+                            ?.slice(0, 3)
+                            .map((s, i) => (
+                              <li
+                                key={i}
+                                className="text-[10px] text-amber-600"
+                              >
+                                • {s}
+                              </li>
+                            ))}
                         </ul>
                       </div>
                     </div>
                   </div>
                   <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-slate-200/60 p-4">
-                    <h3 className="text-base font-semibold text-slate-800 mb-3">🛒 Market Basket Analysis</h3>
-                    <p className="text-xs text-slate-400 mb-3">Top product combinations</p>
+                    <h3 className="text-base font-semibold text-slate-800 mb-3">
+                      🛒 Market Basket Analysis
+                    </h3>
+                    <p className="text-xs text-slate-400 mb-3">
+                      Top product combinations
+                    </p>
                     <div className="space-y-3">
                       {data.marketBasket.map((item, index) => (
-                        <div key={index} className="flex items-center justify-between p-2 bg-slate-50 rounded-lg">
+                        <div
+                          key={index}
+                          className="flex items-center justify-between p-2 bg-slate-50 rounded-lg"
+                        >
                           <div>
-                            <span className="text-sm font-medium text-slate-700">{item.products}</span>
-                            <span className="text-[10px] text-slate-400 ml-2">({item.category})</span>
+                            <span className="text-sm font-medium text-slate-700">
+                              {item.products}
+                            </span>
+                            <span className="text-[10px] text-slate-400 ml-2">
+                              ({item.category})
+                            </span>
                           </div>
-                          <span className="text-sm font-semibold text-emerald-600">{formatCompactCurrency(item.value)}</span>
+                          <span className="text-sm font-semibold text-emerald-600">
+                            {formatCompactCurrency(item.value)}
+                          </span>
                         </div>
                       ))}
                     </div>
                   </div>
                   <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-slate-200/60 p-4 lg:col-span-2">
-                    <h3 className="text-base font-semibold text-slate-800 mb-3">💡 Key Recommendations</h3>
+                    <h3 className="text-base font-semibold text-slate-800 mb-3">
+                      💡 Key Recommendations
+                    </h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       <div className="bg-blue-50 rounded-xl p-3 border border-blue-100">
-                        <h4 className="text-sm font-semibold text-blue-800">🚀 Growth Opportunity</h4>
+                        <h4 className="text-sm font-semibold text-blue-800">
+                          🚀 Growth Opportunity
+                        </h4>
                         <p className="text-xs text-blue-600 mt-1">
-                          {data.categoryData[0]?.name || 'Top'} category shows strong sales performance. 
-                          Consider expanding product lines in this category.
+                          {data.categoryData[0]?.name || "Top"} category shows
+                          strong sales performance. Consider expanding product
+                          lines in this category.
                         </p>
                       </div>
                       <div className="bg-purple-50 rounded-xl p-3 border border-purple-100">
-                        <h4 className="text-sm font-semibold text-purple-800">💼 Sales Strategy</h4>
+                        <h4 className="text-sm font-semibold text-purple-800">
+                          💼 Sales Strategy
+                        </h4>
                         <p className="text-xs text-purple-600 mt-1">
-                          {data.marketingData[0]?.name || 'Top'} sales person is performing well with {formatCurrency(data.marketingData[0]?.orderValue || 0)} in orders. 
-                          Consider mentoring others to replicate their success.
+                          {data.marketingData[0]?.name || "Top"} sales person is
+                          performing well with{" "}
+                          {formatCurrency(
+                            data.marketingData[0]?.orderValue || 0,
+                          )}{" "}
+                          in orders. Consider mentoring others to replicate
+                          their success.
                         </p>
                       </div>
                       <div className="bg-amber-50 rounded-xl p-3 border border-amber-100">
-                        <h4 className="text-sm font-semibold text-amber-800">👥 Customer Focus</h4>
+                        <h4 className="text-sm font-semibold text-amber-800">
+                          👥 Customer Focus
+                        </h4>
                         <p className="text-xs text-amber-600 mt-1">
-                          Top buyer {data.topBuyers[0]?.name || ''} contributes significantly. 
-                          Consider loyalty program and personalized offers.
+                          Top buyer {data.topBuyers[0]?.name || ""} contributes
+                          significantly. Consider loyalty program and
+                          personalized offers.
                         </p>
                       </div>
                       <div className="bg-emerald-50 rounded-xl p-3 border border-emerald-100">
-                        <h4 className="text-sm font-semibold text-emerald-800">📦 Inventory Focus</h4>
+                        <h4 className="text-sm font-semibold text-emerald-800">
+                          📦 Inventory Focus
+                        </h4>
                         <p className="text-xs text-emerald-600 mt-1">
-                          {data.categoryData[0]?.name || 'Top'} category has high sales demand. 
-                          Ensure adequate inventory levels to maintain delivery rate.
+                          {data.categoryData[0]?.name || "Top"} category has
+                          high sales demand. Ensure adequate inventory levels to
+                          maintain delivery rate.
                         </p>
                       </div>
                     </div>
                   </div>
                   <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-slate-200/60 p-4 lg:col-span-2">
-                    <h3 className="text-base font-semibold text-slate-800 mb-3">🎯 Performance Scorecard</h3>
+                    <h3 className="text-base font-semibold text-slate-800 mb-3">
+                      🎯 Performance Scorecard
+                    </h3>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                       <div className="bg-emerald-50 p-3 rounded-lg text-center">
-                        <p className="text-xs text-emerald-600">Total Sales Revenue</p>
-                        <p className="text-lg font-bold text-emerald-700">{formatCompactCurrency(data.totals.saleValue)}</p>
+                        <p className="text-xs text-emerald-600">
+                          Total Sales Revenue
+                        </p>
+                        <p className="text-lg font-bold text-emerald-700">
+                          {formatCompactCurrency(data.totals.saleValue)}
+                        </p>
                       </div>
                       <div className="bg-indigo-50 p-3 rounded-lg text-center">
                         <p className="text-xs text-indigo-600">Total Orders</p>
-                        <p className="text-lg font-bold text-indigo-700">{data.totalOrders}</p>
+                        <p className="text-lg font-bold text-indigo-700">
+                          {data.totalOrders}
+                        </p>
                       </div>
                       <div className="bg-amber-50 p-3 rounded-lg text-center">
                         <p className="text-xs text-amber-600">Delivery Rate</p>
-                        <p className="text-lg font-bold text-amber-700">{data.deliveryPercent.toFixed(0)}%</p>
+                        <p className="text-lg font-bold text-amber-700">
+                          {data.deliveryPercent.toFixed(0)}%
+                        </p>
                       </div>
                       <div className="bg-purple-50 p-3 rounded-lg text-center">
-                        <p className="text-xs text-purple-600">Avg Sale Value</p>
-                        <p className="text-lg font-bold text-purple-700">{formatCompactCurrency(data.performanceMetrics?.avgSaleValue || 0)}</p>
+                        <p className="text-xs text-purple-600">
+                          Avg Sale Value
+                        </p>
+                        <p className="text-lg font-bold text-purple-700">
+                          {formatCompactCurrency(
+                            data.performanceMetrics?.avgSaleValue || 0,
+                          )}
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -3555,26 +5462,53 @@ const handleQuickRange = (days) => {
           className="grid grid-cols-2 md:grid-cols-4 gap-4"
         >
           <div className="bg-white/80 backdrop-blur-sm rounded-xl border border-slate-200/60 p-4 text-center hover:shadow-md transition-all">
-            <p className="text-xs text-slate-400 uppercase tracking-wider">Total Orders</p>
-            <p className="text-xl font-bold text-slate-800">{data.totalOrders}</p>
+            <p className="text-xs text-slate-400 uppercase tracking-wider">
+              Total Orders
+            </p>
+            <p className="text-xl font-bold text-slate-800">
+              {data.totalOrders}
+            </p>
           </div>
           <div className="bg-white/80 backdrop-blur-sm rounded-xl border border-slate-200/60 p-4 text-center hover:shadow-md transition-all">
-            <p className="text-xs text-slate-400 uppercase tracking-wider">Avg Sale Value</p>
-            <p className="text-xl font-bold text-slate-800">{data.totalOrders > 0 ? formatCurrency(data.totals.saleValue / data.totalOrders) : "$0"}</p>
+            <p className="text-xs text-slate-400 uppercase tracking-wider">
+              Avg Sale Value
+            </p>
+            <p className="text-xl font-bold text-slate-800">
+              {data.totalOrders > 0
+                ? formatCurrency(data.totals.saleValue / data.totalOrders)
+                : "$0"}
+            </p>
           </div>
           <div className="bg-white/80 backdrop-blur-sm rounded-xl border border-slate-200/60 p-4 text-center hover:shadow-md transition-all">
-            <p className="text-xs text-slate-400 uppercase tracking-wider">Delivery Rate</p>
-            <p className="text-xl font-bold" style={{ color: getStatusColor(data.deliveryPercent) }}>{data.deliveryPercent.toFixed(0)}%</p>
+            <p className="text-xs text-slate-400 uppercase tracking-wider">
+              Delivery Rate
+            </p>
+            <p
+              className="text-xl font-bold"
+              style={{ color: getStatusColor(data.deliveryPercent) }}
+            >
+              {data.deliveryPercent.toFixed(0)}%
+            </p>
           </div>
           <div className="bg-white/80 backdrop-blur-sm rounded-xl border border-slate-200/60 p-4 text-center hover:shadow-md transition-all">
-            <p className="text-xs text-slate-400 uppercase tracking-wider">Sales Growth</p>
-            <p className="text-xl font-bold" style={{ color: data.salesGrowth >= 0 ? COLORS.success : COLORS.danger }}>{data.salesGrowth.toFixed(1)}%</p>
+            <p className="text-xs text-slate-400 uppercase tracking-wider">
+              Sales Growth
+            </p>
+            <p
+              className="text-xl font-bold"
+              style={{
+                color: data.salesGrowth >= 0 ? COLORS.success : COLORS.danger,
+              }}
+            >
+              {data.salesGrowth.toFixed(1)}%
+            </p>
           </div>
         </motion.div>
 
         <div className="text-center">
           <p className="text-[10px] text-slate-400">
-            Last updated: {new Date().toLocaleString()} • {apiData.length} records loaded
+            Last updated: {new Date().toLocaleString()} • {apiData.length}{" "}
+            records loaded
           </p>
         </div>
       </div>
