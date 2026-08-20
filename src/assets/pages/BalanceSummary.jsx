@@ -4440,7 +4440,8 @@ const ProfessionalSummaryTable = React.memo(({
   onFavoriteToggle, selectedRows, favorites, loading, currentPage = 0,
   onOrderClick, onChallanClick,
   apiKey,
-  cndata
+  cndata,
+  showChallanDetails = true
 }) => {
 
   const handleChallanClickInternal = (ch) => {
@@ -4476,7 +4477,8 @@ const ProfessionalSummaryTable = React.memo(({
     </div>
   );
 
-  const totalColSpan = 12 + (columns.includes("PI") ? 1 : 0) + (columns.includes("PICompany") ? 1 : 0) + (columns.includes("LC") ? 1 : 0) + (columns.includes("Invoice") ? 1 : 0);
+  const totalColSpan = 11 + ( columns.includes("CustomerPO") ? 1 : 0) + (columns.includes("Style") ? 1 : 0) + (columns.includes("Color") ? 1 : 0) + 
+            (columns.includes("PO") ? 1 : 0) + (columns.includes("PI") ? 1 : 0) + (columns.includes("PICompany") ? 1 : 0) + (columns.includes("LC") ? 1 : 0) + (columns.includes("Invoice") ? 1 : 0);
 
   return (
     <div className="max-h-[500px] overflow-auto border rounded-xl shadow-sm bg-white/95 backdrop-blur-sm">
@@ -4493,16 +4495,15 @@ const ProfessionalSummaryTable = React.memo(({
             <th className="py-2">Customer</th>
             <th className="py-2">Delivery</th>
             <th className="py-2">Buyer</th>
+            {columns.includes("CustomerPO") && <th className="py-2">Customer PO</th>}
+            {columns.includes("Style") && <th className="py-2">Style</th>}
+            {columns.includes("Color") && <th className="py-2">Color</th>}
+            {columns.includes("PO") && <th className="py-2">PO</th>}
             {columns.includes("PI") && <th className="py-2 min-w-[200px]">PI(s)</th>}
             {columns.includes("PICompany") && <th className="py-2 min-w-[120px]">PI Company</th>}
             {columns.includes("LC") && <th className="py-2">LC</th>}
             {columns.includes("Invoice") && <th className="py-2">Invoice</th>}
-            <th className="py-2">Section</th>
-            {/* NEW COLUMN HEADERS */}
-            {columns.includes("Style") && <th className="py-2">Style</th>}
-            {columns.includes("Color") && <th className="py-2">Color</th>}
-            {columns.includes("PO") && <th className="py-2">PO</th>}
-            {columns.includes("CustomerPO") && <th className="py-2">Customer PO</th>}
+            <th className="py-2">Section</th>  
             <th className="py-2 text-right">Order Qty</th>
             <th className="py-2 text-right">Challan Qty</th>
             <th className="py-2 text-right">Balance Qty</th>
@@ -4570,6 +4571,11 @@ const ProfessionalSummaryTable = React.memo(({
                 <td className="px-2 py-1 whitespace-nowrap text-xs" title={item.Buyer}>
                   {item.Buyer.length > 10 ? item.Buyer.slice(0, 10) + "..." : item.Buyer}
                 </td>
+
+                {columns.includes("CustomerPO") && <td className="px-2 py-1 text-xs">{item.CustomerPO || '-'}</td>}
+                {columns.includes("Style") && <td className="px-2 py-1 text-xs">{item.Style || '-'}</td>}
+                {columns.includes("Color") && <td className="px-2 py-1 text-xs">{item.Color || '-'}</td>}
+                {columns.includes("PO") && <td className="px-2 py-1 text-xs">{item.PO || '-'}</td>}
 
                 {columns.includes("PI") && (
                   <td className="px-2 py-1">
@@ -4639,14 +4645,7 @@ const ProfessionalSummaryTable = React.memo(({
                 {columns.includes("LC") && <td className="px-2 py-1 whitespace-nowrap text-[11px] font-mono">{(item.LCList || []).map(l => l.lcNo).join(", ") || "-"}</td>}
                 {columns.includes("Invoice") && <td className="px-2 py-1 whitespace-nowrap text-[11px] font-mono">{(item.InvoiceList || []).map(i => i.invoiceNo).join(", ") || "-"}</td>}
 
-                <td className="px-2 py-1 whitespace-nowrap text-xs">{item.Section}</td>
-
-                {/* NEW COLUMN DATA CELLS - THESE MUST BE IN tbody */}
-                {columns.includes("Style") && <td className="px-2 py-1 text-xs">{item.Style || '-'}</td>}
-                {columns.includes("Color") && <td className="px-2 py-1 text-xs">{item.Color || '-'}</td>}
-                {columns.includes("PO") && <td className="px-2 py-1 text-xs">{item.PO || '-'}</td>}
-                {columns.includes("CustomerPO") && <td className="px-2 py-1 text-xs">{item.CustomerPO || '-'}</td>}
-
+                <td className="px-2 py-1 whitespace-nowrap text-xs">{item.Section}</td>            
                 <td className="px-2 py-1 whitespace-nowrap text-right font-medium text-xs">{formatNumber(item.TotalQty)}</td>
                 <td className="px-2 py-1 whitespace-nowrap text-right font-medium text-xs">{formatNumber(item.ChallanQTY)}</td>
                 <td className="px-2 py-1 whitespace-nowrap text-right text-red-600 font-medium text-xs">{formatNumber(item.BalanceQty)}</td>
@@ -5846,6 +5845,10 @@ useEffect(() => {
       'SalesPerson': 'Sales Person',
       'Buyer': 'Buyer',
       'Section': 'Section',
+      'CustomerPO': 'Customer PO',
+      'Style': 'Style',
+      'Color': 'Color',
+      'PO': 'PO',
       'PI': 'PI No',
       'PICompany': 'PI Company',
       'LC': 'LC No',
@@ -5858,10 +5861,7 @@ useEffect(() => {
       'BalanceValue': 'Balance Value',
       'Challan': 'Challan',
       'Progress': 'Progress %',
-      'Style': 'Style',
-      'Color': 'Color',
-      'PO': 'PO',
-      'CustomerPO': 'Customer PO',
+      
       'ChallanQtyDetail': 'Challan Qty (Detail)',
       'ChallanValueDetail': 'Challan Value (Detail)'
     };
@@ -5901,6 +5901,10 @@ useEffect(() => {
         'Delivery': item.DeliverName || '',
         'SalesPerson': item.SalesPerson || 'Unknown',
         'Buyer': item.Buyer || '',
+        'CustomerPO': item.CustomerPO || '',
+        'Style': item.Style || '',
+        'Color': item.Color || '',
+        'PO': item.PO || '',
         'PI': (item.PINO || 'No PI'),
         'PICompany': (item.PICompany || 'N/A'),
         'LC': (item.LCList || []).map(l => l.lcNo).join("; "),
@@ -5947,10 +5951,6 @@ useEffect(() => {
           return text;
         }).join("\n"),
         'Progress': `${item.completionRate?.toFixed(1) || 0}%`,
-        'Style': item.Style || '',
-        'Color': item.Color || '',
-        'PO': item.PO || '',
-        'CustomerPO': item.CustomerPO || '',
         'ChallanQtyDetail': (item.ChallanNo || []).map(ch => {
           const mergedChallanMap = cndata?.mergedChallanMap || {};
           const details = mergedChallanMap[ch.challanNo] || {};
