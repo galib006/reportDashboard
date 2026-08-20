@@ -456,7 +456,7 @@ const AttachmentDownloader = React.memo(({
   const [isLoading, setIsLoading] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState(0);
   const [downloadedCount, setDownloadedCount] = useState(0);
-
+  const [showChallanDetails, setShowChallanDetails] = useLocalStorage('show_challan_details', true);
   const effectiveApiKey = apiKey || localStorage.getItem("apiKey");
 
   // Update local attachments when prop changes
@@ -1355,7 +1355,7 @@ const useSummarizedData = (cndata, maps) => {
     try {
       if (!apidata.length) return [];
 
-      // ===== FIRST, BUILD CHALLAN MAP FROM ORDERREPORT API DATA =====
+      // ===== BUILD CHALLAN MAP FROM ORDERREPORT API DATA =====
       // This ensures we have qty and value for ALL challans
       const apiChallanMap = {};
       apidata.forEach(item => {
@@ -1379,40 +1379,56 @@ const useSummarizedData = (cndata, maps) => {
         }
       });
 
-      // ===== MERGE WITH EXISTING challanReceiveMap (for deliveryChallanID & status) =====
-    const mergedChallanMap = {};
+      // ===== MERGE WITH EXISTING challanReceiveMap =====
+      const mergedChallanMap = {};
 
-      // First, copy from apiChallanMap (has qty and value)
+      // FIRST: Copy ALL from apiChallanMap (has qty and value for ALL challans)
+      Object.keys(apiChallanMap).forEach(key => {
+        mergedChallanMap[key] = {
+          challanQty: apiChallanMap[key].challanQty || 0,
+          totalChallanValue: apiChallanMap[key].totalChallanValue || 0,
+          deliveryChallanID: null,
+          statusDesc: 'Unknown'
+        };
+      });
+
+      // SECOND: Merge with challanReceiveMap (has deliveryChallanID and status)
       Object.keys(challanReceiveMap).forEach(key => {
-  if (mergedChallanMap[key]) {
-    // Update existing with deliveryChallanID and status
-    mergedChallanMap[key].deliveryChallanID = challanReceiveMap[key].deliveryChallanID || null;
-    mergedChallanMap[key].statusDesc = challanReceiveMap[key].statusDesc || 'Unknown';
-    // Also update qty and value if they exist in challanReceiveMap
-    if (challanReceiveMap[key].challanQty) {
-      mergedChallanMap[key].challanQty = challanReceiveMap[key].challanQty;
-    }
-    if (challanReceiveMap[key].totalChallanValue) {
-      mergedChallanMap[key].totalChallanValue = challanReceiveMap[key].totalChallanValue;
-    }
-  } else {
-    // Add new entry from challanReceiveMap
-    mergedChallanMap[key] = {
-      challanQty: challanReceiveMap[key].challanQty || 0,
-      totalChallanValue: challanReceiveMap[key].totalChallanValue || 0,
-      deliveryChallanID: challanReceiveMap[key].deliveryChallanID || null,
-      statusDesc: challanReceiveMap[key].statusDesc || 'Unknown'
-    };
-  }
-});
+        if (mergedChallanMap[key]) {
+          // Update existing with deliveryChallanID and status
+          mergedChallanMap[key].deliveryChallanID = challanReceiveMap[key].deliveryChallanID || null;
+          mergedChallanMap[key].statusDesc = challanReceiveMap[key].statusDesc || 'Unknown';
+          // Update qty and value if they exist in challanReceiveMap and are greater than 0
+          if (challanReceiveMap[key].challanQty && challanReceiveMap[key].challanQty > 0) {
+            mergedChallanMap[key].challanQty = challanReceiveMap[key].challanQty;
+          }
+          if (challanReceiveMap[key].totalChallanValue && challanReceiveMap[key].totalChallanValue > 0) {
+            mergedChallanMap[key].totalChallanValue = challanReceiveMap[key].totalChallanValue;
+          }
+        } else {
+          // Add new entry from challanReceiveMap
+          mergedChallanMap[key] = {
+            challanQty: challanReceiveMap[key].challanQty || 0,
+            totalChallanValue: challanReceiveMap[key].totalChallanValue || 0,
+            deliveryChallanID: challanReceiveMap[key].deliveryChallanID || null,
+            statusDesc: challanReceiveMap[key].statusDesc || 'Unknown'
+          };
+        }
+      });
 
+      // ===== CRITICAL: Store merged map in cndata for use in EnhancedChallanCell and Export =====
       if (cndata) {
-  cndata.mergedChallanMap = mergedChallanMap;
-}
+        cndata.mergedChallanMap = mergedChallanMap;
+      }
 
-console.log('📊 mergedChallanMap built with keys:', Object.keys(mergedChallanMap));
-console.log('📊 mergedChallanMap sample:', mergedChallanMap['CLN-006467-2026']);
+      // Debug logs
+      console.log('📊 mergedChallanMap built with keys:', Object.keys(mergedChallanMap).length);
+      if (Object.keys(mergedChallanMap).length > 0) {
+        const sampleKey = Object.keys(mergedChallanMap)[0];
+        console.log('📊 mergedChallanMap sample:', sampleKey, mergedChallanMap[sampleKey]);
+      }
 
+      // ===== GROUP DATA BY ORDER =====
       const grouped = new Map();
 
       for (const item of apidata) {
@@ -1420,7 +1436,7 @@ console.log('📊 mergedChallanMap sample:', mergedChallanMap['CLN-006467-2026']
         const piNo = item.CustomerPINo || 'No PI';
         const piCompany = piCompanyMap.get(piNo.trim()) || '-';
 
-        // ===== GET SALES PERSON - ONLY ONCE =====
+        // ===== GET SALES PERSON =====
         let salesPerson = 'Unknown';
         if (orderNo) {
           if (salesPersonMap && salesPersonMap.has(orderNo.trim())) {
@@ -1567,60 +1583,51 @@ console.log('📊 mergedChallanMap sample:', mergedChallanMap['CLN-006467-2026']
             .map(c => c.trim())
             .filter(Boolean);
 
-          const trimmedOrderNo = orderNo.trim();
-          let workOrderStatus = null;
-
-          if (challanMap && challanMap.has(`WO_${trimmedOrderNo}`)) {
-            workOrderStatus = challanMap.get(`WO_${trimmedOrderNo}`);
-          } else if (challanMap) {
-            const allKeys = [...challanMap.keys()];
-            const foundKey = allKeys.find(k =>
-              typeof k === 'string' && k.includes(`WO_${trimmedOrderNo}`)
-            );
-            if (foundKey) {
-              workOrderStatus = challanMap.get(foundKey);
-            }
-          }
-
           for (const challanNo of challans) {
             const trimmedChallanNo = challanNo.trim();
             let status = "Unknown";
             let hasAttachments = false;
             let deliveryChallanID = null;
+            let challanQtyValue = 0;
+            let challanValueValue = 0;
 
-            // ===== GET STATUS FROM MERGED CHALLAN MAP =====
+            // ===== GET STATUS AND DETAILS FROM MERGED CHALLAN MAP =====
             const mergedData = mergedChallanMap[trimmedChallanNo];
             if (mergedData) {
               status = mergedData.statusDesc || 'Unknown';
               deliveryChallanID = mergedData.deliveryChallanID;
+              challanQtyValue = mergedData.challanQty || 0;
+              challanValueValue = mergedData.totalChallanValue || 0;
             }
 
             // If no status from merged map, try from challanMap
             if (status === "Unknown") {
-              if (workOrderStatus) {
-                status = workOrderStatus;
-              } else if (challanMap && challanMap.has(`${trimmedOrderNo}-${trimmedChallanNo}`)) {
-                status = challanMap.get(`${trimmedOrderNo}-${trimmedChallanNo}`);
-              } else if (challanMap && challanMap.has(trimmedChallanNo)) {
+              if (challanMap && challanMap.has(trimmedChallanNo)) {
                 status = challanMap.get(trimmedChallanNo);
               }
             }
 
-            if (!row.ChallanNo.some(c => c.challanNo === trimmedChallanNo)) {
+            // Check if this challan already exists in the row
+            const existingChallan = row.ChallanNo.find(c => c.challanNo === trimmedChallanNo);
+            if (!existingChallan) {
               row.ChallanNo.push({
                 challanNo: trimmedChallanNo,
                 status: status,
                 hasAttachments: hasAttachments,
-                deliveryChallanID: deliveryChallanID
+                deliveryChallanID: deliveryChallanID,
+                // Store qty and value directly on the challan object for export
+                challanQty: challanQtyValue,
+                totalChallanValue: challanValueValue
               });
             }
           }
         }
       }
 
-      // Build result
+      // ===== BUILD RESULT =====
       const result = [];
       for (const item of grouped.values()) {
+        // Add LC and Invoice data to each PI
         for (const pi of item.PIList) {
           const lcList = (lcMap && lcMap.get(pi.piNo)) || [];
           const filteredLcList = lcList.filter(lc => lc.lcNo && lc.lcNo !== 'N/A');
@@ -1656,10 +1663,8 @@ console.log('📊 mergedChallanMap sample:', mergedChallanMap['CLN-006467-2026']
           InvoiceList: item.PIList.flatMap(pi => pi.invoiceList || []),
         });
       }
-      // In useSummarizedData, after building mergedChallanMap:
-      console.log('📊 mergedChallanMap built with keys:', Object.keys(mergedChallanMap));
-      console.log('📊 mergedChallanMap sample:', mergedChallanMap['CLN-006467-2026']);
 
+      console.log('✅ useSummarizedData complete. Result count:', result.length);
       return result;
     } catch (e) {
       console.error("Summarize error:", e);
@@ -3776,7 +3781,8 @@ const EnhancedChallanCell = React.memo(({
   cndata,
   apiKey,
   workOrderNo,
-  onChallanClick
+  onChallanClick,
+  showChallanDetails = true  // ADD THIS PARAMETER
 }) => {
   const [expanded, setExpanded] = useState(false);
   const [attachmentCache, setAttachmentCache] = useState({});
@@ -3807,10 +3813,10 @@ const EnhancedChallanCell = React.memo(({
     const textToCopy = challanNo.map(function (c) {
       const details = getChallanDetails(c.challanNo);
       let text = (c.challanNo || 'N/A') + ' (' + (c.status || 'Unknown') + ')';
-      if (details.qty > 0) {
+      if (showChallanDetails && details.qty > 0) {
         text += ' || Challan QTY (' + details.qty + ')';
       }
-      if (details.value > 0) {
+      if (showChallanDetails && details.value > 0) {
         text += ' || Challan Value ($' + details.value.toFixed(2) + ')';
       }
       return text;
@@ -3959,7 +3965,7 @@ const EnhancedChallanCell = React.memo(({
             challanData = {
               challanQty: Number(item.ChallanQTY) || 0,
               totalChallanValue: Number(item.ChallanValue) || 0,
-              statusDesc: ch.status || 'Unknown'
+              statusDesc: 'Unknown'
             };
             console.log('✅ Found challan data from apiData:', challanData);
             break;
@@ -4356,11 +4362,13 @@ const EnhancedChallanCell = React.memo(({
           if (status) {
             displayText += ' (' + status + ')';
           }
-          if (details.qty > 0) {
-            displayText += ' || Challan QTY (' + details.qty + ')';
-          }
-          if (details.value > 0) {
-            displayText += ' || Challan Value ($' + details.value.toFixed(2) + ')';
+          if (showChallanDetails) {
+            if (details.qty > 0) {
+              displayText += ' || Challan QTY (' + details.qty + ')';
+            }
+            if (details.value > 0) {
+              displayText += ' || Challan Value ($' + details.value.toFixed(2) + ')';
+            }
           }
 
           return (
@@ -4655,6 +4663,7 @@ const ProfessionalSummaryTable = React.memo(({
                       apiKey={apiKey}
                       workOrderNo={item.WorkOrderNo}
                       onChallanClick={handleChallanClickInternal}
+                       showChallanDetails={showChallanDetails}
                     // showChallanQty={columns.includes("ChallanQtyDetail")}
                     // showChallanValue={columns.includes("ChallanValueDetail")}
                     />
@@ -5419,6 +5428,7 @@ function BalanceSummary() {
   const [showQuickView, setShowQuickView] = useState(false);
   const [deepInsights, setDeepInsights] = useState([]);
   const [currentBg, setCurrentBg] = useState(null);
+  const [showChallanDetails, setShowChallanDetails] = useLocalStorage('show_challan_details', true);
 
   // Order Detail View State
   const [selectedOrderDetail, setSelectedOrderDetail] = useState(null);
@@ -5818,174 +5828,185 @@ useEffect(() => {
 
 
   const exportToExcel = useCallback(async (options = {}) => {
-    const { format = 'excel', includeSummary = true, includeCharts = false, emailReport = false } = options;
-    try {
-      if (filteredData.length === 0) { toast.warning("No data to export"); return; }
-      toast.info(`Preparing ${format.toUpperCase()} export...`);
+  const { format = 'excel', includeSummary = true, includeCharts = false, emailReport = false } = options;
+  try {
+    if (filteredData.length === 0) { 
+      toast.warning("No data to export"); 
+      return; 
+    }
+    toast.info(`Preparing ${format.toUpperCase()} export...`);
 
-      // --- DYNAMIC COLUMN DEFINITION BASED ON USER SELECTION ---
-      const columnDisplayMap = {
-        'SNo': '#',
-        'Order': 'Order No',
-        'Date': 'Date',
-        'Customer': 'Customer',
-        'Delivery': 'Delivery',
-        'SalesPerson': 'Sales Person',
-        'Buyer': 'Buyer',
-        'Section': 'Section',
-        'PI': 'PI No',
-        'PICompany': 'PI Company',
-        'LC': 'LC No',
-        'Invoice': 'Invoice No',
-        'OrderQty': 'Order Qty',
-        'ChallanQty': 'Challan Qty',
-        'BalanceQty': 'Balance Qty',
-        'OrderValue': 'Order Value',
-        'ChallanValue': 'Challan Value',
-        'BalanceValue': 'Balance Value',
-        'Challan': 'Challan',
-        'Progress': 'Progress %',
-        'Style': 'Style',
-        'Color': 'Color',
-        'PO': 'PO',
-        'CustomerPO': 'Customer PO',
-        'ChallanQtyDetail': 'Challan Qty (Detail)',
-        'ChallanValueDetail': 'Challan Value (Detail)'
-      };
+    // --- DYNAMIC COLUMN DEFINITION BASED ON USER SELECTION ---
+    const columnDisplayMap = {
+      'SNo': '#',
+      'Order': 'Order No',
+      'Date': 'Date',
+      'Customer': 'Customer',
+      'Delivery': 'Delivery',
+      'SalesPerson': 'Sales Person',
+      'Buyer': 'Buyer',
+      'Section': 'Section',
+      'PI': 'PI No',
+      'PICompany': 'PI Company',
+      'LC': 'LC No',
+      'Invoice': 'Invoice No',
+      'OrderQty': 'Order Qty',
+      'ChallanQty': 'Challan Qty',
+      'BalanceQty': 'Balance Qty',
+      'OrderValue': 'Order Value',
+      'ChallanValue': 'Challan Value',
+      'BalanceValue': 'Balance Value',
+      'Challan': 'Challan',
+      'Progress': 'Progress %',
+      'Style': 'Style',
+      'Color': 'Color',
+      'PO': 'PO',
+      'CustomerPO': 'Customer PO',
+      'ChallanQtyDetail': 'Challan Qty (Detail)',
+      'ChallanValueDetail': 'Challan Value (Detail)'
+    };
 
-      const essentialColumns = ['Order', 'Date', 'Customer', 'Delivery', 'SalesPerson', 'Buyer', 'Section'];
+    const essentialColumns = ['Order', 'Date', 'Customer', 'Delivery', 'SalesPerson', 'Buyer', 'Section'];
 
-      let finalColumns = [...new Set([...essentialColumns, ...selectedColumns])]
-        .filter(col => columnDisplayMap[col]);
+    let finalColumns = [...new Set([...essentialColumns, ...selectedColumns])]
+      .filter(col => columnDisplayMap[col]);
 
-      if (selectedColumns.includes('PICompany')) {
-        finalColumns = finalColumns.filter(col => col !== 'PICompany');
-        const piIndex = finalColumns.indexOf('PI');
-        if (piIndex !== -1) {
-          finalColumns.splice(piIndex + 1, 0, 'PICompany');
+    if (selectedColumns.includes('PICompany')) {
+      finalColumns = finalColumns.filter(col => col !== 'PICompany');
+      const piIndex = finalColumns.indexOf('PI');
+      if (piIndex !== -1) {
+        finalColumns.splice(piIndex + 1, 0, 'PICompany');
+      } else {
+        const buyerIndex = finalColumns.indexOf('Buyer');
+        if (buyerIndex !== -1) {
+          finalColumns.splice(buyerIndex + 1, 0, 'PICompany');
         } else {
-          const buyerIndex = finalColumns.indexOf('Buyer');
-          if (buyerIndex !== -1) {
-            finalColumns.splice(buyerIndex + 1, 0, 'PICompany');
-          } else {
-            finalColumns.push('PICompany');
-          }
+          finalColumns.push('PICompany');
         }
       }
-
-      if (selectedColumns.includes('SNo')) {
-        finalColumns = ['SNo', ...finalColumns.filter(col => col !== 'SNo')];
-      }
-
-      const getHeaders = () => finalColumns.map(col => columnDisplayMap[col]);
-
-      const getRowData = (item, index) => {
-        const valueMap = {
-          'SNo': index,
-          'Order': item.WorkOrderNo || '',
-          'Date': formatDate(item.OrderReceiveDate),
-          'Customer': item.CustomerName || '',
-          'Delivery': item.DeliverName || '',
-          'SalesPerson': item.SalesPerson || 'Unknown',
-          'Buyer': item.Buyer || '',
-          'PI': (item.PINO || 'No PI'),
-          'PICompany': (item.PICompany || 'N/A'),
-          'LC': (item.LCList || []).map(l => l.lcNo).join("; "),
-          'Invoice': (item.InvoiceList || []).map(i => i.invoiceNo).join("; "),
-          'Section': item.Section || '',
-          'OrderQty': +(item.TotalQty?.toFixed(2) || 0),
-          'ChallanQty': +(item.ChallanQTY?.toFixed(2) || 0),
-          'BalanceQty': +(item.BalanceQty?.toFixed(2) || 0),
-          'OrderValue': +(item.TotalValue?.toFixed(2) || 0),
-          'ChallanValue': +(item.ChallanValue?.toFixed(2) || 0),
-          'BalanceValue': +(item.BalanceValue?.toFixed(2) || 0),
-          'Challan': (item.ChallanNo || []).map((c, idx) => {
-  // Try mergedChallanMap first
-  let mergedChallanMap = cndata?.mergedChallanMap || {};
-  let details = mergedChallanMap[c.challanNo] || {};
-  
-  // If not found, try challanReceiveMap as fallback
-  if (!details.challanQty && !details.totalChallanValue) {
-    const challanReceiveMap = cndata?.challanReceiveMap || {};
-    const receiveData = challanReceiveMap[c.challanNo] || {};
-    details = {
-      challanQty: receiveData.challanQty || 0,
-      totalChallanValue: receiveData.totalChallanValue || 0
-    };
-  }
-  
-  // If still not found, try to get from the item's own data
-  if (!details.challanQty && !details.totalChallanValue) {
-    // Try to find the challan in the order data
-    const challanEntry = item.ChallanNo?.find(ch => ch.challanNo === c.challanNo);
-    if (challanEntry && challanEntry.challanQty !== undefined) {
-      details = {
-        challanQty: challanEntry.challanQty || 0,
-        totalChallanValue: challanEntry.totalChallanValue || 0
-      };
     }
-  }
-  
-  let text = `${idx + 1}. ${c.challanNo} (${c.status || 'Unknown'})`;
-  if (details.challanQty > 0) {
-    text += ` || Challan QTY (${details.challanQty})`;
-  }
-  if (details.totalChallanValue > 0) {
-    text += ` || Challan Value ($${details.totalChallanValue.toFixed(2)})`;
-  }
-  return text;
-}).join("\n"),
-          'Progress': `${item.completionRate?.toFixed(1) || 0}%`,
-          'Style': item.Style || '',
-          'Color': item.Color || '',
-          'PO': item.PO || '',
-          'CustomerPO': item.CustomerPO || '',
-          'ChallanQtyDetail': (item.ChallanNo || []).map(ch => {
-            const mergedChallanMap = cndata?.mergedChallanMap || {};
-            const details = mergedChallanMap[ch.challanNo] || {};
-            return details.challanQty || 0;
-          }).filter(q => q > 0).join('; ') || '-',
-          'ChallanValueDetail': (item.ChallanNo || []).reduce((sum, ch) => {
-            const mergedChallanMap = cndata?.mergedChallanMap || {};
-            const details = mergedChallanMap[ch.challanNo] || {};
-            return sum + (details.totalChallanValue || 0);
-          }, 0)
-        };
-        return finalColumns.map(col => valueMap[col] !== undefined ? valueMap[col] : '');
+
+    if (selectedColumns.includes('SNo')) {
+      finalColumns = ['SNo', ...finalColumns.filter(col => col !== 'SNo')];
+    }
+
+    const getHeaders = () => finalColumns.map(col => columnDisplayMap[col]);
+
+    const getRowData = (item, index) => {
+      const valueMap = {
+        'SNo': index,
+        'Order': item.WorkOrderNo || '',
+        'Date': formatDate(item.OrderReceiveDate),
+        'Customer': item.CustomerName || '',
+        'Delivery': item.DeliverName || '',
+        'SalesPerson': item.SalesPerson || 'Unknown',
+        'Buyer': item.Buyer || '',
+        'PI': (item.PINO || 'No PI'),
+        'PICompany': (item.PICompany || 'N/A'),
+        'LC': (item.LCList || []).map(l => l.lcNo).join("; "),
+        'Invoice': (item.InvoiceList || []).map(i => i.invoiceNo).join("; "),
+        'Section': item.Section || '',
+        'OrderQty': +(item.TotalQty?.toFixed(2) || 0),
+        'ChallanQty': +(item.ChallanQTY?.toFixed(2) || 0),
+        'BalanceQty': +(item.BalanceQty?.toFixed(2) || 0),
+        'OrderValue': +(item.TotalValue?.toFixed(2) || 0),
+        'ChallanValue': +(item.ChallanValue?.toFixed(2) || 0),
+        'BalanceValue': +(item.BalanceValue?.toFixed(2) || 0),
+        'Challan': (item.ChallanNo || []).map((c, idx) => {
+          let mergedChallanMap = cndata?.mergedChallanMap || {};
+          let details = mergedChallanMap[c.challanNo] || {};
+          
+          if (!details.challanQty && !details.totalChallanValue) {
+            const challanReceiveMap = cndata?.challanReceiveMap || {};
+            const receiveData = challanReceiveMap[c.challanNo] || {};
+            details = {
+              challanQty: receiveData.challanQty || 0,
+              totalChallanValue: receiveData.totalChallanValue || 0
+            };
+          }
+          
+          if (!details.challanQty && !details.totalChallanValue) {
+            const challanEntry = item.ChallanNo?.find(ch => ch.challanNo === c.challanNo);
+            if (challanEntry && challanEntry.challanQty !== undefined) {
+              details = {
+                challanQty: challanEntry.challanQty || 0,
+                totalChallanValue: challanEntry.totalChallanValue || 0
+              };
+            }
+          }
+          
+          let text = `${idx + 1}. ${c.challanNo} (${c.status || 'Unknown'})`;
+          if (showChallanDetails) {
+            if (details.challanQty > 0) {
+              text += ` || Challan QTY (${details.challanQty})`;
+            }
+            if (details.totalChallanValue > 0) {
+              text += ` || Challan Value ($${details.totalChallanValue.toFixed(2)})`;
+            }
+          }
+          return text;
+        }).join("\n"),
+        'Progress': `${item.completionRate?.toFixed(1) || 0}%`,
+        'Style': item.Style || '',
+        'Color': item.Color || '',
+        'PO': item.PO || '',
+        'CustomerPO': item.CustomerPO || '',
+        'ChallanQtyDetail': (item.ChallanNo || []).map(ch => {
+          const mergedChallanMap = cndata?.mergedChallanMap || {};
+          const details = mergedChallanMap[ch.challanNo] || {};
+          return details.challanQty || 0;
+        }).filter(q => q > 0).join('; ') || '-',
+        'ChallanValueDetail': (item.ChallanNo || []).reduce((sum, ch) => {
+          const mergedChallanMap = cndata?.mergedChallanMap || {};
+          const details = mergedChallanMap[ch.challanNo] || {};
+          return sum + (details.totalChallanValue || 0);
+        }, 0)
       };
+      return finalColumns.map(col => valueMap[col] !== undefined ? valueMap[col] : '');
+    };
 
-      // --- JSON EXPORT ---
-      if (format === 'json') {
-        const headers = getHeaders();
-        const jsonData = filteredData.map((item, index) => {
-          const rowData = getRowData(item, index + 1);
-          return headers.reduce((obj, header, idx) => {
-            obj[header] = rowData[idx];
-            return obj;
-          }, {});
-        });
-        const blob = new Blob([JSON.stringify(jsonData, null, 2)], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a'); a.href = url; a.download = `OrderSummary_${Date.now()}.json`; a.click();
-        URL.revokeObjectURL(url); toast.success("JSON exported!"); return;
-      }
+    // --- JSON EXPORT ---
+    if (format === 'json') {
+      const headers = getHeaders();
+      const jsonData = filteredData.map((item, index) => {
+        const rowData = getRowData(item, index + 1);
+        return headers.reduce((obj, header, idx) => {
+          obj[header] = rowData[idx];
+          return obj;
+        }, {});
+      });
+      const blob = new Blob([JSON.stringify(jsonData, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); 
+      a.href = url; 
+      a.download = `OrderSummary_${Date.now()}.json`; 
+      a.click();
+      URL.revokeObjectURL(url); 
+      toast.success("JSON exported!"); 
+      return;
+    }
 
-      // --- CSV EXPORT ---
-      if (format === 'csv') {
-        const headers = getHeaders();
-        const rows = filteredData.map((item, index) => getRowData(item, index + 1));
-        const csv = [headers, ...rows].map(r => r.map(c => `"${String(c || '').replace(/"/g, '""')}"`).join(',')).join('\n');
-        const blob = new Blob([csv], { type: 'text/csv' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a'); a.href = url; a.download = `OrderSummary_${Date.now()}.csv`; a.click();
-        URL.revokeObjectURL(url); toast.success("CSV exported!"); return;
-      }
+    // --- CSV EXPORT ---
+    if (format === 'csv') {
+      const headers = getHeaders();
+      const rows = filteredData.map((item, index) => getRowData(item, index + 1));
+      const csv = [headers, ...rows].map(r => r.map(c => `"${String(c || '').replace(/"/g, '""')}"`).join(',')).join('\n');
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); 
+      a.href = url; 
+      a.download = `OrderSummary_${Date.now()}.csv`; 
+      a.click();
+      URL.revokeObjectURL(url); 
+      toast.success("CSV exported!"); 
+      return;
+    }
 
-      // --- PDF EXPORT ---
-      if (format === 'pdf') {
-        const headers = getHeaders();
-        const win = window.open('', '_blank');
-        win.document.write(`<html><head><title>Order Summary Report</title><style>
+    // --- PDF EXPORT ---
+    if (format === 'pdf') {
+      const headers = getHeaders();
+      const win = window.open('', '_blank');
+      win.document.write(`<html><head><title>Order Summary Report</title><style>
     body{font-family:Arial;padding:20px} 
     h1{color:#000000;border-bottom:2px solid #000;padding-bottom:10px}
     table{width:100%;border-collapse:collapse;font-size:10px}
@@ -6003,7 +6024,6 @@ useEffect(() => {
   ${filteredData.map((item, index) => {
           const rowData = getRowData(item, index + 1);
           const challanData = rowData[headers.indexOf('Challan')] || '';
-
           let hasNonReceived = false;
           if (challanData) {
             const lines = challanData.split('\n');
@@ -6014,7 +6034,6 @@ useEffect(() => {
               }
             });
           }
-
           return `<tr>${rowData.map((d, idx) => {
             const header = headers[idx];
             if (header === 'Challan' && hasNonReceived) {
@@ -6036,339 +6055,400 @@ useEffect(() => {
       <td colspan="${headers.length - headers.indexOf('Progress %') - 1}" style="border:1px solid #000;"></td>
     </tr>
   </tfoot></body></html>`);
-        win.document.close(); setTimeout(() => win.print(), 500);
-        toast.success("PDF opened for print!"); return;
+      win.document.close(); 
+      setTimeout(() => win.print(), 500);
+      toast.success("PDF opened for print!"); 
+      return;
+    }
+
+    // ============================================================
+    // EXCEL EXPORT WITH EXCELJS - PER-LINE COLORING & AUTO-WIDTH
+    // ============================================================
+    const workbook = new ExcelJS.Workbook();
+    workbook.creator = 'Order Summary Report';
+    workbook.created = new Date();
+
+    const headers = getHeaders();
+
+    // ===== HELPER FUNCTION: Create a sheet with rich text =====
+    const createSheetWithRichText = (dataItems, sheetName) => {
+      if (!dataItems || dataItems.length === 0) {
+        return null;
       }
-      // ============================================================
-      // EXCEL EXPORT WITH EXCELJS - PER-LINE COLORING & AUTO-WIDTH
-      // ============================================================
 
-      const workbook = new ExcelJS.Workbook();
-      workbook.creator = 'Order Summary Report';
-      workbook.created = new Date();
+      const worksheet = workbook.addWorksheet(sheetName);
 
-      const headers = getHeaders();
+      // ===== AUTO-WIDTH CALCULATION =====
+      const columnWidths = {};
 
-      // ===== HELPER FUNCTION: Create a sheet with rich text =====
-// ===== HELPER FUNCTION: Create a sheet with rich text =====
-// ===== HELPER FUNCTION: Create a sheet with rich text =====
-const createSheetWithRichText = (dataItems, sheetName) => {
-  if (!dataItems || dataItems.length === 0) {
-    return null;
-  }
+      // Initialize with header widths
+      headers.forEach((header, index) => {
+        columnWidths[index] = (header?.length || 10) + 4;
+      });
 
-  const worksheet = workbook.addWorksheet(sheetName);
-
-  // ===== AUTO-WIDTH CALCULATION =====
-  const columnWidths = {};
-
-  // Initialize with header widths
-  headers.forEach((header, index) => {
-    columnWidths[index] = (header?.length || 10) + 4;
-  });
-
-  // Check data rows for max content width
-  dataItems.forEach((item) => {
-    const rowData = getRowData(item, 0);
-    headers.forEach((header, colIndex) => {
-      let cellValue = rowData[colIndex] || '';
-
-      if (header === 'Challan' && item.ChallanNo && item.ChallanNo.length > 0) {
-        const mergedChallanMap = cndata?.mergedChallanMap || {};
-        const challanText = item.ChallanNo.map((ch, idx) => {
-          const details = mergedChallanMap[ch.challanNo] || {};
-          let text = `${idx + 1}. ${ch.challanNo} (${ch.status || 'Unknown'})`;
-          if (details.challanQty > 0) {
-            text += ` || Challan QTY (${details.challanQty})`;
+      // Calculate max content widths
+      dataItems.forEach((item) => {
+        const rowData = getRowData(item, 0);
+        headers.forEach((header, colIndex) => {
+          let cellValue = rowData[colIndex] || '';
+          
+          if (header === 'Challan' && item.ChallanNo && item.ChallanNo.length > 0) {
+            const mergedChallanMap = cndata?.mergedChallanMap || {};
+            let fullText = '';
+            item.ChallanNo.forEach((ch, idx) => {
+              let details = mergedChallanMap[ch.challanNo] || {};
+              
+              if (!details.challanQty && !details.totalChallanValue) {
+                const challanReceiveMap = cndata?.challanReceiveMap || {};
+                const receiveData = challanReceiveMap[ch.challanNo] || {};
+                details = {
+                  challanQty: receiveData.challanQty || 0,
+                  totalChallanValue: receiveData.totalChallanValue || 0
+                };
+              }
+              
+              const qty = details.challanQty || 0;
+              const value = details.totalChallanValue || 0;
+              
+              let text = `${idx + 1}. ${ch.challanNo} (${ch.status || 'Unknown'})`;
+              if (showChallanDetails) {
+                if (qty > 0) {
+                  text += ` || Challan QTY (${qty})`;
+                }
+                if (value > 0) {
+                  text += ` || Challan Value ($${value.toFixed(2)})`;
+                }
+              }
+              fullText += text + (idx < item.ChallanNo.length - 1 ? '\n' : '');
+            });
+            cellValue = fullText;
           }
-          if (details.totalChallanValue > 0) {
-            text += ` || Challan Value ($${details.totalChallanValue.toFixed(2)})`;
-          }
-          return text;
-        }).join('\n');
-        cellValue = challanText;
-      }
+          
+          const cellLength = String(cellValue).length;
+          const headerLength = header?.length || 10;
+          const maxLength = Math.max(cellLength + 2, headerLength + 4);
+          columnWidths[colIndex] = Math.max(columnWidths[colIndex] || 10, Math.min(maxLength, 60));
+        });
+      });
 
-      const cellLength = String(cellValue).length;
-      const headerLength = header?.length || 10;
-      const maxLength = Math.max(cellLength + 2, headerLength + 4);
+      // Apply column widths
+      headers.forEach((header, index) => {
+        const col = worksheet.getColumn(index + 1);
+        col.width = Math.max(columnWidths[index] || 15, 10);
+        col.alignment = { vertical: 'middle', horizontal: 'center' };
+      });
 
-      columnWidths[colIndex] = Math.max(columnWidths[colIndex] || 10, Math.min(maxLength, 60));
-    });
-  });
-
-  // Apply column widths
-  headers.forEach((header, index) => {
-    const col = worksheet.getColumn(index + 1);
-    col.width = Math.max(columnWidths[index] || 15, 10);
-    col.alignment = { vertical: 'middle', horizontal: 'center' };
-  });
-
-  // ===== ADD HEADER ROW =====
-  const headerRow = worksheet.addRow(headers);
-  headerRow.eachCell((cell) => {
-    cell.font = { bold: true, size: 18, color: { argb: 'FF000000' }, name: 'Calibri' };
-    cell.fill = {
-      type: 'pattern',
-      pattern: 'solid',
-      fgColor: { argb: 'FFDDD9C4' }
-    };
-    cell.alignment = { horizontal: 'center', vertical: 'middle' };
-    cell.border = {
-      top: { style: 'thin', color: { argb: 'FF000000' } },
-      bottom: { style: 'thin', color: { argb: 'FF000000' } },
-      left: { style: 'thin', color: { argb: 'FF000000' } },
-      right: { style: 'thin', color: { argb: 'FF000000' } }
-    };
-  });
-
-  // ===== Add data rows with rich text for Challan column =====
-  dataItems.forEach((item, index) => {
-    const rowData = getRowData(item, index + 1);
-    const rowValues = [];
-
-    headers.forEach((header, colIndex) => {
-      if (header === 'Challan' && item.ChallanNo && item.ChallanNo.length > 0) {
-  const mergedChallanMap = cndata?.mergedChallanMap || {};
-  const richText = [];
-  item.ChallanNo.forEach((ch, idx) => {
-    const isReceived = ch.status === 'Challan Received';
-    let details = mergedChallanMap[ch.challanNo] || {};
-    
-    // Fallback to challanReceiveMap
-    if (!details.challanQty && !details.totalChallanValue) {
-      const challanReceiveMap = cndata?.challanReceiveMap || {};
-      const receiveData = challanReceiveMap[ch.challanNo] || {};
-      details = {
-        challanQty: receiveData.challanQty || 0,
-        totalChallanValue: receiveData.totalChallanValue || 0
-      };
-    }
-    
-    const qty = details.challanQty || 0;
-    const value = details.totalChallanValue || 0;
-    
-    let text = `${idx + 1}. ${ch.challanNo} (${ch.status || 'Unknown'})`;
-    if (qty > 0) {
-      text += ` || Challan QTY (${qty})`;
-    }
-    if (value > 0) {
-      text += ` || Challan Value ($${value.toFixed(2)})`;
-    }
-
-    richText.push({
-      text: text,
-      font: {
-        color: { argb: isReceived ? 'FF000000' : 'FFFF0000' },
-        bold: !isReceived,
-        size: 16,
-        name: 'Calibri'
-      }
-    });
-
-    if (idx < item.ChallanNo.length - 1) {
-      richText.push({ text: '\n' });
-    }
-  });
-
-  rowValues.push({ richText });
-} else {
-        const val = rowData[colIndex];
-        if (typeof val === 'number' && !isNaN(val)) {
-          rowValues.push(val);
-        } else {
-          rowValues.push(val || '');
-        }
-      }
-    });
-
-    const row = worksheet.addRow(rowValues);
-    row.height = Math.max(30, (item.ChallanNo?.length || 1) * 25);
-
-    row.eachCell((cell, colNumber) => {
-      const header = headers[colNumber - 1];
-      const isChallanCol = header === 'Challan';
-      const isNumericCol = ['Order Qty', 'Challan Qty', 'Balance Qty', 'Order Value', 'Challan Value', 'Balance Value'].includes(header);
-      const isBalanceCol = ['Balance Qty', 'Balance Value'].includes(header);
-      const isValueCol = ['Order Value', 'Challan Value', 'Balance Value'].includes(header);
-
-      if (cell.value && typeof cell.value === 'object' && cell.value.richText) {
-        cell.alignment = { wrapText: true, vertical: 'middle', horizontal: 'left' };
+      // ===== ADD HEADER ROW =====
+      const headerRow = worksheet.addRow(headers);
+      headerRow.eachCell((cell) => {
+        cell.font = { bold: true, size: 18, color: { argb: 'FF000000' }, name: 'Calibri' };
+        cell.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FFDDD9C4' }
+        };
+        cell.alignment = { horizontal: 'center', vertical: 'middle' };
         cell.border = {
           top: { style: 'thin', color: { argb: 'FF000000' } },
           bottom: { style: 'thin', color: { argb: 'FF000000' } },
           left: { style: 'thin', color: { argb: 'FF000000' } },
           right: { style: 'thin', color: { argb: 'FF000000' } }
         };
-        return;
-      }
+      });
 
-      cell.font = { size: 16, name: 'Calibri' };
+      // ===== Add data rows with rich text for Challan column =====
+      dataItems.forEach((item, index) => {
+        const rowData = getRowData(item, index + 1);
+        const rowValues = [];
 
-      if (isNumericCol) {
-        cell.numFmt = isValueCol ? '"$"#,##0.00' : '#,##0.00';
-        cell.alignment = { horizontal: 'right', vertical: 'middle' };
+        headers.forEach((header, colIndex) => {
+          if (header === 'Challan' && item.ChallanNo && item.ChallanNo.length > 0) {
+            const mergedChallanMap = cndata?.mergedChallanMap || {};
+            const challanReceiveMap = cndata?.challanReceiveMap || {};
+            const richText = [];
+            
+            item.ChallanNo.forEach((ch, idx) => {
+              const isReceived = ch.status === 'Challan Received';
+              
+              let details = mergedChallanMap[ch.challanNo] || {};
+              
+              if (!details.challanQty && !details.totalChallanValue) {
+                const receiveData = challanReceiveMap[ch.challanNo] || {};
+                details = {
+                  challanQty: receiveData.challanQty || 0,
+                  totalChallanValue: receiveData.totalChallanValue || 0
+                };
+              }
+              
+              if (!details.challanQty && !details.totalChallanValue) {
+                details = {
+                  challanQty: ch.challanQty || 0,
+                  totalChallanValue: ch.totalChallanValue || 0
+                };
+              }
+              
+              const qty = details.challanQty || 0;
+              const value = details.totalChallanValue || 0;
+              
+              let text = `${idx + 1}. ${ch.challanNo} (${ch.status || 'Unknown'})`;
+              if (showChallanDetails) {
+                if (qty > 0) {
+                  text += ` || Challan QTY (${qty})`;
+                }
+                if (value > 0) {
+                  text += ` || Challan Value ($${value.toFixed(2)})`;
+                }
+              }
 
-        if (isBalanceCol && cell.value > 0) {
-          cell.font = { bold: true, color: { argb: 'FFFF0000' }, size: 16, name: 'Calibri' };
-        }
-      }
+              richText.push({
+                text: text,
+                font: {
+                  color: { argb: isReceived ? 'FF000000' : 'FFFF0000' },
+                  bold: !isReceived,
+                  size: 16,
+                  name: 'Calibri'
+                }
+              });
 
-      if (header === '#') {
-        cell.alignment = { horizontal: 'center', vertical: 'middle' };
-      }
+              if (idx < item.ChallanNo.length - 1) {
+                richText.push({ text: '\n' });
+              }
+            });
 
-      cell.border = {
-        top: { style: 'thin', color: { argb: 'FF000000' } },
-        bottom: { style: 'thin', color: { argb: 'FF000000' } },
-        left: { style: 'thin', color: { argb: 'FF000000' } },
-        right: { style: 'thin', color: { argb: 'FF000000' } }
-      };
-    });
-  });
+            rowValues.push({ richText });
+          } else {
+            const val = rowData[colIndex];
+            if (typeof val === 'number' && !isNaN(val)) {
+              rowValues.push(val);
+            } else {
+              rowValues.push(val || '');
+            }
+          }
+        });
 
-  // ===== ADD SUBTOTAL ROW WITH PROPER MERGING =====
-  if (dataItems.length > 0) {
-    const subtotal = dataItems.reduce((acc, item) => ({
-      totalQty: acc.totalQty + (+item.TotalQty || 0),
-      challanQty: acc.challanQty + (+item.ChallanQTY || 0),
-      balanceQty: acc.balanceQty + (+item.BalanceQty || 0),
-      totalValue: acc.totalValue + (+item.TotalValue || 0),
-      challanValue: acc.challanValue + (+item.ChallanValue || 0),
-      balanceValue: acc.balanceValue + (+item.BalanceValue || 0)
-    }), { totalQty: 0, challanQty: 0, balanceQty: 0, totalValue: 0, challanValue: 0, balanceValue: 0 });
+        const row = worksheet.addRow(rowValues);
 
-    // Find where numeric columns start
-    let startIndex = 0;
-    for (let i = 0; i < headers.length; i++) {
-      if (['Order Qty', 'Challan Qty', 'Balance Qty', 'Order Value', 'Challan Value', 'Balance Value'].includes(headers[i])) {
-        startIndex = i;
-        break;
-      }
-    }
+        row.eachCell((cell, colNumber) => {
+          const header = headers[colNumber - 1];
+          const isNumericCol = ['Order Qty', 'Challan Qty', 'Balance Qty', 'Order Value', 'Challan Value', 'Balance Value'].includes(header);
+          const isBalanceCol = ['Balance Qty', 'Balance Value'].includes(header);
+          const isValueCol = ['Order Value', 'Challan Value', 'Balance Value'].includes(header);
 
-    const subtotalRow = [];
-    headers.forEach((header, idx) => {
-      if (idx === 0) {
-        subtotalRow.push('Subtotal');
-      } else if (idx < startIndex) {
-        subtotalRow.push('');
-      } else if (header === 'Order Qty') {
-        subtotalRow.push(subtotal.totalQty);
-      } else if (header === 'Challan Qty') {
-        subtotalRow.push(subtotal.challanQty);
-      } else if (header === 'Balance Qty') {
-        subtotalRow.push(subtotal.balanceQty);
-      } else if (header === 'Order Value') {
-        subtotalRow.push(subtotal.totalValue);
-      } else if (header === 'Challan Value') {
-        subtotalRow.push(subtotal.challanValue);
-      } else if (header === 'Balance Value') {
-        subtotalRow.push(subtotal.balanceValue);
-      } else {
-        subtotalRow.push('');
-      }
-    });
+          if (cell.value && typeof cell.value === 'object' && cell.value.richText) {
+            cell.alignment = { wrapText: true, vertical: 'top', horizontal: 'left' };
+            cell.border = {
+              top: { style: 'thin', color: { argb: 'FF000000' } },
+              bottom: { style: 'thin', color: { argb: 'FF000000' } },
+              left: { style: 'thin', color: { argb: 'FF000000' } },
+              right: { style: 'thin', color: { argb: 'FF000000' } }
+            };
+            return;
+          }
 
-    const subRow = worksheet.addRow(subtotalRow);
+          cell.font = { size: 16, name: 'Calibri' };
 
-    // Merge cells for "Subtotal" text from column 1 to column before numeric columns
-    if (startIndex > 1) {
-      const rowNumber = subRow.number;
-      worksheet.mergeCells(rowNumber, 1, rowNumber, startIndex);
-    }
+          if (isNumericCol) {
+            cell.numFmt = isValueCol ? '"$"#,##0.00' : '#,##0.00';
+            cell.alignment = { horizontal: 'right', vertical: 'middle' };
 
-    subRow.eachCell((cell, colNumber) => {
-      const header = headers[colNumber - 1];
-      const isNumericCol = ['Order Qty', 'Challan Qty', 'Balance Qty', 'Order Value', 'Challan Value', 'Balance Value'].includes(header);
-      const isValueCol = ['Order Value', 'Challan Value', 'Balance Value'].includes(header);
-      const isBalanceCol = ['Balance Qty', 'Balance Value'].includes(header);
+            if (isBalanceCol && cell.value > 0) {
+              cell.font = { bold: true, color: { argb: 'FFFF0000' }, size: 16, name: 'Calibri' };
+            }
+          }
 
-      cell.font = { bold: true, size: 16, color: { argb: 'FF1E3A5F' }, name: 'Calibri' };
-      cell.fill = {
-        type: 'pattern',
-        pattern: 'solid',
-        fgColor: { argb: 'FFD9E1F2' }
-      };
-      cell.alignment = { horizontal: 'center', vertical: 'middle' };
+          if (header === '#') {
+            cell.alignment = { horizontal: 'center', vertical: 'middle' };
+          }
 
-      if (isNumericCol) {
-        cell.alignment = { horizontal: 'right', vertical: 'middle' };
-        cell.numFmt = isValueCol ? '"$"#,##0.00' : '#,##0.00';
-
-        if (isBalanceCol && cell.value > 0) {
-          cell.font = { bold: true, size: 16, color: { argb: 'FFFF0000' }, name: 'Calibri' };
-        }
-      }
-
-      if (colNumber === 1 && cell.value === 'Subtotal') {
-        cell.alignment = { horizontal: 'center', vertical: 'middle' };
-      }
-
-      cell.border = {
-        top: { style: 'medium', color: { argb: 'FF000000' } },
-        bottom: { style: 'medium', color: { argb: 'FF000000' } },
-        left: { style: 'thin', color: { argb: 'FF000000' } },
-        right: { style: 'thin', color: { argb: 'FF000000' } }
-      };
-    });
-  }
-
-  return worksheet;
-};
-      // ============================================================
-      // CREATE SHEETS
-      // ============================================================
-
-      // --- SHEET 1: ALL DATA (Grouped by PI) ---
-      const groupedByPI = {};
-      filteredData.forEach(item => {
-        const piList = item.PINO ? item.PINO.split(',').map(p => p.trim()) : ["No PI"];
-        piList.forEach(pi => {
-          if (!groupedByPI[pi]) groupedByPI[pi] = [];
-          groupedByPI[pi].push(item);
+          cell.border = {
+            top: { style: 'thin', color: { argb: 'FF000000' } },
+            bottom: { style: 'thin', color: { argb: 'FF000000' } },
+            left: { style: 'thin', color: { argb: 'FF000000' } },
+            right: { style: 'thin', color: { argb: 'FF000000' } }
+          };
         });
       });
 
-      // Create main sheet with all data grouped by PI
-      const mainSheet = workbook.addWorksheet('All Data (by PI)');
-      let currentRow = 1;
+      // ===== ADD SUBTOTAL ROW WITH PROPER MERGING =====
+      if (dataItems.length > 0) {
+        const subtotal = dataItems.reduce((acc, item) => ({
+          totalQty: acc.totalQty + (+item.TotalQty || 0),
+          challanQty: acc.challanQty + (+item.ChallanQTY || 0),
+          balanceQty: acc.balanceQty + (+item.BalanceQty || 0),
+          totalValue: acc.totalValue + (+item.TotalValue || 0),
+          challanValue: acc.challanValue + (+item.ChallanValue || 0),
+          balanceValue: acc.balanceValue + (+item.BalanceValue || 0)
+        }), { totalQty: 0, challanQty: 0, balanceQty: 0, totalValue: 0, challanValue: 0, balanceValue: 0 });
+
+        let startIndex = 0;
+        for (let i = 0; i < headers.length; i++) {
+          if (['Order Qty', 'Challan Qty', 'Balance Qty', 'Order Value', 'Challan Value', 'Balance Value'].includes(headers[i])) {
+            startIndex = i;
+            break;
+          }
+        }
+
+        const subtotalRow = [];
+        headers.forEach((header, idx) => {
+          if (idx === 0) {
+            subtotalRow.push('Subtotal');
+          } else if (idx < startIndex) {
+            subtotalRow.push('');
+          } else if (header === 'Order Qty') {
+            subtotalRow.push(subtotal.totalQty);
+          } else if (header === 'Challan Qty') {
+            subtotalRow.push(subtotal.challanQty);
+          } else if (header === 'Balance Qty') {
+            subtotalRow.push(subtotal.balanceQty);
+          } else if (header === 'Order Value') {
+            subtotalRow.push(subtotal.totalValue);
+          } else if (header === 'Challan Value') {
+            subtotalRow.push(subtotal.challanValue);
+          } else if (header === 'Balance Value') {
+            subtotalRow.push(subtotal.balanceValue);
+          } else {
+            subtotalRow.push('');
+          }
+        });
+
+        const subRow = worksheet.addRow(subtotalRow);
+
+        if (startIndex > 1) {
+          const rowNumber = subRow.number;
+          worksheet.mergeCells(rowNumber, 1, rowNumber, startIndex);
+        }
+
+        subRow.eachCell((cell, colNumber) => {
+          const header = headers[colNumber - 1];
+          const isNumericCol = ['Order Qty', 'Challan Qty', 'Balance Qty', 'Order Value', 'Challan Value', 'Balance Value'].includes(header);
+          const isValueCol = ['Order Value', 'Challan Value', 'Balance Value'].includes(header);
+          const isBalanceCol = ['Balance Qty', 'Balance Value'].includes(header);
+
+          cell.font = { bold: true, size: 16, color: { argb: 'FF1E3A5F' }, name: 'Calibri' };
+          cell.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'FFD9E1F2' }
+          };
+          cell.alignment = { horizontal: 'center', vertical: 'middle' };
+
+          if (isNumericCol) {
+            cell.alignment = { horizontal: 'right', vertical: 'middle' };
+            cell.numFmt = isValueCol ? '"$"#,##0.00' : '#,##0.00';
+
+            if (isBalanceCol && cell.value > 0) {
+              cell.font = { bold: true, size: 16, color: { argb: 'FFFF0000' }, name: 'Calibri' };
+            }
+          }
+
+          if (colNumber === 1 && cell.value === 'Subtotal') {
+            cell.alignment = { horizontal: 'center', vertical: 'middle' };
+          }
+
+          cell.border = {
+            top: { style: 'medium', color: { argb: 'FF000000' } },
+            bottom: { style: 'medium', color: { argb: 'FF000000' } },
+            left: { style: 'thin', color: { argb: 'FF000000' } },
+            right: { style: 'thin', color: { argb: 'FF000000' } }
+          };
+        });
+      }
+
+      return worksheet;
+    };
+
+    // --- SHEET 1: ALL DATA (Grouped by PI) ---
+    const groupedByPI = {};
+    filteredData.forEach(item => {
+      const piList = item.PINO ? item.PINO.split(',').map(p => p.trim()) : ["No PI"];
+      piList.forEach(pi => {
+        if (!groupedByPI[pi]) groupedByPI[pi] = [];
+        groupedByPI[pi].push(item);
+      });
+    });
+
+    // Create main sheet with all data grouped by PI
+    const mainSheet = workbook.addWorksheet('All Data (by PI)');
+    let currentRow = 1;
+
 
       // ===== AUTO-WIDTH CALCULATION FOR MAIN SHEET =====
       const mainColumnWidths = {};
 
       // Initialize with header widths
-      headers.forEach((header, index) => {
-        mainColumnWidths[index] = (header?.length || 10) + 4;
+headers.forEach((header, index) => {
+  mainColumnWidths[index] = (header?.length || 10) + 4;
+});
+
+// Check all data for max content width
+filteredData.forEach((item) => {
+  const rowData = getRowData(item, 0);
+  headers.forEach((header, colIndex) => {
+    let cellValue = rowData[colIndex] || '';
+
+    // --------------------------------------------------
+    if (header === 'Challan' && item.ChallanNo && item.ChallanNo.length > 0) {
+      // Build the full text with QTY and Value for width calculation
+      const mergedChallanMap = cndata?.mergedChallanMap || {};
+      const challanReceiveMap = cndata?.challanReceiveMap || {};
+      
+      const challanText = item.ChallanNo.map((ch, idx) => {
+        let details = mergedChallanMap[ch.challanNo] || {};
+        
+        if (!details.challanQty && !details.totalChallanValue) {
+          const receiveData = challanReceiveMap[ch.challanNo] || {};
+          details = {
+            challanQty: receiveData.challanQty || 0,
+            totalChallanValue: receiveData.totalChallanValue || 0
+          };
+        }
+        
+        const qty = details.challanQty || 0;
+        const value = details.totalChallanValue || 0;
+        
+        let text = `${idx + 1}. ${ch.challanNo} (${ch.status || 'Unknown'})`;
+        if (qty > 0) {
+          text += ` || Challan QTY (${qty})`;
+        }
+        if (value > 0) {
+          text += ` || Challan Value ($${value.toFixed(2)})`;
+        }
+        return text;
+      }).join('\n');
+      
+      cellValue = challanText;
+      
+      // ===== CALCULATE MAX WIDTH BASED ON LONGEST LINE =====
+      const lines = challanText.split('\n');
+      let maxLineLength = 0;
+      lines.forEach(line => {
+        // Each character is roughly 0.8-1.2 width units in Excel
+        // Use 1.1 as average character width for Calibri 16pt
+        const lineLength = line.length * 1.1;
+        if (lineLength > maxLineLength) {
+          maxLineLength = lineLength;
+        }
       });
+      
+      // Add padding and ensure minimum width
+      const calculatedWidth = Math.max(maxLineLength + 5, 40);
+      mainColumnWidths[colIndex] = Math.max(mainColumnWidths[colIndex] || 40, calculatedWidth);
+    } else {
+      const cellLength = String(cellValue).length;
+      const headerLength = header?.length || 10;
+      const maxLength = Math.max(cellLength + 2, headerLength + 4);
+      mainColumnWidths[colIndex] = Math.max(mainColumnWidths[colIndex] || 10, Math.min(maxLength, 60));
+    }
+  });
+});
 
-      // Check all data for max content width
-      filteredData.forEach((item) => {
-        const rowData = getRowData(item, 0);
-        headers.forEach((header, colIndex) => {
-          let cellValue = rowData[colIndex] || '';
-
-          if (header === 'Challan' && item.ChallanNo && item.ChallanNo.length > 0) {
-            const challanText = item.ChallanNo.map((ch, idx) =>
-              `${idx + 1}. ${ch.challanNo} (${ch.status || 'Unknown'})`
-            ).join('\n');
-            cellValue = challanText;
-          }
-
-          const cellLength = String(cellValue).length;
-          const headerLength = header?.length || 10;
-          const maxLength = Math.max(cellLength + 2, headerLength + 4);
-
-          mainColumnWidths[colIndex] = Math.max(mainColumnWidths[colIndex] || 10, Math.min(maxLength, 60));
-        });
-      });
-
-      // Apply column widths
-      headers.forEach((header, index) => {
-        const col = mainSheet.getColumn(index + 1);
-        col.width = Math.max(mainColumnWidths[index] || 15, 10);
-        col.alignment = { vertical: 'middle', horizontal: 'center' };
-      });
+// Apply column widths
+headers.forEach((header, index) => {
+  const col = mainSheet.getColumn(index + 1);
+  // ===== USE THE CALCULATED WIDTH =====
+  col.width = Math.max(mainColumnWidths[index] || 15, 10);
+  col.alignment = { vertical: 'middle', horizontal: 'center' };
+});
 
       // Add data grouped by PI
 
@@ -6409,89 +6489,146 @@ const createSheetWithRichText = (dataItems, sheetName) => {
         currentRow++;
 
         // Add data rows for this PI
-        items.forEach((item, idx) => {
-          const rowData = getRowData(item, idx + 1);
-          const rowValues = [];
+       // Add data rows for this PI
+// Add data rows for this PI
+// Add data rows for this PI
+items.forEach((item, idx) => {
+  const rowData = getRowData(item, idx + 1);
+  const rowValues = [];
 
-          headers.forEach((header, colIndex) => {
-            if (header === 'Challan' && item.ChallanNo && item.ChallanNo.length > 0) {
-              const richText = [];
-              item.ChallanNo.forEach((ch, chIdx) => {
-                const isReceived = ch.status === 'Challan Received';
-                const text = `${chIdx + 1}. ${ch.challanNo} (${ch.status || 'Unknown'})`;
+  headers.forEach((header, colIndex) => {
+    if (header === 'Challan' && item.ChallanNo && item.ChallanNo.length > 0) {
+      // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+      const richText = [];
+      const mergedChallanMap = cndata?.mergedChallanMap || {};
+      const challanReceiveMap = cndata?.challanReceiveMap || {};
+      
+      item.ChallanNo.forEach((ch, chIdx) => {
+        const isReceived = ch.status === 'Challan Received';
+        
+        let details = mergedChallanMap[ch.challanNo] || {};
+        
+        if (!details.challanQty && !details.totalChallanValue) {
+          const receiveData = challanReceiveMap[ch.challanNo] || {};
+          details = {
+            challanQty: receiveData.challanQty || 0,
+            totalChallanValue: receiveData.totalChallanValue || 0
+          };
+        }
+        
+        if (!details.challanQty && !details.totalChallanValue) {
+          details = {
+            challanQty: ch.challanQty || 0,
+            totalChallanValue: ch.totalChallanValue || 0
+          };
+        }
+        
+        const qty = details.challanQty || 0;
+        const value = details.totalChallanValue || 0;
+        
+        let text = `${chIdx + 1}. ${ch.challanNo} (${ch.status || 'Unknown'})`;
+       
+       if (showChallanDetails) {
+      if (qty > 0) {
+        text += ` || Challan QTY (${qty})`;
+      }
+      if (value > 0) {
+        text += ` || Challan Value ($${value.toFixed(2)})`;
+      }
+    }
 
-                richText.push({
-                  text: text,
-                  font: {
-                    color: { argb: isReceived ? 'FF000000' : 'FFFF0000' },
-                    bold: !isReceived,
-                    size: 16,
-                    name: 'Calibri'
-                  }
-                });
+       richText.push({
+      text: text,
+      font: {
+        color: { argb: isReceived ? 'FF000000' : 'FFFF0000' },
+        bold: !isReceived,
+        size: 16,
+        name: 'Calibri'
+      }
+    });
 
-                if (chIdx < item.ChallanNo.length - 1) {
-                  richText.push({ text: '\n' });
-                }
-              });
+        if (chIdx < item.ChallanNo.length - 1) {
+      richText.push({ text: '\n' });
+    }
+  });
 
-              rowValues.push({ richText });
-            } else {
-              const val = rowData[colIndex];
-              if (typeof val === 'number' && !isNaN(val)) {
-                rowValues.push(val);
-              } else {
-                rowValues.push(val || '');
-              }
-            }
-          });
+      rowValues.push({ richText });
+    } else {
+      const val = rowData[colIndex];
+      if (typeof val === 'number' && !isNaN(val)) {
+        rowValues.push(val);
+      } else {
+        rowValues.push(val || '');
+      }
+    }
+  });
 
-          const row = mainSheet.addRow(rowValues);
-          row.height = Math.max(30, (item.ChallanNo?.length || 1) * 25);
+  const row = mainSheet.addRow(rowValues);
 
-          // Style each cell - ALL FONT SIZE 16
-          row.eachCell((cell, colNumber) => {
-            const header = headers[colNumber - 1];
-            const isChallanCol = header === 'Challan';
-            const isNumericCol = ['Order Qty', 'Challan Qty', 'Balance Qty', 'Order Value', 'Challan Value', 'Balance Value'].includes(header);
-            const isBalanceCol = ['Balance Qty', 'Balance Value'].includes(header);
-            const isValueCol = ['Order Value', 'Challan Value', 'Balance Value'].includes(header);
+  // ===== FIX: Calculate proper row height based on actual rich text lines =====
+  let rowHeight = 30;
+  if (item.ChallanNo && item.ChallanNo.length > 0) {
+    let totalLines = 0;
+    const mergedChallanMap = cndata?.mergedChallanMap || {};
+    item.ChallanNo.forEach((ch) => {
+      totalLines += 1; // The challan number and status line
+      const details = mergedChallanMap[ch.challanNo] || {};
+      if (details.challanQty > 0) totalLines += 1;
+      if (details.totalChallanValue > 0) totalLines += 1;
+    });
+    rowHeight = Math.max(40, (totalLines + 1) * 18);
+  }
+  rowHeight = Math.min(rowHeight, 350);
+  row.height = rowHeight;
 
-            if (cell.value && typeof cell.value === 'object' && cell.value.richText) {
-              cell.alignment = { wrapText: true, vertical: 'middle', horizontal: 'left' };
-              cell.border = {
-                top: { style: 'thin', color: { argb: 'FF000000' } },
-                bottom: { style: 'thin', color: { argb: 'FF000000' } },
-                left: { style: 'thin', color: { argb: 'FF000000' } },
-                right: { style: 'thin', color: { argb: 'FF000000' } }
-              };
-              return;
-            }
+  // Style each cell
+  row.eachCell((cell, colNumber) => {
+    const header = headers[colNumber - 1];
+    const isChallanCol = header === 'Challan';
+    const isNumericCol = ['Order Qty', 'Challan Qty', 'Balance Qty', 'Order Value', 'Challan Value', 'Balance Value'].includes(header);
+    const isBalanceCol = ['Balance Qty', 'Balance Value'].includes(header);
+    const isValueCol = ['Order Value', 'Challan Value', 'Balance Value'].includes(header);
 
-            cell.font = { size: 16, name: 'Calibri' };
+    if (cell.value && typeof cell.value === 'object' && cell.value.richText) {
+  // ===== FOR CHALLAN COLUMN - FORCE WRAP TEXT =====
+  cell.alignment = { 
+    wrapText: true, 
+    vertical: 'top',     // 'top' is better for multiline text
+    horizontal: 'left' 
+  };
+  cell.border = {
+    top: { style: 'thin', color: { argb: 'FF000000' } },
+    bottom: { style: 'thin', color: { argb: 'FF000000' } },
+    left: { style: 'thin', color: { argb: 'FF000000' } },
+    right: { style: 'thin', color: { argb: 'FF000000' } }
+  };
+  return;
+}
 
-            if (isNumericCol) {
-              cell.numFmt = isValueCol ? '"$"#,##0.00' : '#,##0.00';
-              cell.alignment = { horizontal: 'right', vertical: 'middle' };
-              if (isBalanceCol && cell.value > 0) {
-                cell.font = { bold: true, color: { argb: 'FFFF0000' }, size: 16, name: 'Calibri' };
-              }
-            }
+    cell.font = { size: 16, name: 'Calibri' };
 
-            if (header === '#') {
-              cell.alignment = { horizontal: 'center', vertical: 'middle' };
-            }
+    if (isNumericCol) {
+      cell.numFmt = isValueCol ? '"$"#,##0.00' : '#,##0.00';
+      cell.alignment = { horizontal: 'right', vertical: 'middle' };
+      if (isBalanceCol && cell.value > 0) {
+        cell.font = { bold: true, color: { argb: 'FFFF0000' }, size: 16, name: 'Calibri' };
+      }
+    }
 
-            cell.border = {
-              top: { style: 'thin', color: { argb: 'FF000000' } },
-              bottom: { style: 'thin', color: { argb: 'FF000000' } },
-              left: { style: 'thin', color: { argb: 'FF000000' } },
-              right: { style: 'thin', color: { argb: 'FF000000' } }
-            };
-          });
+    if (header === '#') {
+      cell.alignment = { horizontal: 'center', vertical: 'middle' };
+    }
 
-          currentRow++;
-        });
+    cell.border = {
+      top: { style: 'thin', color: { argb: 'FF000000' } },
+      bottom: { style: 'thin', color: { argb: 'FF000000' } },
+      left: { style: 'thin', color: { argb: 'FF000000' } },
+      right: { style: 'thin', color: { argb: 'FF000000' } }
+    };
+  });
+
+  currentRow++;
+});
 
         // ===== ADD SUBTOTAL ROW WITH PROPER MERGING FOR MAIN SHEET =====
         const subtotal = items.reduce((acc, item) => ({
@@ -6842,7 +6979,7 @@ const createSheetWithRichText = (dataItems, sheetName) => {
       console.error("Export error:", error);
       toast.error(`Export failed: ${error.message}`);
     }
-  }, [filteredData, grandTotal, logHistory, selectedColumns]);
+  }, [filteredData, grandTotal, logHistory, selectedColumns, showChallanDetails, cndata]);
   // ============================================================
   // COMPONENT RENDER
   // ============================================================
@@ -6883,6 +7020,15 @@ const createSheetWithRichText = (dataItems, sheetName) => {
             </button>
             <button className="btn btn-ghost btn-xs bg-white/80 backdrop-blur-sm" onClick={() => setShowShortcuts(true)}>⌨️</button>
             <button className="btn btn-ghost btn-xs bg-white/80 backdrop-blur-sm" onClick={() => setShowCommandPalette(true)}>⚡</button>
+            <button 
+  className={cn('btn btn-xs gap-1', 
+    showChallanDetails ? 'btn-info text-white' : 'btn-ghost bg-white/80'
+  )} 
+  onClick={() => setShowChallanDetails(!showChallanDetails)}
+  title="Toggle Challan QTY & Value display"
+>
+  📊 Challan Details {showChallanDetails ? 'ON' : 'OFF'}
+</button>
             <NotificationCenter data={filteredData} />
             <DataHistory />
             <ColumnVisibilityManager columns={COLUMN_CONFIG.allColumns} visibleColumns={selectedColumns} onToggle={toggleColumn} />
@@ -6947,6 +7093,15 @@ const createSheetWithRichText = (dataItems, sheetName) => {
           <div className="flex-1 min-w-[150px]">
             <input id="global-search" type="text" placeholder="🔍 Search... (Ctrl+F)" className="input input-bordered input-xs w-full bg-white/90 backdrop-blur-sm" value={search} onChange={e => { setSearch(e.target.value); setCurrentPage(0); }} />
           </div>
+          <button 
+    className={cn('btn btn-xs gap-1', 
+      showChallanDetails ? 'btn-info text-white' : 'btn-ghost bg-white/80'
+    )} 
+    onClick={() => setShowChallanDetails(!showChallanDetails)}
+    title="Toggle Challan QTY & Value display"
+  >
+    📊 Challan Details {showChallanDetails ? 'ON' : 'OFF'}
+  </button>
           <MultiSearchDropdown value={multiSearch} onChange={setMultiSearch} onClear={() => setMultiSearch('')} onSearch={() => { if (multiSearch?.trim()) { toast.info(`🔍 Searching ${getMultiSearchCount()} items...`); setCurrentPage(0); } }} totalMatches={filteredData.length} isActive={multiSearch?.trim()?.length > 0} />
 
           <PIMatchFilter
@@ -7043,6 +7198,7 @@ const createSheetWithRichText = (dataItems, sheetName) => {
             currentPage={currentPage}
             apiKey={apiKey}
             cndata={cndata}
+            showChallanDetails={showChallanDetails}
           />
 
         )}
