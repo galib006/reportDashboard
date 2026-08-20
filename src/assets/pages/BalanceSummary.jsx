@@ -5837,58 +5837,130 @@ useEffect(() => {
 
     // --- DYNAMIC COLUMN DEFINITION BASED ON USER SELECTION ---
     const columnDisplayMap = {
-      'SNo': '#',
-      'Order': 'Order No',
-      'Date': 'Date',
-      'Customer': 'Customer',
-      'Delivery': 'Delivery',
-      'SalesPerson': 'Sales Person',
-      'Buyer': 'Buyer',
-      'Section': 'Section',
-      'CustomerPO': 'Customer PO',
-      'Style': 'Style',
-      'Color': 'Color',
-      'PO': 'PO',
-      'PI': 'PI No',
-      'PICompany': 'PI Company',
-      'LC': 'LC No',
-      'Invoice': 'Invoice No',
-      'OrderQty': 'Order Qty',
-      'ChallanQty': 'Challan Qty',
-      'BalanceQty': 'Balance Qty',
-      'OrderValue': 'Order Value',
-      'ChallanValue': 'Challan Value',
-      'BalanceValue': 'Balance Value',
-      'Challan': 'Challan',
-      'Progress': 'Progress %',
-      
-      'ChallanQtyDetail': 'Challan Qty (Detail)',
-      'ChallanValueDetail': 'Challan Value (Detail)'
-    };
+  'SNo': '#',
+  'Order': 'Order No',
+  'Date': 'Date',
+  'Customer': 'Customer',
+  'Delivery': 'Delivery',
+  'SalesPerson': 'Sales Person',
+  'Buyer': 'Buyer',
+  'Section': 'Section',
+  'CustomerPO': 'Customer PO',
+  'Style': 'Style',
+  'Color': 'Color',
+  'PO': 'PO',
+  'PI': 'PI No',
+  'PICompany': 'PI Company',
+  'LC': 'LC No',
+  'Invoice': 'Invoice No',
+  'OrderQty': 'Order Qty',
+  'ChallanQty': 'Challan Qty',
+  'BalanceQty': 'Balance Qty',
+  'OrderValue': 'Order Value',
+  'ChallanValue': 'Challan Value',
+  'BalanceValue': 'Balance Value',
+  'Challan': 'Challan',
+  'Progress': 'Progress %',
+  'ChallanQtyDetail': 'Challan Qty (Detail)',
+  'ChallanValueDetail': 'Challan Value (Detail)'
+};
+const tableColumnOrder = [
+  'SNo',           // #
+  'Order',         // Order
+  'Date',          // Date
+  'SalesPerson',   // Sales Person
+  'Customer',      // Customer
+  'Delivery',      // Delivery
+  'Buyer',         // Buyer
+  'CustomerPO',    // Customer PO
+  'Style',         // Style
+  'Color',         // Color
+  'PO',            // PO
+  'PI',            // PI(s)
+  'PICompany',     // PI Company
+  'LC',            // LC
+  'Invoice',       // Invoice
+  'Section',       // Section
+  'OrderQty',      // Order Qty
+  'ChallanQty',    // Challan Qty
+  'BalanceQty',    // Balance Qty
+  'OrderValue',    // Order Value
+  'ChallanValue',  // Challan Value
+  'BalanceValue',  // Balance Value
+  'Challan',     // Challan
+  'Progress'     // Progress %
+];
+    
 
     const essentialColumns = ['Order', 'Date', 'Customer', 'Delivery', 'SalesPerson', 'Buyer', 'Section'];
 
-    let finalColumns = [...new Set([...essentialColumns, ...selectedColumns])]
-      .filter(col => columnDisplayMap[col]);
+    // let finalColumns = [...new Set([...essentialColumns, ...selectedColumns])]
+    //   .filter(col => columnDisplayMap[col]);
 
-    if (selectedColumns.includes('PICompany')) {
-      finalColumns = finalColumns.filter(col => col !== 'PICompany');
-      const piIndex = finalColumns.indexOf('PI');
-      if (piIndex !== -1) {
-        finalColumns.splice(piIndex + 1, 0, 'PICompany');
-      } else {
-        const buyerIndex = finalColumns.indexOf('Buyer');
-        if (buyerIndex !== -1) {
-          finalColumns.splice(buyerIndex + 1, 0, 'PICompany');
-        } else {
-          finalColumns.push('PICompany');
+    let finalColumns = [];
+    tableColumnOrder.forEach(col => {
+  if (selectedColumns.includes(col) && columnDisplayMap[col]) {
+    finalColumns.push(col);
+  }
+});
+selectedColumns.forEach(col => {
+  if (!finalColumns.includes(col) && columnDisplayMap[col]) {
+    finalColumns.push(col);
+  }
+});
+// const essentialColumns = ['Order', 'Date', 'Customer', 'Delivery', 'SalesPerson', 'Buyer', 'Section'];
+essentialColumns.forEach(col => {
+  if (!finalColumns.includes(col) && columnDisplayMap[col]) {
+    // Insert at the correct position based on table order
+    const tableIndex = tableColumnOrder.indexOf(col);
+    if (tableIndex !== -1) {
+      // Find where to insert
+      let insertIndex = 0;
+      for (let i = 0; i < finalColumns.length; i++) {
+        const tablePos = tableColumnOrder.indexOf(finalColumns[i]);
+        if (tablePos !== -1 && tablePos < tableIndex) {
+          insertIndex = i + 1;
         }
       }
+      finalColumns.splice(insertIndex, 0, col);
+    } else {
+      finalColumns.push(col);
     }
+  }
+});
 
-    if (selectedColumns.includes('SNo')) {
-      finalColumns = ['SNo', ...finalColumns.filter(col => col !== 'SNo')];
-    }
+if (selectedColumns.includes('SNo')) {
+  finalColumns = ['SNo', ...finalColumns.filter(col => col !== 'SNo')];
+}
+if (selectedColumns.includes('PICompany') && selectedColumns.includes('PI')) {
+  finalColumns = finalColumns.filter(col => col !== 'PICompany');
+  const piIndex = finalColumns.indexOf('PI');
+  if (piIndex !== -1) {
+    finalColumns.splice(piIndex + 1, 0, 'PICompany');
+  } else {
+    finalColumns.push('PICompany');
+  }
+}
+
+
+    // if (selectedColumns.includes('PICompany')) {
+    //   finalColumns = finalColumns.filter(col => col !== 'PICompany');
+    //   const piIndex = finalColumns.indexOf('PI');
+    //   if (piIndex !== -1) {
+    //     finalColumns.splice(piIndex + 1, 0, 'PICompany');
+    //   } else {
+    //     const buyerIndex = finalColumns.indexOf('Buyer');
+    //     if (buyerIndex !== -1) {
+    //       finalColumns.splice(buyerIndex + 1, 0, 'PICompany');
+    //     } else {
+    //       finalColumns.push('PICompany');
+    //     }
+    //   }
+    // }
+
+    // if (selectedColumns.includes('SNo')) {
+    //   finalColumns = ['SNo', ...finalColumns.filter(col => col !== 'SNo')];
+    // }
 
     const getHeaders = () => finalColumns.map(col => columnDisplayMap[col]);
 
