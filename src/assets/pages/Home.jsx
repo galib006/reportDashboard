@@ -1096,22 +1096,22 @@ const useComprehensiveData = (
 
     // Order Funnel Data
     const orderFunnelData = [
-      {
-        name: "Orders Received",
-        value: Math.round(totals.orderQty) || 1,
-        fill: COLORS.primary,
-      },
-      {
-        name: "Delivered",
-        value: Math.round(totals.saleQty) || 1,
-        fill: COLORS.success,
-      },
-      {
-        name: "Pending",
-        value: Math.round(totals.balanceQty) || 1,
-        fill: COLORS.danger,
-      },
-    ];
+  {
+    name: "Orders Received",
+    value: Math.round(totals.orderValue) || 1,
+    fill: COLORS.primary,
+  },
+  {
+    name: "Delivered",
+    value: Math.round(totals.saleValue) || 1,
+    fill: COLORS.success,
+  },
+  {
+    name: "Pending",
+    value: Math.round(totals.balanceValue) || 1,
+    fill: COLORS.danger,
+  },
+];
 
     const funnelConversionData = orderFunnelData;
 
@@ -1574,6 +1574,7 @@ function getWeekNumber(date) {
   );
 }
 
+
 // ============================================================
 // Funnel Chart Component
 // ============================================================
@@ -1615,7 +1616,7 @@ const FunnelChartComponent = ({ data }) => {
               {entry.name}
             </span>
             <span className="text-slate-500">
-              {formatNumber(entry.value)}
+              {formatCurrency(entry.value)}
               <span className="text-slate-400 ml-1">
                 ({entry.percentage.toFixed(0)}%)
               </span>
@@ -1634,7 +1635,7 @@ const FunnelChartComponent = ({ data }) => {
               transition={{ duration: 0.8, delay: index * 0.1 }}
             >
               <span className="text-xs text-white font-medium">
-                {formatNumber(entry.value)}
+                {formatCurrency(entry.value)}
               </span>
             </motion.div>
           </div>
@@ -1652,13 +1653,13 @@ const FunnelChartComponent = ({ data }) => {
       <div className="mt-4 p-3 bg-slate-50 rounded-lg text-xs text-slate-600">
         <p className="font-medium">📊 Funnel Summary:</p>
         <p>
-          Total Orders: {formatNumber(total)} | Delivery Rate:{" "}
+          Total Order Value: {formatCurrency(total)} | Delivery Rate:{" "}
           {data[1]?.value > 0 ? ((data[1].value / total) * 100).toFixed(0) : 0}%
         </p>
       </div>
     </div>
   );
-};
+}; 
 
 // Status Indicator
 const StatusIndicator = ({ status }) => {
@@ -4604,44 +4605,39 @@ function Home() {
                     <h3 className="text-base font-semibold text-slate-800 mb-3">
                       Funnel Efficiency Metrics
                     </h3>
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                      <div className="bg-indigo-50 rounded-xl p-4 text-center">
-                        <p className="text-xs text-slate-400">
-                          Orders Received
-                        </p>
-                        <p className="text-2xl font-bold text-indigo-600">
-                          {formatNumber(data.totals.orderQty)}
-                        </p>
-                      </div>
-                      <div className="bg-emerald-50 rounded-xl p-4 text-center">
-                        <p className="text-xs text-slate-400">Delivered</p>
-                        <p className="text-2xl font-bold text-emerald-600">
-                          {formatNumber(data.totals.saleQty)}
-                        </p>
-                        <p className="text-xs text-emerald-500">
-                          {(
-                            (data.totals.saleQty /
-                              (data.totals.orderQty || 1)) *
-                            100
-                          ).toFixed(0)}
-                          % conversion
-                        </p>
-                      </div>
-                      <div className="bg-red-50 rounded-xl p-4 text-center">
-                        <p className="text-xs text-slate-400">Pending</p>
-                        <p className="text-2xl font-bold text-red-600">
-                          {formatNumber(data.totals.balanceQty)}
-                        </p>
-                        <p className="text-xs text-red-500">
-                          {(
-                            (data.totals.balanceQty /
-                              (data.totals.orderQty || 1)) *
-                            100
-                          ).toFixed(0)}
-                          % pending
-                        </p>
-                      </div>
-                    </div>
+                      
+                      
+                      
+                     <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+  <div className="bg-indigo-50 rounded-xl p-4 text-center">
+    <p className="text-xs text-slate-400">Total Order Value</p>
+    <p className="text-2xl font-bold text-indigo-600">
+      {formatCurrency(data.totals.orderValue)}
+    </p>
+  </div>
+  <div className="bg-emerald-50 rounded-xl p-4 text-center">
+    <p className="text-xs text-slate-400">Delivered Value</p>
+    <p className="text-2xl font-bold text-emerald-600">
+      {formatCurrency(data.totals.saleValue)}
+    </p>
+    <p className="text-xs text-emerald-500">
+      {((data.totals.saleValue / (data.totals.orderValue || 1)) * 100).toFixed(0)}%
+      conversion
+    </p>
+  </div>
+  <div className="bg-red-50 rounded-xl p-4 text-center">
+    <p className="text-xs text-slate-400">Pending Value</p>
+    <p className="text-2xl font-bold text-red-600">
+      {formatCurrency(data.totals.balanceValue)}
+    </p>
+    <p className="text-xs text-red-500">
+      {((data.totals.balanceValue / (data.totals.orderValue || 1)) * 100).toFixed(0)}%
+      pending
+    </p>
+  </div>
+</div>
+
+
                   </div>
                 </div>
               </div>
