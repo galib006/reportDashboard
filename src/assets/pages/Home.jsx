@@ -437,6 +437,7 @@ const useComprehensiveData = (
   selectedYear,
   selectedMonth,
   selectedMarketing,
+  viewMode = "monthly",
 ) => {
   return useMemo(() => {
     const emptyResult = {
@@ -893,13 +894,14 @@ const useComprehensiveData = (
       let orderGrowth = 0;
 
       // In useComprehensiveData, update the growth calculation:
-if (i > 0 && arr[i - 1].saleValue > 0) {
-  salesGrowth = ((d.saleValue - arr[i - 1].saleValue) / arr[i - 1].saleValue) * 100;
-} else if (i > 0 && arr[i - 1].saleValue === 0 && d.saleValue > 0) {
-  salesGrowth = 100; // If previous was 0 and current > 0, treat as 100% growth
-} else if (i > 0 && arr[i - 1].saleValue === 0 && d.saleValue === 0) {
-  salesGrowth = 0; // Both are 0, no growth
-}
+      if (i > 0 && arr[i - 1].saleValue > 0) {
+        salesGrowth =
+          ((d.saleValue - arr[i - 1].saleValue) / arr[i - 1].saleValue) * 100;
+      } else if (i > 0 && arr[i - 1].saleValue === 0 && d.saleValue > 0) {
+        salesGrowth = 100; // If previous was 0 and current > 0, treat as 100% growth
+      } else if (i > 0 && arr[i - 1].saleValue === 0 && d.saleValue === 0) {
+        salesGrowth = 0; // Both are 0, no growth
+      }
 
       if (i > 0 && arr[i - 1].orderValue > 0) {
         orderGrowth =
@@ -943,13 +945,14 @@ if (i > 0 && arr[i - 1].saleValue > 0) {
       let orderGrowth = 0;
 
       // In useComprehensiveData, update the growth calculation:
-if (i > 0 && arr[i - 1].saleValue > 0) {
-  salesGrowth = ((d.saleValue - arr[i - 1].saleValue) / arr[i - 1].saleValue) * 100;
-} else if (i > 0 && arr[i - 1].saleValue === 0 && d.saleValue > 0) {
-  salesGrowth = 100; // If previous was 0 and current > 0, treat as 100% growth
-} else if (i > 0 && arr[i - 1].saleValue === 0 && d.saleValue === 0) {
-  salesGrowth = 0; // Both are 0, no growth
-}
+      if (i > 0 && arr[i - 1].saleValue > 0) {
+        salesGrowth =
+          ((d.saleValue - arr[i - 1].saleValue) / arr[i - 1].saleValue) * 100;
+      } else if (i > 0 && arr[i - 1].saleValue === 0 && d.saleValue > 0) {
+        salesGrowth = 100; // If previous was 0 and current > 0, treat as 100% growth
+      } else if (i > 0 && arr[i - 1].saleValue === 0 && d.saleValue === 0) {
+        salesGrowth = 0; // Both are 0, no growth
+      }
 
       if (i > 0 && arr[i - 1].orderValue > 0) {
         orderGrowth =
@@ -1064,49 +1067,72 @@ if (i > 0 && arr[i - 1].saleValue > 0) {
       }));
 
     // ALL Yearly Growth Data - Shows ALL years regardless of filters
-const allYearlyGrowthData = allYearlySalesDataUnfiltered.map(
-  (d, i, arr) => {
-    let salesGrowth = 0;
-    let orderGrowth = 0;
+    const allYearlyGrowthData = allYearlySalesDataUnfiltered.map(
+      (d, i, arr) => {
+        let salesGrowth = 0;
+        let orderGrowth = 0;
 
-    if (i > 0 && arr[i - 1].saleValue > 0) {
-      salesGrowth = ((d.saleValue - arr[i - 1].saleValue) / arr[i - 1].saleValue) * 100;
-    } else if (i > 0 && arr[i - 1].saleValue === 0 && d.saleValue > 0) {
-      salesGrowth = 100;
-    } else if (i > 0 && arr[i - 1].saleValue === 0 && d.saleValue === 0) {
-      salesGrowth = 0;
-    }
+        if (i > 0 && arr[i - 1].saleValue > 0) {
+          salesGrowth =
+            ((d.saleValue - arr[i - 1].saleValue) / arr[i - 1].saleValue) * 100;
+        } else if (i > 0 && arr[i - 1].saleValue === 0 && d.saleValue > 0) {
+          salesGrowth = 100;
+        } else if (i > 0 && arr[i - 1].saleValue === 0 && d.saleValue === 0) {
+          salesGrowth = 0;
+        }
 
-    if (i > 0 && arr[i - 1].orderValue > 0) {
-      orderGrowth = ((d.orderValue - arr[i - 1].orderValue) / arr[i - 1].orderValue) * 100;
-    } else if (i > 0 && arr[i - 1].orderValue === 0 && d.orderValue > 0) {
-      orderGrowth = 100;
-    }
+        if (i > 0 && arr[i - 1].orderValue > 0) {
+          orderGrowth =
+            ((d.orderValue - arr[i - 1].orderValue) / arr[i - 1].orderValue) *
+            100;
+        } else if (i > 0 && arr[i - 1].orderValue === 0 && d.orderValue > 0) {
+          orderGrowth = 100;
+        }
 
-    return {
-      month: d.name, // This should be the year (e.g., "2025", "2026")
-      orderValue: Math.round(d.orderValue),
-      saleValue: Math.round(d.saleValue),
-      orderGrowth: orderGrowth,
-      salesGrowth: salesGrowth,
-      uniqueOrders: d.uniqueOrders,
-    };
-  },
-);
+        return {
+          month: d.name, // This should be the year (e.g., "2025", "2026")
+          orderValue: Math.round(d.orderValue),
+          saleValue: Math.round(d.saleValue),
+          orderGrowth: orderGrowth,
+          salesGrowth: salesGrowth,
+          uniqueOrders: d.uniqueOrders,
+        };
+      },
+    );
 
-    // Yearly Data for chart display
-    const yearlyData = allYearlySalesDataUnfiltered;
+    const yearlyData = allYearlySalesDataUnfiltered.map((d) => ({
+      ...d,
+      name: d.name,
+      orderValue: d.orderValue,
+      saleValue: d.saleValue,
+      balanceValue: d.orderValue - d.saleValue,
+      deliveryRate: d.orderValue > 0 ? (d.saleValue / d.orderValue) * 100 : 0,
+    }));
 
-        const monthlyData = monthlySalesData;
-    
+    const monthlyData = monthlySalesData.map((d) => ({
+      ...d,
+      name: d.name,
+      orderValue: d.orderValue,
+      saleValue: d.saleValue,
+      balanceValue: d.balanceValue,
+      deliveryRate: d.deliveryRate || 0,
+    }));
+
     const dailyData = Array.from(dailyMap.values())
       .sort((a, b) => a.date.localeCompare(b.date))
       .map((d) => ({
         ...d,
+        name: new Date(d.date).toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+        }),
         date: new Date(d.date).toLocaleDateString("en-US", {
           month: "short",
           day: "numeric",
         }),
+        orderValue: d.orderValue,
+        saleValue: d.saleValue,
+        balanceValue: d.balanceValue,
         deliveryRate: d.orderQty > 0 ? (d.saleQty / d.orderQty) * 100 : 0,
         uniqueOrderCount: d.uniqueOrders.size,
       }));
@@ -1115,6 +1141,11 @@ const allYearlyGrowthData = allYearlySalesDataUnfiltered.map(
       .sort((a, b) => a.week.localeCompare(b.week))
       .map((w, i, arr) => ({
         ...w,
+        name: w.week,
+        orderValue: w.orderValue,
+        saleValue: w.saleValue,
+        balanceValue: w.orderValue - w.saleValue,
+        deliveryRate: w.orderValue > 0 ? (w.saleValue / w.orderValue) * 100 : 0,
         growth:
           i > 0 && arr[i - 1].orderValue > 0
             ? ((w.orderValue - arr[i - 1].orderValue) / arr[i - 1].orderValue) *
@@ -1127,7 +1158,6 @@ const allYearlyGrowthData = allYearlySalesDataUnfiltered.map(
             : 0,
         uniqueOrderCount: w.uniqueOrders.size,
       }));
-
     // NOW calculate performanceMetrics
     const performanceMetrics = {
       avgDailyOrder: Math.round(
@@ -1372,7 +1402,7 @@ const allYearlyGrowthData = allYearlySalesDataUnfiltered.map(
       },
       { name: "Pending", value: statusData.pending, fill: COLORS.danger },
     ];
-      
+
     // Top Performing Marketing - Sort by TOTAL
     const topPerformingMarketing = allMarketingDataRanked
       .slice(0, 5)
@@ -1585,7 +1615,91 @@ const allYearlyGrowthData = allYearlySalesDataUnfiltered.map(
             100
           : 0,
     }));
+    let efficiencyData = [];
 
+    if (viewMode === "yearly") {
+      // Yearly efficiency - aggregate by year
+      const yearlyEfficiencyMap = new Map();
+      apiData.forEach((item) => {
+        const date = new Date(item.OrderReceiveDate);
+        const yearKey = date.getFullYear().toString();
+        if (!yearlyEfficiencyMap.has(yearKey)) {
+          yearlyEfficiencyMap.set(yearKey, {
+            name: yearKey,
+            orders: 0,
+            value: 0,
+          });
+        }
+        const yData = yearlyEfficiencyMap.get(yearKey);
+        yData.orders += 1;
+        yData.value += Math.round(Number(item.ChallanValue) || 0);
+      });
+      efficiencyData = Array.from(yearlyEfficiencyMap.values()).map((m) => ({
+        name: m.name,
+        efficiency: m.orders > 0 ? Math.round((m.value || 0) / (m.orders || 1)) : 0,
+        orders: m.orders || 0,
+        revenue: Math.round(m.value || 0),
+      }));
+    } else if (viewMode === "weekly") {
+      // Weekly efficiency - aggregate by week
+      const weeklyEfficiencyMap = new Map();
+      apiData.forEach((item) => {
+        const date = new Date(item.OrderReceiveDate);
+        const weekKey = `${date.getFullYear()}-W${getWeekNumber(date)}`;
+        if (!weeklyEfficiencyMap.has(weekKey)) {
+          weeklyEfficiencyMap.set(weekKey, {
+            name: weekKey,
+            orders: 0,
+            value: 0,
+          });
+        }
+        const wData = weeklyEfficiencyMap.get(weekKey);
+        wData.orders += 1;
+        wData.value += Math.round(Number(item.ChallanValue) || 0);
+      });
+      efficiencyData = Array.from(weeklyEfficiencyMap.values())
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .map((m) => ({
+          name: m.name,
+          efficiency: m.orders > 0 ? Math.round((m.value || 0) / (m.orders || 1)) : 0,
+          orders: m.orders || 0,
+          revenue: Math.round(m.value || 0),
+        }));
+    } else if (viewMode === "daily") {
+      // Daily efficiency - aggregate by day (limit to last 30 days for readability)
+      const dailyEfficiencyMap = new Map();
+      apiData.forEach((item) => {
+        const date = new Date(item.OrderReceiveDate);
+        const dayKey = date.toISOString().split("T")[0];
+        if (!dailyEfficiencyMap.has(dayKey)) {
+          dailyEfficiencyMap.set(dayKey, {
+            name: new Date(dayKey).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+            orders: 0,
+            value: 0,
+          });
+        }
+        const dData = dailyEfficiencyMap.get(dayKey);
+        dData.orders += 1;
+        dData.value += Math.round(Number(item.ChallanValue) || 0);
+      });
+      efficiencyData = Array.from(dailyEfficiencyMap.values())
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .slice(-30) // Limit to last 30 days
+        .map((m) => ({
+          name: m.name,
+          efficiency: m.orders > 0 ? Math.round((m.value || 0) / (m.orders || 1)) : 0,
+          orders: m.orders || 0,
+          revenue: Math.round(m.value || 0),
+        }));
+    } else {
+      // Monthly efficiency (default) - by marketing/sales person
+      efficiencyData = allMarketingData.map((m) => ({
+        name: m.name,
+        efficiency: m.orders > 0 ? Math.round((m.value || 0) / (m.orders || 1)) : 0,
+        orders: m.orders || 0,
+        revenue: Math.round(m.value || 0),
+      }));
+    }
     return {
       totals,
       deliveryPercent,
@@ -1732,8 +1846,10 @@ const allYearlyGrowthData = allYearlySalesDataUnfiltered.map(
           .reduce((sum, item) => sum + item.saleValue, 0),
       })),
       growthMetrics,
+      
     };
-  }, [apiData, selectedYear, selectedMonth, selectedMarketing]);
+    
+  }, [apiData, selectedYear, selectedMonth, selectedMarketing, viewMode]);
 };
 
 function getWeekNumber(date) {
@@ -2319,7 +2435,7 @@ const RadarChartComponent = ({ data }) => {
   );
 };
 
-// Efficiency Chart Component
+// Efficiency Chart Component - FIXED
 const EfficiencyChartComponent = ({ data }) => {
   if (!data || data.length === 0) {
     return (
@@ -2336,16 +2452,21 @@ const EfficiencyChartComponent = ({ data }) => {
           dataKey="orders"
           name="Orders"
           label={{ value: "Orders", position: "bottom" }}
+          tick={{ fontSize: 11 }}
         />
-        <YAxis 
-  tickFormatter={(v) => {
-    if (v >= 1000) return `${(v / 1000).toFixed(0)}K%`;
-    if (v >= 100) return `${v.toFixed(0)}%`;
-    if (v >= 10) return `${v.toFixed(1)}%`;
-    return `${v.toFixed(1)}%`;
-  }}
-  domain={['auto', 'auto']}
-/>
+        <YAxis
+          type="number"
+          dataKey="efficiency"
+          name="Efficiency (Revenue/Order)"
+          tickFormatter={(v) => formatCompactCurrency(v)}
+          label={{
+            value: "Efficiency (Revenue per Order)",
+            angle: -90,
+            position: "left",
+          }}
+          tick={{ fontSize: 11 }}
+          domain={["auto", "auto"]}
+        />
         <ZAxis type="number" dataKey="revenue" range={[50, 400]} />
         <Tooltip
           formatter={(v, name) => {
@@ -2354,6 +2475,7 @@ const EfficiencyChartComponent = ({ data }) => {
             if (name === "Revenue") return formatCurrency(v);
             return v;
           }}
+          labelFormatter={(label) => `Sales Person: ${label}`}
           contentStyle={{
             backgroundColor: "white",
             border: "1px solid #e2e8f0",
@@ -2366,7 +2488,14 @@ const EfficiencyChartComponent = ({ data }) => {
           data={data}
           fill={COLORS.primary}
           shape="circle"
-        />
+        >
+          {data.map((entry, index) => (
+            <Cell
+              key={`cell-${index}`}
+              fill={CHART_COLORS[index % CHART_COLORS.length]}
+            />
+          ))}
+        </Scatter>
       </ScatterChart>
     </ResponsiveContainer>
   );
@@ -2685,164 +2814,175 @@ function Home() {
   const [isFetchingRange, setIsFetchingRange] = useState(false);
   const [rangeFetchProgress, setRangeFetchProgress] = useState(0);
   const [rangeFetchStatus, setRangeFetchStatus] = useState("");
- const fetchDataByDateRange = async (startDate, endDate) => {
-  if (!apiKey) {
-    toast.error("API key not available");
-    return;
-  }
-
-  // Close the date picker immediately
-  setShowDatePicker(false);
-  
-  // Show loading state
-  setIsFetchingRange(true);
-  setRangeFetchProgress(0);
-  setRangeFetchStatus("Preparing to fetch data...");
-
-  const source = axios.CancelToken.source();
-  cancelTokenRef.current = source;
-
-  try {
-    const stDate = startDate.toISOString().split("T")[0];
-    const edDate = endDate.toISOString().split("T")[0];
-
-    setRangeFetchProgress(10);
-    setRangeFetchStatus(`Fetching orders from ${stDate} to ${edDate}...`);
-
-    // Fetch order data
-    const orderReportResponse = await axios.get(
-      `https://tpl-api.ebs365.info/api/OrderReport/BI_OrderRelatedInformationReport?CompanyID=1&ProductCategoryID=0&ProductSubCategoryID=0&MarketingID=0&CustomerID=0&BuyerID=0&JobCardID=0&StartDate=${stDate}&EndDate=${edDate}&CommandID=5&EmpID=0`,
-      {
-        headers: { Authorization: `${apiKey}` },
-        timeout: 300000,
-        cancelToken: source.token,
-      },
-    );
-
-    const orderData = orderReportResponse.data || [];
-    setRangeFetchProgress(30);
-
-    if (!Array.isArray(orderData) || orderData.length === 0) {
-      toast.warning(`No data found for the selected date range.`);
-      setIsFetchingRange(false);
-      setRangeFetchStatus("");
+  const fetchDataByDateRange = async (startDate, endDate) => {
+    if (!apiKey) {
+      toast.error("API key not available");
       return;
     }
 
-    setRangeFetchProgress(40);
-    setRangeFetchStatus(`Found ${orderData.length} orders...`);
+    // Close the date picker immediately
+    setShowDatePicker(false);
 
-    setRangeFetchProgress(55);
-    setRangeFetchStatus("Fetching supporting data...");
-
-    const apiConfig = {
-      headers: { Authorization: `${apiKey}` },
-      timeout: 90000,
-      cancelToken: source.token,
-    };
-
-    const [challanRes, bblcRes, invoiceRes, piRes, challanReceiveRes] =
-      await Promise.allSettled([
-        axios.get(
-          `https://tpl-api.ebs365.info/api/Challan/GetDeliveryChalanDashboard?CompanyID=1&ProductCategoryID=0&CustomerID=0&MarkettingID=0&StatusID=7&StartDate=${stDate}&EndDate=${edDate}`,
-          apiConfig,
-        ),
-        axios.get(
-          `https://tpl-api.ebs365.info/api/BBLC/GetBBLCDashboard?CustomerID=0&CompanyID=1&StartDate=${stDate}&EndDate=${edDate}`,
-          apiConfig,
-        ),
-        axios.get(
-          `https://tpl-api.ebs365.info/api/CommercialInvoice/GetInvoiceDashboard?CompanyID=1&CustomerID=0&StartDate=${stDate}&EndDate=${edDate}`,
-          apiConfig,
-        ),
-        axios.get(
-          `https://tpl-api.ebs365.info/api/CustomerPI/GetCustomerPIDashboard?CompanyID=1&CustomerID=0&MarketingID=0&StartDate=${stDate}&EndDate=${edDate}`,
-          apiConfig,
-        ),
-        axios.get(
-          `https://tpl-api.ebs365.info/api/Challan/GetDeliveryChalanReceiveDashboard?CompanyID=1&ProductCategoryID=0&CustomerID=0&MarkettingID=0&Status=Receive-Complete&StartDate=${stDate}&EndDate=${edDate}`,
-          apiConfig,
-        ),
-      ]);
-
-    setRangeFetchProgress(75);
-    setRangeFetchStatus("Processing data...");
-
-    const challanData =
-      challanRes.status === "fulfilled" && challanRes.value?.data
-        ? challanRes.value.data
-        : [];
-    const bblcData =
-      bblcRes.status === "fulfilled" && bblcRes.value?.data
-        ? bblcRes.value.data
-        : [];
-    const invoiceData =
-      invoiceRes.status === "fulfilled" && invoiceRes.value?.data
-        ? invoiceRes.value.data
-        : [];
-    const piCompanyData =
-      piRes.status === "fulfilled" && piRes.value?.data
-        ? piRes.value.data
-        : [];
-    const challanReceiveData =
-      challanReceiveRes.status === "fulfilled" &&
-      challanReceiveRes.value?.data
-        ? challanReceiveRes.value.data
-        : [];
-
-    setRangeFetchProgress(90);
-    setRangeFetchStatus("Updating dashboard...");
-
-    setcndata((prevState) => ({
-      ...prevState,
-      apiData: orderData,
-      groupedData: [],
-      grupChallan: challanData,
-      bblcData: bblcData,
-      invoiceData: invoiceData,
-      piCompanyData: piCompanyData,
-      workOrderIdMap: {},
-      challanReceiveMap: {},
-      rawChallanReceiveData: challanReceiveData,
-      workOrderStatus: "date-range-loaded",
-      _lastFetch: {
-        timestamp: new Date().toISOString(),
-        startDate: stDate,
-        endDate: edDate,
-        orderCount: orderData.length,
-        challanCount: challanData.length,
-        workOrderStatus: "date-range-loaded",
-        autoLoaded: false,
-        dateRange: true,
-      },
-    }));
-
-    setRangeFetchProgress(100);
-    setRangeFetchStatus(`✅ Loaded ${orderData.length} orders for date range!`);
-    toast.success(
-      `✅ Loaded ${orderData.length} orders from ${stDate} to ${edDate}`,
-    );
-
-    // Auto-select year and month filters to "All" to show all data
-    setSelectedYear("All");
-    setSelectedMonth("All");
-  } catch (err) {
-    if (axios.isCancel(err)) return;
-    console.error("Date range fetch error:", err);
-    toast.error("Failed to fetch data for the selected date range.");
-    setRangeFetchStatus("❌ Error fetching data");
-  } finally {
-    setIsFetchingRange(false);
+    // Show loading state
+    setIsFetchingRange(true);
     setRangeFetchProgress(0);
-    cancelTokenRef.current = null;
-    setTimeout(() => setRangeFetchStatus(""), 3000);
-  }
-};
+    setRangeFetchStatus("Preparing to fetch data...");
+
+    const source = axios.CancelToken.source();
+    cancelTokenRef.current = source;
+
+    try {
+      const stDate = startDate.toISOString().split("T")[0];
+      const edDate = endDate.toISOString().split("T")[0];
+
+      setRangeFetchProgress(10);
+      setRangeFetchStatus(`Fetching orders from ${stDate} to ${edDate}...`);
+
+      // Check if dates are valid
+      if (!stDate || !edDate || stDate === edDate) {
+        toast.warning("Please select valid date range");
+        setIsFetchingRange(false);
+        setRangeFetchStatus("");
+        return;
+      }
+
+      // Fetch order data
+      const orderReportResponse = await axios.get(
+        `https://tpl-api.ebs365.info/api/OrderReport/BI_OrderRelatedInformationReport?CompanyID=1&ProductCategoryID=0&ProductSubCategoryID=0&MarketingID=0&CustomerID=0&BuyerID=0&JobCardID=0&StartDate=${stDate}&EndDate=${edDate}&CommandID=5&EmpID=0`,
+        {
+          headers: { Authorization: `${apiKey}` },
+          timeout: 300000,
+          cancelToken: source.token,
+        },
+      );
+
+      const orderData = orderReportResponse.data || [];
+      setRangeFetchProgress(30);
+
+      if (!Array.isArray(orderData) || orderData.length === 0) {
+        toast.warning(`No data found for the selected date range.`);
+        setIsFetchingRange(false);
+        setRangeFetchStatus("");
+        return;
+      }
+
+      setRangeFetchProgress(40);
+      setRangeFetchStatus(`Found ${orderData.length} orders...`);
+
+      setRangeFetchProgress(55);
+      setRangeFetchStatus("Fetching supporting data...");
+
+      const apiConfig = {
+        headers: { Authorization: `${apiKey}` },
+        timeout: 90000,
+        cancelToken: source.token,
+      };
+
+      const [challanRes, bblcRes, invoiceRes, piRes, challanReceiveRes] =
+        await Promise.allSettled([
+          axios.get(
+            `https://tpl-api.ebs365.info/api/Challan/GetDeliveryChalanDashboard?CompanyID=1&ProductCategoryID=0&CustomerID=0&MarkettingID=0&StatusID=7&StartDate=${stDate}&EndDate=${edDate}`,
+            apiConfig,
+          ),
+          axios.get(
+            `https://tpl-api.ebs365.info/api/BBLC/GetBBLCDashboard?CustomerID=0&CompanyID=1&StartDate=${stDate}&EndDate=${edDate}`,
+            apiConfig,
+          ),
+          axios.get(
+            `https://tpl-api.ebs365.info/api/CommercialInvoice/GetInvoiceDashboard?CompanyID=1&CustomerID=0&StartDate=${stDate}&EndDate=${edDate}`,
+            apiConfig,
+          ),
+          axios.get(
+            `https://tpl-api.ebs365.info/api/CustomerPI/GetCustomerPIDashboard?CompanyID=1&CustomerID=0&MarketingID=0&StartDate=${stDate}&EndDate=${edDate}`,
+            apiConfig,
+          ),
+          axios.get(
+            `https://tpl-api.ebs365.info/api/Challan/GetDeliveryChalanReceiveDashboard?CompanyID=1&ProductCategoryID=0&CustomerID=0&MarkettingID=0&Status=Receive-Complete&StartDate=${stDate}&EndDate=${edDate}`,
+            apiConfig,
+          ),
+        ]);
+
+      setRangeFetchProgress(75);
+      setRangeFetchStatus("Processing data...");
+
+      const challanData =
+        challanRes.status === "fulfilled" && challanRes.value?.data
+          ? challanRes.value.data
+          : [];
+      const bblcData =
+        bblcRes.status === "fulfilled" && bblcRes.value?.data
+          ? bblcRes.value.data
+          : [];
+      const invoiceData =
+        invoiceRes.status === "fulfilled" && invoiceRes.value?.data
+          ? invoiceRes.value.data
+          : [];
+      const piCompanyData =
+        piRes.status === "fulfilled" && piRes.value?.data
+          ? piRes.value.data
+          : [];
+      const challanReceiveData =
+        challanReceiveRes.status === "fulfilled" &&
+        challanReceiveRes.value?.data
+          ? challanReceiveRes.value.data
+          : [];
+
+      setRangeFetchProgress(90);
+      setRangeFetchStatus("Updating dashboard...");
+
+      setcndata((prevState) => ({
+        ...prevState,
+        apiData: orderData,
+        groupedData: [],
+        grupChallan: challanData,
+        bblcData: bblcData,
+        invoiceData: invoiceData,
+        piCompanyData: piCompanyData,
+        workOrderIdMap: {},
+        challanReceiveMap: {},
+        rawChallanReceiveData: challanReceiveData,
+        workOrderStatus: "date-range-loaded",
+        _lastFetch: {
+          timestamp: new Date().toISOString(),
+          startDate: stDate,
+          endDate: edDate,
+          orderCount: orderData.length,
+          challanCount: challanData.length,
+          workOrderStatus: "date-range-loaded",
+          autoLoaded: false,
+          dateRange: true,
+        },
+      }));
+
+      setRangeFetchProgress(100);
+      setRangeFetchStatus(
+        `✅ Loaded ${orderData.length} orders for date range!`,
+      );
+      toast.success(
+        `✅ Loaded ${orderData.length} orders from ${stDate} to ${edDate}`,
+      );
+
+      // Auto-select year and month filters to "All" to show all data
+      setSelectedYear("All");
+      setSelectedMonth("All");
+    } catch (err) {
+      if (axios.isCancel(err)) return;
+      console.error("Date range fetch error:", err);
+      toast.error("Failed to fetch data for the selected date range.");
+      setRangeFetchStatus("❌ Error fetching data");
+    } finally {
+      setIsFetchingRange(false);
+      setRangeFetchProgress(0);
+      cancelTokenRef.current = null;
+      setTimeout(() => setRangeFetchStatus(""), 3000);
+    }
+  };
   const data = useComprehensiveData(
     apiData,
     selectedYear,
     selectedMonth,
     selectedMarketing,
+    viewMode,
   );
 
   const marketingNames = useMemo(() => {
@@ -2854,103 +2994,108 @@ function Home() {
   }, [apiData]);
 
   // In the chartData definition
-const getChartData = () => {
-  switch (viewMode) {
-    case "yearly":
-      return data.yearlyData || [];
-    case "daily":
-      return data.dailyData || [];
-    case "weekly":
-      return data.weeklyData || [];
-    case "monthly":
-    default:
-      return data.monthlyData || [];
-  }
-};
+  const getChartData = () => {
+    switch (viewMode) {
+      case "yearly":
+        return data.yearlyData || [];
+      case "daily":
+        return data.dailyData || [];
+      case "weekly":
+        return data.weeklyData || [];
+      case "monthly":
+      default:
+        return data.monthlyData || [];
+    }
+  };
 
   const chartData = getChartData();
 
   // Inside Home component, replace the growthChartData section:
-// Smart growth data selection
-const getGrowthData = () => {
-  // 1. EXACT VIEW MODE MATCH - ABSOLUTE HIGHEST PRIORITY
-  if (viewMode === "yearly") {
-    if (data.allYearlyGrowthData && data.allYearlyGrowthData.length >= 2) {
-      console.log("Using Yearly data");
-      return data.allYearlyGrowthData;
+  // Smart growth data selection
+  const getGrowthData = () => {
+    // 1. EXACT VIEW MODE MATCH - ABSOLUTE HIGHEST PRIORITY
+    if (viewMode === "yearly") {
+      if (data.allYearlyGrowthData && data.allYearlyGrowthData.length >= 2) {
+        console.log("Using Yearly data");
+        return data.allYearlyGrowthData;
+      }
+      // If yearly data is not available, return empty array instead of falling back
+      console.log("Yearly data not available");
+      return [];
     }
-    // If yearly data is not available, return empty array instead of falling back
-    console.log("Yearly data not available");
-    return [];
-  }
-  
-  if (viewMode === "monthly") {
-    if (data.allGrowthData && data.allGrowthData.length >= 2) {
-      console.log("Using Monthly data");
-      return data.allGrowthData;
+
+    if (viewMode === "monthly") {
+      if (data.allGrowthData && data.allGrowthData.length >= 2) {
+        console.log("Using Monthly data");
+        return data.allGrowthData;
+      }
+      return [];
     }
-    return [];
-  }
-  
-  if (viewMode === "weekly") {
-    if (data.allWeeklyGrowthData && data.allWeeklyGrowthData.length >= 2) {
-      console.log("Using Weekly data");
-      return data.allWeeklyGrowthData;
+
+    if (viewMode === "weekly") {
+      if (data.allWeeklyGrowthData && data.allWeeklyGrowthData.length >= 2) {
+        console.log("Using Weekly data");
+        return data.allWeeklyGrowthData;
+      }
+      return [];
     }
-    return [];
-  }
-  
-  if (viewMode === "daily") {
-    if (data.allDailyGrowthData && data.allDailyGrowthData.length >= 3) {
-      console.log("Using Daily data");
+
+    if (viewMode === "daily") {
+      if (data.allDailyGrowthData && data.allDailyGrowthData.length >= 3) {
+        console.log("Using Daily data");
+        return data.allDailyGrowthData;
+      }
+      return [];
+    }
+
+    // 2. DATE RANGE OVERRIDE - only if no specific view mode is active
+    const hasDateRange = cndata?._lastFetch?.dateRange;
+    if (
+      hasDateRange &&
+      data.allDailyGrowthData &&
+      data.allDailyGrowthData.length >= 3
+    ) {
+      console.log("Using Daily data (date range)");
       return data.allDailyGrowthData;
     }
-    return [];
-  }
 
-  // 2. DATE RANGE OVERRIDE - only if no specific view mode is active
-  const hasDateRange = cndata?._lastFetch?.dateRange;
-  if (hasDateRange && data.allDailyGrowthData && data.allDailyGrowthData.length >= 3) {
-    console.log("Using Daily data (date range)");
-    return data.allDailyGrowthData;
-  }
+    // 3. SMART FALLBACK - best available data
+    if (data.allYearlyGrowthData && data.allYearlyGrowthData.length >= 2) {
+      console.log("Fallback: Using Yearly data");
+      return data.allYearlyGrowthData;
+    }
 
-  // 3. SMART FALLBACK - best available data
-  if (data.allYearlyGrowthData && data.allYearlyGrowthData.length >= 2) {
-    console.log("Fallback: Using Yearly data");
-    return data.allYearlyGrowthData;
-  }
-  
-  if (data.allGrowthData && data.allGrowthData.length >= 2) {
-    console.log("Fallback: Using Monthly data");
-    return data.allGrowthData;
-  }
-  
-  if (data.allWeeklyGrowthData && data.allWeeklyGrowthData.length >= 2) {
-    console.log("Fallback: Using Weekly data");
-    return data.allWeeklyGrowthData;
-  }
-  
-  if (data.allDailyGrowthData && data.allDailyGrowthData.length >= 3) {
-    console.log("Fallback: Using Daily data");
-    return data.allDailyGrowthData;
-  }
+    if (data.allGrowthData && data.allGrowthData.length >= 2) {
+      console.log("Fallback: Using Monthly data");
+      return data.allGrowthData;
+    }
 
-  // 4. LAST RESORT
-  console.log("Using filtered fallback data");
-  return data.growthData || data.weeklyGrowthData || data.dailyGrowthData || [];
-};
+    if (data.allWeeklyGrowthData && data.allWeeklyGrowthData.length >= 2) {
+      console.log("Fallback: Using Weekly data");
+      return data.allWeeklyGrowthData;
+    }
 
-const growthChartData = getGrowthData();
-const hasEnoughData = growthChartData.length >= 2;
+    if (data.allDailyGrowthData && data.allDailyGrowthData.length >= 3) {
+      console.log("Fallback: Using Daily data");
+      return data.allDailyGrowthData;
+    }
 
-const getGrowthLabel = () => {
-  if (viewMode === "yearly") return "Year-over-year";
-  if (viewMode === "daily") return "Day-over-day";
-  if (viewMode === "weekly") return "Week-over-week";
-  return "Month-over-month";
-};
- 
+    // 4. LAST RESORT
+    console.log("Using filtered fallback data");
+    return (
+      data.growthData || data.weeklyGrowthData || data.dailyGrowthData || []
+    );
+  };
+
+  const growthChartData = getGrowthData();
+  const hasEnoughData = growthChartData.length >= 2;
+
+  const getGrowthLabel = () => {
+    if (viewMode === "yearly") return "Year-over-year";
+    if (viewMode === "daily") return "Day-over-day";
+    if (viewMode === "weekly") return "Week-over-week";
+    return "Month-over-month";
+  };
 
   // Fallback to filtered data
   //   if (viewMode === "monthly" && data.growthData && data.growthData.length >= 2) {
@@ -3184,29 +3329,33 @@ const getGrowthLabel = () => {
     toast.info("Exporting dashboard data...");
     setTimeout(() => toast.success("Data exported successfully!"), 1000);
   };
-const handleDateRangeSubmit = (e) => {
-  if (e) {
-    e.preventDefault();
-    e.stopPropagation();
-  }
-  
-  if (dateRange.startDate && dateRange.endDate) {
-    const diffTime = Math.abs(dateRange.endDate - dateRange.startDate);
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    if (diffDays > 365) {
-      toast.warning("Date range exceeds 365 days. Please select a smaller range.");
-      return;
+  const handleDateRangeSubmit = (e) => {
+    // Prevent any event bubbling
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
     }
-    // Close the date picker first
-    setShowDatePicker(false);
-    // Small delay to ensure the popup closes before fetching
-    setTimeout(() => {
-      fetchDataByDateRange(dateRange.startDate, dateRange.endDate);
-    }, 100);
-  } else {
-    toast.warning("Please select both start and end dates.");
-  }
-};
+
+    // Check if dates are selected
+    if (dateRange.startDate && dateRange.endDate) {
+      const diffTime = Math.abs(dateRange.endDate - dateRange.startDate);
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      if (diffDays > 365) {
+        toast.warning(
+          "Date range exceeds 365 days. Please select a smaller range.",
+        );
+        return;
+      }
+      // Close the date picker first
+      setShowDatePicker(false);
+      // Small delay to ensure the popup closes before fetching
+      setTimeout(() => {
+        fetchDataByDateRange(dateRange.startDate, dateRange.endDate);
+      }, 150);
+    } else {
+      toast.warning("Please select both start and end dates.");
+    }
+  };
 
   // Add this quick date range preset handler
   const handleQuickRange = (days) => {
@@ -3409,10 +3558,8 @@ const handleDateRangeSubmit = (e) => {
   }
 
   return (
-
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 p-4 md:p-6">
       <div className="max-w-7xl mx-auto space-y-6">
-        
         {/* ============================================================ */}
         {/* HEADER - Only ONE header */}
         {/* ============================================================ */}
@@ -3438,7 +3585,9 @@ const handleDateRangeSubmit = (e) => {
             {cndata?._lastFetch?.dateRange && (
               <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-indigo-50 text-indigo-600 rounded-full text-xs font-medium border border-indigo-200">
                 <CalendarRange className="w-3 h-3" />
-                {new Date(cndata._lastFetch.startDate).toLocaleDateString()} -{" "}
+                {new Date(
+                  cndata._lastFetch.startDate,
+                ).toLocaleDateString()} -{" "}
                 {new Date(cndata._lastFetch.endDate).toLocaleDateString()}
                 <button
                   onClick={() => setSelectedYear("All")}
@@ -3463,10 +3612,17 @@ const handleDateRangeSubmit = (e) => {
                 <p className="text-sm text-slate-400 flex items-center gap-1.5 flex-wrap">
                   <FaCircle className="w-1.5 h-1.5 text-emerald-500" />
                   {data.totalOrders} orders • {data.totals.saleQty} delivered •{" "}
-                  {data.totalCustomers} customers • {data.totalMarketing} sales persons
+                  {data.totalCustomers} customers • {data.totalMarketing} sales
+                  persons
                   {data.salesGrowth !== 0 && (
-                    <span className={`flex items-center gap-0.5 text-xs font-medium ${data.salesGrowth > 0 ? "text-emerald-600" : "text-red-600"}`}>
-                      {data.salesGrowth > 0 ? <FaArrowUp className="w-2 h-2" /> : <FaArrowDown className="w-2 h-2" />}
+                    <span
+                      className={`flex items-center gap-0.5 text-xs font-medium ${data.salesGrowth > 0 ? "text-emerald-600" : "text-red-600"}`}
+                    >
+                      {data.salesGrowth > 0 ? (
+                        <FaArrowUp className="w-2 h-2" />
+                      ) : (
+                        <FaArrowDown className="w-2 h-2" />
+                      )}
                       {data.salesGrowth.toFixed(1)}% sales growth
                     </span>
                   )}
@@ -3493,7 +3649,11 @@ const handleDateRangeSubmit = (e) => {
               onClick={() => setShowFilters(!showFilters)}
               className="p-2 rounded-xl bg-white/80 backdrop-blur-sm border border-slate-200/60 shadow-sm hover:shadow-md transition-all duration-200"
             >
-              {showFilters ? <X className="w-4 h-4 text-slate-600" /> : <Filter className="w-4 h-4 text-slate-600" />}
+              {showFilters ? (
+                <X className="w-4 h-4 text-slate-600" />
+              ) : (
+                <Filter className="w-4 h-4 text-slate-600" />
+              )}
             </button>
 
             <button
@@ -3515,7 +3675,11 @@ const handleDateRangeSubmit = (e) => {
               onClick={toggleFullscreen}
               className="p-2 rounded-xl bg-white/80 backdrop-blur-sm border border-slate-200/60 shadow-sm hover:shadow-md transition-all duration-200"
             >
-              {isFullscreen ? <Minimize2 className="w-4 h-4 text-slate-600" /> : <Maximize2 className="w-4 h-4 text-slate-600" />}
+              {isFullscreen ? (
+                <Minimize2 className="w-4 h-4 text-slate-600" />
+              ) : (
+                <Maximize2 className="w-4 h-4 text-slate-600" />
+              )}
             </button>
           </div>
         </motion.div>
@@ -3569,9 +3733,9 @@ const handleDateRangeSubmit = (e) => {
         {/* DATE PICKER POPUP */}
         {/* ============================================================ */}
         {showDatePicker && (
-          <div 
+          <div
             className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm"
-            onClick={(e) => {
+            onMouseDown={(e) => {
               if (e.target === e.currentTarget) {
                 setShowDatePicker(false);
               }
@@ -3580,18 +3744,32 @@ const handleDateRangeSubmit = (e) => {
             <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 p-6 w-[480px] max-w-[90vw] max-h-[90vh] overflow-y-auto">
               <div className="flex flex-col gap-4">
                 <div className="flex items-center justify-between">
-                  <h4 className="text-sm font-semibold text-slate-700">Select Date Range</h4>
-                  <button type="button" onClick={() => setShowDatePicker(false)} className="p-1 hover:bg-slate-100 rounded-lg transition-all">
+                  <h4 className="text-sm font-semibold text-slate-700">
+                    Select Date Range
+                  </h4>
+                  <button
+                    type="button"
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setShowDatePicker(false);
+                    }}
+                    className="p-1 hover:bg-slate-100 rounded-lg transition-all"
+                  >
                     <X className="w-4 h-4 text-slate-400" />
                   </button>
                 </div>
 
                 <div className="flex flex-col sm:flex-row gap-4">
                   <div className="flex-1">
-                    <label className="text-xs text-slate-500 block mb-1">Start Date</label>
+                    <label className="text-xs text-slate-500 block mb-1">
+                      Start Date
+                    </label>
                     <DatePicker
                       selected={dateRange.startDate}
-                      onChange={(date) => setDateRange((prev) => ({ ...prev, startDate: date }))}
+                      onChange={(date) =>
+                        setDateRange((prev) => ({ ...prev, startDate: date }))
+                      }
                       selectsStart
                       startDate={dateRange.startDate}
                       endDate={dateRange.endDate}
@@ -3603,10 +3781,14 @@ const handleDateRangeSubmit = (e) => {
                     />
                   </div>
                   <div className="flex-1">
-                    <label className="text-xs text-slate-500 block mb-1">End Date</label>
+                    <label className="text-xs text-slate-500 block mb-1">
+                      End Date
+                    </label>
                     <DatePicker
                       selected={dateRange.endDate}
-                      onChange={(date) => setDateRange((prev) => ({ ...prev, endDate: date }))}
+                      onChange={(date) =>
+                        setDateRange((prev) => ({ ...prev, endDate: date }))
+                      }
                       selectsEnd
                       startDate={dateRange.startDate}
                       endDate={dateRange.endDate}
@@ -3621,27 +3803,108 @@ const handleDateRangeSubmit = (e) => {
                 </div>
 
                 <div className="flex flex-wrap gap-2">
-                  <button type="button" onClick={() => handleQuickRange(7)} className="px-3 py-1.5 text-xs font-medium bg-slate-100 hover:bg-slate-200 rounded-lg transition-all">Last 7 days</button>
-                  <button type="button" onClick={() => handleQuickRange(30)} className="px-3 py-1.5 text-xs font-medium bg-slate-100 hover:bg-slate-200 rounded-lg transition-all">Last 30 days</button>
-                  <button type="button" onClick={() => handleQuickRange(90)} className="px-3 py-1.5 text-xs font-medium bg-slate-100 hover:bg-slate-200 rounded-lg transition-all">Last 90 days</button>
-                  <button type="button" onClick={() => {
-                    const now = new Date();
-                    const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
-                    setDateRange({ startDate: firstDay, endDate: now });
-                    setTimeout(() => { setShowDatePicker(false); fetchDataByDateRange(firstDay, now); }, 200);
-                  }} className="px-3 py-1.5 text-xs font-medium bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded-lg transition-all">This Month</button>
-                  <button type="button" onClick={() => {
-                    const now = new Date();
-                    const firstDay = new Date(now.getFullYear(), 0, 1);
-                    setDateRange({ startDate: firstDay, endDate: now });
-                    setTimeout(() => { setShowDatePicker(false); fetchDataByDateRange(firstDay, now); }, 200);
-                  }} className="px-3 py-1.5 text-xs font-medium bg-purple-50 hover:bg-purple-100 text-purple-600 rounded-lg transition-all">Year to Date</button>
+                  <button
+                    type="button"
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      const endDate = new Date();
+                      const startDate = new Date();
+                      startDate.setDate(startDate.getDate() - 7);
+                      setDateRange({ startDate, endDate });
+                      setTimeout(() => {
+                        setShowDatePicker(false);
+                        fetchDataByDateRange(startDate, endDate);
+                      }, 150);
+                    }}
+                    className="px-3 py-1.5 text-xs font-medium bg-slate-100 hover:bg-slate-200 rounded-lg transition-all"
+                  >
+                    Last 7 days
+                  </button>
+                  <button
+                    type="button"
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      const endDate = new Date();
+                      const startDate = new Date();
+                      startDate.setDate(startDate.getDate() - 30);
+                      setDateRange({ startDate, endDate });
+                      setTimeout(() => {
+                        setShowDatePicker(false);
+                        fetchDataByDateRange(startDate, endDate);
+                      }, 150);
+                    }}
+                    className="px-3 py-1.5 text-xs font-medium bg-slate-100 hover:bg-slate-200 rounded-lg transition-all"
+                  >
+                    Last 30 days
+                  </button>
+                  <button
+                    type="button"
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      const endDate = new Date();
+                      const startDate = new Date();
+                      startDate.setDate(startDate.getDate() - 90);
+                      setDateRange({ startDate, endDate });
+                      setTimeout(() => {
+                        setShowDatePicker(false);
+                        fetchDataByDateRange(startDate, endDate);
+                      }, 150);
+                    }}
+                    className="px-3 py-1.5 text-xs font-medium bg-slate-100 hover:bg-slate-200 rounded-lg transition-all"
+                  >
+                    Last 90 days
+                  </button>
+                  <button
+                    type="button"
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      const now = new Date();
+                      const firstDay = new Date(
+                        now.getFullYear(),
+                        now.getMonth(),
+                        1,
+                      );
+                      setDateRange({ startDate: firstDay, endDate: now });
+                      setTimeout(() => {
+                        setShowDatePicker(false);
+                        fetchDataByDateRange(firstDay, now);
+                      }, 150);
+                    }}
+                    className="px-3 py-1.5 text-xs font-medium bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded-lg transition-all"
+                  >
+                    This Month
+                  </button>
+                  <button
+                    type="button"
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      const now = new Date();
+                      const firstDay = new Date(now.getFullYear(), 0, 1);
+                      setDateRange({ startDate: firstDay, endDate: now });
+                      setTimeout(() => {
+                        setShowDatePicker(false);
+                        fetchDataByDateRange(firstDay, now);
+                      }, 150);
+                    }}
+                    className="px-3 py-1.5 text-xs font-medium bg-purple-50 hover:bg-purple-100 text-purple-600 rounded-lg transition-all"
+                  >
+                    Year to Date
+                  </button>
                 </div>
 
                 <div className="flex gap-2 pt-2 border-t border-slate-100">
                   <button
                     type="button"
-                    onClick={handleDateRangeSubmit}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleDateRangeSubmit(e);
+                    }}
                     disabled={isFetchingRange}
                     className="flex-1 px-4 py-2.5 bg-gradient-to-r from-indigo-500 to-purple-600 text-white text-sm font-medium rounded-xl hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   >
@@ -3657,7 +3920,17 @@ const handleDateRangeSubmit = (e) => {
                       </>
                     )}
                   </button>
-                  <button type="button" onClick={() => setShowDatePicker(false)} className="px-4 py-2.5 bg-slate-100 text-slate-600 text-sm font-medium rounded-xl hover:bg-slate-200 transition-all duration-200">Cancel</button>
+                  <button
+                    type="button"
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setShowDatePicker(false);
+                    }}
+                    className="px-4 py-2.5 bg-slate-100 text-slate-600 text-sm font-medium rounded-xl hover:bg-slate-200 transition-all duration-200"
+                  >
+                    Cancel
+                  </button>
                 </div>
               </div>
             </div>
@@ -3674,22 +3947,33 @@ const handleDateRangeSubmit = (e) => {
                 <div className="relative w-20 h-20">
                   <div className="absolute inset-0 border-4 border-indigo-200 rounded-full" />
                   <div className="absolute inset-0 border-4 border-indigo-500 rounded-full border-t-transparent animate-spin" />
-                  <div className="absolute inset-2 border-4 border-purple-500 rounded-full border-b-transparent animate-spin" style={{ animationDelay: '0.15s' }} />
+                  <div
+                    className="absolute inset-2 border-4 border-purple-500 rounded-full border-b-transparent animate-spin"
+                    style={{ animationDelay: "0.15s" }}
+                  />
                 </div>
-                
+
                 <div>
-                  <h3 className="text-xl font-bold text-slate-800 text-center">Loading Data</h3>
-                  <p className="text-sm text-slate-500 text-center mt-1">Please wait while we fetch your data...</p>
+                  <h3 className="text-xl font-bold text-slate-800 text-center">
+                    Loading Data
+                  </h3>
+                  <p className="text-sm text-slate-500 text-center mt-1">
+                    Please wait while we fetch your data...
+                  </p>
                 </div>
-                
+
                 <div className="w-full bg-slate-50 rounded-lg p-3 text-center">
-                  <p className="text-sm text-indigo-600 font-medium">{rangeFetchStatus || "Preparing to fetch data..."}</p>
+                  <p className="text-sm text-indigo-600 font-medium">
+                    {rangeFetchStatus || "Preparing to fetch data..."}
+                  </p>
                 </div>
-                
+
                 <div className="w-full">
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-xs text-slate-400">Progress</span>
-                    <span className="text-xs font-semibold text-indigo-600">{Math.round(rangeFetchProgress)}%</span>
+                    <span className="text-xs font-semibold text-indigo-600">
+                      {Math.round(rangeFetchProgress)}%
+                    </span>
                   </div>
                   <div className="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
                     <motion.div
@@ -3700,7 +3984,7 @@ const handleDateRangeSubmit = (e) => {
                     />
                   </div>
                 </div>
-                
+
                 <button
                   type="button"
                   onClick={() => {
@@ -3720,7 +4004,6 @@ const handleDateRangeSubmit = (e) => {
             </div>
           </div>
         )}
-
 
         {/* AUTO-LOAD PROGRESS */}
         <AnimatePresence>
@@ -4015,31 +4298,28 @@ const handleDateRangeSubmit = (e) => {
             {/* Overview Tab */}
             {activeTab === "overview" && (
               <div className="space-y-6">
-
-
-
                 <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-slate-200/60 p-4 md:p-6">
-      <div className="flex items-center justify-between mb-4">
-        <div>
-          <h3 className="text-base font-semibold text-slate-800">
-            {viewMode === "yearly" 
-              ? "Yearly Performance" 
-              : viewMode === "daily" 
-                ? "Daily Performance" 
-                : viewMode === "weekly" 
-                  ? "Weekly Performance" 
-                  : "Monthly Performance"}
-          </h3>
-          <p className="text-xs text-slate-400">
-            {viewMode === "yearly" 
-              ? "Year-over-year trends" 
-              : viewMode === "daily" 
-                ? "Day-by-day trends" 
-                : viewMode === "weekly" 
-                  ? "Week-by-week trends" 
-                  : "Month-over-month trends"}
-          </p>
-        </div>
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h3 className="text-base font-semibold text-slate-800">
+                        {viewMode === "yearly"
+                          ? "Yearly Performance"
+                          : viewMode === "daily"
+                            ? "Daily Performance"
+                            : viewMode === "weekly"
+                              ? "Weekly Performance"
+                              : "Monthly Performance"}
+                      </h3>
+                      <p className="text-xs text-slate-400">
+                        {viewMode === "yearly"
+                          ? "Year-over-year trends"
+                          : viewMode === "daily"
+                            ? "Day-by-day trends"
+                            : viewMode === "weekly"
+                              ? "Week-by-week trends"
+                              : "Month-over-month trends"}
+                      </p>
+                    </div>
                     <div className="flex items-center gap-3 text-xs">
                       <span className="flex items-center gap-1">
                         <span className="w-2 h-2 rounded-full bg-indigo-500"></span>
@@ -4268,101 +4548,111 @@ const handleDateRangeSubmit = (e) => {
                     </div>
                   </div>
                 </div>
-{/* Growth Rate Chart */}
-<div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-slate-200/60 p-4 md:p-6">
-  <div className="flex items-center justify-between mb-4">
-    <div>
-      <h3 className="text-base font-semibold text-slate-800">
-        {getGrowthLabel()} Growth Rate
-      </h3>
-      <p className="text-xs text-slate-400">
-        {getGrowthLabel()} growth percentage
-      </p>
-    </div>
-    <div className="flex items-center gap-3 text-xs">
-      <span className="flex items-center gap-1">
-        <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-        Sales Growth
-      </span>
-      <span className="flex items-center gap-1">
-        <span className="w-2 h-2 rounded-full bg-indigo-500"></span>
-        Order Growth
-      </span>
-    </div>
-  </div>
-  {hasEnoughData ? (
-    <ResponsiveContainer width="100%" height={280}>
-      <BarChart
-        data={growthChartData}
-        margin={{ top: 30, right: 30, left: 20, bottom: 20 }}
-      >
-        <CartesianGrid strokeDasharray="3 3" />
-        <XAxis 
-          dataKey="month" 
-          tick={{ fontSize: 12, fontWeight: 500 }}
-        />
-        <YAxis 
-          tickFormatter={(v) => `${v.toFixed(1)}%`}
-          domain={['auto', 'auto']}
-        />
-        <Tooltip
-          formatter={(v) => `${v.toFixed(1)}%`}
-          contentStyle={{
-            backgroundColor: "white",
-            border: "1px solid #e2e8f0",
-            borderRadius: "8px",
-            padding: "8px 12px",
-          }}
-        />
-        <Legend />
-        <ReferenceLine y={0} stroke="#94A3B8" strokeDasharray="3 3" />
-        <Bar
-          dataKey="salesGrowth"
-          name="Sales Growth %"
-          radius={[4, 4, 0, 0]}
-        >
-          {growthChartData.map((entry, index) => (
-            <Cell
-              key={`cell-${index}`}
-              fill={
-                entry.salesGrowth >= 0
-                  ? COLORS.success
-                  : COLORS.danger
-              }
-            />
-          ))}
-        </Bar>
-        <Bar
-          dataKey="orderGrowth"
-          name="Order Growth %"
-          radius={[4, 4, 0, 0]}
-          fill={COLORS.primary}
-        >
-          {growthChartData.map((entry, index) => (
-            <Cell
-              key={`cell-order-${index}`}
-              fill={
-                entry.orderGrowth >= 0
-                  ? COLORS.indigo
-                  : COLORS.rose
-              }
-            />
-          ))}
-        </Bar>
-      </BarChart>
-    </ResponsiveContainer>
-  ) : (
-    <div className="h-[280px] flex items-center justify-center text-slate-400 flex-col gap-2">
-      <div className="text-4xl">📊</div>
-      <p>Not enough data for growth comparison</p>
-      <p className="text-xs">
-        Need at least 2 {viewMode === "yearly" ? "years" : viewMode === "weekly" ? "weeks" : viewMode === "daily" ? "days" : "months"} of data
-      </p>
-    </div>
-  )}
-</div>
-                
-
+                {/* Growth Rate Chart */}
+                <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-slate-200/60 p-4 md:p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h3 className="text-base font-semibold text-slate-800">
+                        {getGrowthLabel()} Growth Rate
+                      </h3>
+                      <p className="text-xs text-slate-400">
+                        {getGrowthLabel()} growth percentage
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-3 text-xs">
+                      <span className="flex items-center gap-1">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                        Sales Growth
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <span className="w-2 h-2 rounded-full bg-indigo-500"></span>
+                        Order Growth
+                      </span>
+                    </div>
+                  </div>
+                  {hasEnoughData ? (
+                    <ResponsiveContainer width="100%" height={280}>
+                      <BarChart
+                        data={growthChartData}
+                        margin={{ top: 30, right: 30, left: 20, bottom: 20 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis
+                          dataKey="month"
+                          tick={{ fontSize: 12, fontWeight: 500 }}
+                        />
+                        <YAxis
+                          tickFormatter={(v) => `${v.toFixed(1)}%`}
+                          domain={["auto", "auto"]}
+                        />
+                        <Tooltip
+                          formatter={(v) => `${v.toFixed(1)}%`}
+                          contentStyle={{
+                            backgroundColor: "white",
+                            border: "1px solid #e2e8f0",
+                            borderRadius: "8px",
+                            padding: "8px 12px",
+                          }}
+                        />
+                        <Legend />
+                        <ReferenceLine
+                          y={0}
+                          stroke="#94A3B8"
+                          strokeDasharray="3 3"
+                        />
+                        <Bar
+                          dataKey="salesGrowth"
+                          name="Sales Growth %"
+                          radius={[4, 4, 0, 0]}
+                        >
+                          {growthChartData.map((entry, index) => (
+                            <Cell
+                              key={`cell-${index}`}
+                              fill={
+                                entry.salesGrowth >= 0
+                                  ? COLORS.success
+                                  : COLORS.danger
+                              }
+                            />
+                          ))}
+                        </Bar>
+                        <Bar
+                          dataKey="orderGrowth"
+                          name="Order Growth %"
+                          radius={[4, 4, 0, 0]}
+                          fill={COLORS.primary}
+                        >
+                          {growthChartData.map((entry, index) => (
+                            <Cell
+                              key={`cell-order-${index}`}
+                              fill={
+                                entry.orderGrowth >= 0
+                                  ? COLORS.indigo
+                                  : COLORS.rose
+                              }
+                            />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="h-[280px] flex items-center justify-center text-slate-400 flex-col gap-2">
+                      <div className="text-4xl">📊</div>
+                      <p>Not enough data for growth comparison</p>
+                      <p className="text-xs">
+                        Need at least 2{" "}
+                        {viewMode === "yearly"
+                          ? "years"
+                          : viewMode === "weekly"
+                            ? "weeks"
+                            : viewMode === "daily"
+                              ? "days"
+                              : "months"}{" "}
+                        of data
+                      </p>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 
