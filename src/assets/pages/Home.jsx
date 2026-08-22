@@ -2687,157 +2687,159 @@ function Home() {
   const [isFetchingRange, setIsFetchingRange] = useState(false);
   const [rangeFetchProgress, setRangeFetchProgress] = useState(0);
   const [rangeFetchStatus, setRangeFetchStatus] = useState("");
-  const fetchDataByDateRange = async (startDate, endDate) => {
-    if (!apiKey) {
-      toast.error("API key not available");
+ const fetchDataByDateRange = async (startDate, endDate) => {
+  if (!apiKey) {
+    toast.error("API key not available");
+    return;
+  }
+
+  // Close the date picker immediately
+  setShowDatePicker(false);
+  
+  // Show loading state
+  setIsFetchingRange(true);
+  setRangeFetchProgress(0);
+  setRangeFetchStatus("Preparing to fetch data...");
+
+  const source = axios.CancelToken.source();
+  cancelTokenRef.current = source;
+
+  try {
+    const stDate = startDate.toISOString().split("T")[0];
+    const edDate = endDate.toISOString().split("T")[0];
+
+    setRangeFetchProgress(10);
+    setRangeFetchStatus(`Fetching orders from ${stDate} to ${edDate}...`);
+
+    // Fetch order data
+    const orderReportResponse = await axios.get(
+      `https://tpl-api.ebs365.info/api/OrderReport/BI_OrderRelatedInformationReport?CompanyID=1&ProductCategoryID=0&ProductSubCategoryID=0&MarketingID=0&CustomerID=0&BuyerID=0&JobCardID=0&StartDate=${stDate}&EndDate=${edDate}&CommandID=5&EmpID=0`,
+      {
+        headers: { Authorization: `${apiKey}` },
+        timeout: 300000,
+        cancelToken: source.token,
+      },
+    );
+
+    const orderData = orderReportResponse.data || [];
+    setRangeFetchProgress(30);
+
+    if (!Array.isArray(orderData) || orderData.length === 0) {
+      toast.warning(`No data found for the selected date range.`);
+      setIsFetchingRange(false);
+      setRangeFetchStatus("");
       return;
     }
 
-    setIsFetchingRange(true);
-    setRangeFetchProgress(0);
-    setRangeFetchStatus("Preparing to fetch data...");
+    setRangeFetchProgress(40);
+    setRangeFetchStatus(`Found ${orderData.length} orders...`);
 
-    const source = axios.CancelToken.source();
-    cancelTokenRef.current = source;
+    setRangeFetchProgress(55);
+    setRangeFetchStatus("Fetching supporting data...");
 
-    try {
-      const stDate = startDate.toISOString().split("T")[0];
-      const edDate = endDate.toISOString().split("T")[0];
+    const apiConfig = {
+      headers: { Authorization: `${apiKey}` },
+      timeout: 90000,
+      cancelToken: source.token,
+    };
 
-      setRangeFetchProgress(10);
-      setRangeFetchStatus(`Fetching orders from ${stDate} to ${edDate}...`);
+    const [challanRes, bblcRes, invoiceRes, piRes, challanReceiveRes] =
+      await Promise.allSettled([
+        axios.get(
+          `https://tpl-api.ebs365.info/api/Challan/GetDeliveryChalanDashboard?CompanyID=1&ProductCategoryID=0&CustomerID=0&MarkettingID=0&StatusID=7&StartDate=${stDate}&EndDate=${edDate}`,
+          apiConfig,
+        ),
+        axios.get(
+          `https://tpl-api.ebs365.info/api/BBLC/GetBBLCDashboard?CustomerID=0&CompanyID=1&StartDate=${stDate}&EndDate=${edDate}`,
+          apiConfig,
+        ),
+        axios.get(
+          `https://tpl-api.ebs365.info/api/CommercialInvoice/GetInvoiceDashboard?CompanyID=1&CustomerID=0&StartDate=${stDate}&EndDate=${edDate}`,
+          apiConfig,
+        ),
+        axios.get(
+          `https://tpl-api.ebs365.info/api/CustomerPI/GetCustomerPIDashboard?CompanyID=1&CustomerID=0&MarketingID=0&StartDate=${stDate}&EndDate=${edDate}`,
+          apiConfig,
+        ),
+        axios.get(
+          `https://tpl-api.ebs365.info/api/Challan/GetDeliveryChalanReceiveDashboard?CompanyID=1&ProductCategoryID=0&CustomerID=0&MarkettingID=0&Status=Receive-Complete&StartDate=${stDate}&EndDate=${edDate}`,
+          apiConfig,
+        ),
+      ]);
 
-      // Fetch order data
-      const orderReportResponse = await axios.get(
-        `https://tpl-api.ebs365.info/api/OrderReport/BI_OrderRelatedInformationReport?CompanyID=1&ProductCategoryID=0&ProductSubCategoryID=0&MarketingID=0&CustomerID=0&BuyerID=0&JobCardID=0&StartDate=${stDate}&EndDate=${edDate}&CommandID=5&EmpID=0`,
-        {
-          headers: { Authorization: `${apiKey}` },
-          timeout: 300000,
-          cancelToken: source.token,
-        },
-      );
+    setRangeFetchProgress(75);
+    setRangeFetchStatus("Processing data...");
 
-      const orderData = orderReportResponse.data || [];
-      setRangeFetchProgress(30);
+    const challanData =
+      challanRes.status === "fulfilled" && challanRes.value?.data
+        ? challanRes.value.data
+        : [];
+    const bblcData =
+      bblcRes.status === "fulfilled" && bblcRes.value?.data
+        ? bblcRes.value.data
+        : [];
+    const invoiceData =
+      invoiceRes.status === "fulfilled" && invoiceRes.value?.data
+        ? invoiceRes.value.data
+        : [];
+    const piCompanyData =
+      piRes.status === "fulfilled" && piRes.value?.data
+        ? piRes.value.data
+        : [];
+    const challanReceiveData =
+      challanReceiveRes.status === "fulfilled" &&
+      challanReceiveRes.value?.data
+        ? challanReceiveRes.value.data
+        : [];
 
-      if (!Array.isArray(orderData) || orderData.length === 0) {
-        toast.warning(`No data found for the selected date range.`);
-        setIsFetchingRange(false);
-        setRangeFetchStatus("");
-        return;
-      }
+    setRangeFetchProgress(90);
+    setRangeFetchStatus("Updating dashboard...");
 
-      setRangeFetchProgress(40);
-      setRangeFetchStatus(`Found ${orderData.length} orders...`);
-
-      setRangeFetchProgress(55);
-      setRangeFetchStatus("Fetching supporting data...");
-
-      const apiConfig = {
-        headers: { Authorization: `${apiKey}` },
-        timeout: 90000,
-        cancelToken: source.token,
-      };
-
-      const [challanRes, bblcRes, invoiceRes, piRes, challanReceiveRes] =
-        await Promise.allSettled([
-          axios.get(
-            `https://tpl-api.ebs365.info/api/Challan/GetDeliveryChalanDashboard?CompanyID=1&ProductCategoryID=0&CustomerID=0&MarkettingID=0&StatusID=7&StartDate=${stDate}&EndDate=${edDate}`,
-            apiConfig,
-          ),
-          axios.get(
-            `https://tpl-api.ebs365.info/api/BBLC/GetBBLCDashboard?CustomerID=0&CompanyID=1&StartDate=${stDate}&EndDate=${edDate}`,
-            apiConfig,
-          ),
-          axios.get(
-            `https://tpl-api.ebs365.info/api/CommercialInvoice/GetInvoiceDashboard?CompanyID=1&CustomerID=0&StartDate=${stDate}&EndDate=${edDate}`,
-            apiConfig,
-          ),
-          axios.get(
-            `https://tpl-api.ebs365.info/api/CustomerPI/GetCustomerPIDashboard?CompanyID=1&CustomerID=0&MarketingID=0&StartDate=${stDate}&EndDate=${edDate}`,
-            apiConfig,
-          ),
-          axios.get(
-            `https://tpl-api.ebs365.info/api/Challan/GetDeliveryChalanReceiveDashboard?CompanyID=1&ProductCategoryID=0&CustomerID=0&MarkettingID=0&Status=Receive-Complete&StartDate=${stDate}&EndDate=${edDate}`,
-            apiConfig,
-          ),
-        ]);
-
-      setRangeFetchProgress(75);
-      setRangeFetchStatus("Processing data...");
-
-      const challanData =
-        challanRes.status === "fulfilled" && challanRes.value?.data
-          ? challanRes.value.data
-          : [];
-      const bblcData =
-        bblcRes.status === "fulfilled" && bblcRes.value?.data
-          ? bblcRes.value.data
-          : [];
-      const invoiceData =
-        invoiceRes.status === "fulfilled" && invoiceRes.value?.data
-          ? invoiceRes.value.data
-          : [];
-      const piCompanyData =
-        piRes.status === "fulfilled" && piRes.value?.data
-          ? piRes.value.data
-          : [];
-      const challanReceiveData =
-        challanReceiveRes.status === "fulfilled" &&
-        challanReceiveRes.value?.data
-          ? challanReceiveRes.value.data
-          : [];
-
-      setRangeFetchProgress(90);
-      setRangeFetchStatus("Updating dashboard...");
-
-      setcndata((prevState) => ({
-        ...prevState,
-        apiData: orderData,
-        groupedData: [],
-        grupChallan: challanData,
-        bblcData: bblcData,
-        invoiceData: invoiceData,
-        piCompanyData: piCompanyData,
-        workOrderIdMap: {},
-        challanReceiveMap: {},
-        rawChallanReceiveData: challanReceiveData,
+    setcndata((prevState) => ({
+      ...prevState,
+      apiData: orderData,
+      groupedData: [],
+      grupChallan: challanData,
+      bblcData: bblcData,
+      invoiceData: invoiceData,
+      piCompanyData: piCompanyData,
+      workOrderIdMap: {},
+      challanReceiveMap: {},
+      rawChallanReceiveData: challanReceiveData,
+      workOrderStatus: "date-range-loaded",
+      _lastFetch: {
+        timestamp: new Date().toISOString(),
+        startDate: stDate,
+        endDate: edDate,
+        orderCount: orderData.length,
+        challanCount: challanData.length,
         workOrderStatus: "date-range-loaded",
-        _lastFetch: {
-          timestamp: new Date().toISOString(),
-          startDate: stDate,
-          endDate: edDate,
-          orderCount: orderData.length,
-          challanCount: challanData.length,
-          workOrderStatus: "date-range-loaded",
-          autoLoaded: false,
-          dateRange: true,
-        },
-      }));
+        autoLoaded: false,
+        dateRange: true,
+      },
+    }));
 
-      setRangeFetchProgress(100);
-      setRangeFetchStatus(
-        `✅ Loaded ${orderData.length} orders for date range!`,
-      );
-      toast.success(
-        `✅ Loaded ${orderData.length} orders from ${stDate} to ${edDate}`,
-      );
+    setRangeFetchProgress(100);
+    setRangeFetchStatus(`✅ Loaded ${orderData.length} orders for date range!`);
+    toast.success(
+      `✅ Loaded ${orderData.length} orders from ${stDate} to ${edDate}`,
+    );
 
-      // Auto-select year and month filters to "All" to show all data
-      setSelectedYear("All");
-      setSelectedMonth("All");
-    } catch (err) {
-      if (axios.isCancel(err)) return;
-      console.error("Date range fetch error:", err);
-      toast.error("Failed to fetch data for the selected date range.");
-      setRangeFetchStatus("❌ Error fetching data");
-    } finally {
-      setIsFetchingRange(false);
-      setRangeFetchProgress(0);
-      cancelTokenRef.current = null;
-      setTimeout(() => setRangeFetchStatus(""), 3000);
-    }
-  };
+    // Auto-select year and month filters to "All" to show all data
+    setSelectedYear("All");
+    setSelectedMonth("All");
+  } catch (err) {
+    if (axios.isCancel(err)) return;
+    console.error("Date range fetch error:", err);
+    toast.error("Failed to fetch data for the selected date range.");
+    setRangeFetchStatus("❌ Error fetching data");
+  } finally {
+    setIsFetchingRange(false);
+    setRangeFetchProgress(0);
+    cancelTokenRef.current = null;
+    setTimeout(() => setRangeFetchStatus(""), 3000);
+  }
+};
   const data = useComprehensiveData(
     apiData,
     selectedYear,
@@ -3171,22 +3173,29 @@ const getGrowthLabel = () => {
     toast.info("Exporting dashboard data...");
     setTimeout(() => toast.success("Data exported successfully!"), 1000);
   };
-  const handleDateRangeSubmit = () => {
-    if (dateRange.startDate && dateRange.endDate) {
-      // Validate date range (max 1 year to prevent overload)
-      const diffTime = Math.abs(dateRange.endDate - dateRange.startDate);
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      if (diffDays > 365) {
-        toast.warning(
-          "Date range exceeds 365 days. Please select a smaller range.",
-        );
-        return;
-      }
-      fetchDataByDateRange(dateRange.startDate, dateRange.endDate);
-    } else {
-      toast.warning("Please select both start and end dates.");
+const handleDateRangeSubmit = (e) => {
+  if (e) {
+    e.preventDefault();
+    e.stopPropagation();
+  }
+  
+  if (dateRange.startDate && dateRange.endDate) {
+    const diffTime = Math.abs(dateRange.endDate - dateRange.startDate);
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    if (diffDays > 365) {
+      toast.warning("Date range exceeds 365 days. Please select a smaller range.");
+      return;
     }
-  };
+    // Close the date picker first
+    setShowDatePicker(false);
+    // Small delay to ensure the popup closes before fetching
+    setTimeout(() => {
+      fetchDataByDateRange(dateRange.startDate, dateRange.endDate);
+    }, 100);
+  } else {
+    toast.warning("Please select both start and end dates.");
+  }
+};
 
   // Add this quick date range preset handler
   const handleQuickRange = (days) => {
@@ -3389,15 +3398,20 @@ const getGrowthLabel = () => {
   }
 
   return (
+
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 p-4 md:p-6">
       <div className="max-w-7xl mx-auto space-y-6">
-        {/* HEADER */}
+        
+        {/* ============================================================ */}
+        {/* HEADER - Only ONE header */}
+        {/* ============================================================ */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
           className="flex flex-col md:flex-row md:items-center md:justify-between gap-4"
         >
+          {/* Date Range Button */}
           <div className="relative">
             <button
               onClick={() => setShowDatePicker(!showDatePicker)}
@@ -3413,9 +3427,7 @@ const getGrowthLabel = () => {
             {cndata?._lastFetch?.dateRange && (
               <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-indigo-50 text-indigo-600 rounded-full text-xs font-medium border border-indigo-200">
                 <CalendarRange className="w-3 h-3" />
-                {new Date(
-                  cndata._lastFetch.startDate,
-                ).toLocaleDateString()} -{" "}
+                {new Date(cndata._lastFetch.startDate).toLocaleDateString()} -{" "}
                 {new Date(cndata._lastFetch.endDate).toLocaleDateString()}
                 <button
                   onClick={() => setSelectedYear("All")}
@@ -3425,156 +3437,9 @@ const getGrowthLabel = () => {
                 </button>
               </span>
             )}
-            {showDatePicker && (
-              <div className="absolute top-full left-0 mt-2 z-50 bg-white rounded-2xl shadow-2xl border border-slate-200 p-4 w-[480px]">
-                <div className="flex flex-col gap-4">
-                  <div className="flex items-center justify-between">
-                    <h4 className="text-sm font-semibold text-slate-700">
-                      Select Date Range
-                    </h4>
-                    <button
-                      onClick={() => setShowDatePicker(false)}
-                      className="p-1 hover:bg-slate-100 rounded-lg transition-all"
-                    >
-                      <X className="w-4 h-4 text-slate-400" />
-                    </button>
-                  </div>
-
-                  <div className="flex flex-col sm:flex-row gap-4">
-                    <div className="flex-1">
-                      <label className="text-xs text-slate-500 block mb-1">
-                        Start Date
-                      </label>
-                      <DatePicker
-                        selected={dateRange.startDate}
-                        onChange={(date) =>
-                          setDateRange((prev) => ({ ...prev, startDate: date }))
-                        }
-                        selectsStart
-                        startDate={dateRange.startDate}
-                        endDate={dateRange.endDate}
-                        className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                        dateFormat="MMM d, yyyy"
-                        placeholderText="Select start date"
-                      />
-                    </div>
-                    <div className="flex-1">
-                      <label className="text-xs text-slate-500 block mb-1">
-                        End Date
-                      </label>
-                      <DatePicker
-                        selected={dateRange.endDate}
-                        onChange={(date) =>
-                          setDateRange((prev) => ({ ...prev, endDate: date }))
-                        }
-                        selectsEnd
-                        startDate={dateRange.startDate}
-                        endDate={dateRange.endDate}
-                        minDate={dateRange.startDate}
-                        className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                        dateFormat="MMM d, yyyy"
-                        placeholderText="Select end date"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      onClick={() => handleQuickRange(7)}
-                      className="px-3 py-1.5 text-xs font-medium bg-slate-100 hover:bg-slate-200 rounded-lg transition-all"
-                    >
-                      Last 7 days
-                    </button>
-                    <button
-                      onClick={() => handleQuickRange(30)}
-                      className="px-3 py-1.5 text-xs font-medium bg-slate-100 hover:bg-slate-200 rounded-lg transition-all"
-                    >
-                      Last 30 days
-                    </button>
-                    <button
-                      onClick={() => handleQuickRange(90)}
-                      className="px-3 py-1.5 text-xs font-medium bg-slate-100 hover:bg-slate-200 rounded-lg transition-all"
-                    >
-                      Last 90 days
-                    </button>
-                    <button
-                      onClick={() => {
-                        const now = new Date();
-                        const firstDay = new Date(
-                          now.getFullYear(),
-                          now.getMonth(),
-                          1,
-                        );
-                        setDateRange({ startDate: firstDay, endDate: now });
-                        setTimeout(
-                          () => fetchDataByDateRange(firstDay, now),
-                          300,
-                        );
-                      }}
-                      className="px-3 py-1.5 text-xs font-medium bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded-lg transition-all"
-                    >
-                      This Month
-                    </button>
-                    <button
-                      onClick={() => {
-                        const now = new Date();
-                        const firstDay = new Date(now.getFullYear(), 0, 1);
-                        setDateRange({ startDate: firstDay, endDate: now });
-                        setTimeout(
-                          () => fetchDataByDateRange(firstDay, now),
-                          300,
-                        );
-                      }}
-                      className="px-3 py-1.5 text-xs font-medium bg-purple-50 hover:bg-purple-100 text-purple-600 rounded-lg transition-all"
-                    >
-                      Year to Date
-                    </button>
-                  </div>
-
-                  <div className="flex gap-2 pt-2 border-t border-slate-100">
-                    <button
-                      onClick={handleDateRangeSubmit}
-                      disabled={isFetchingRange}
-                      className="flex-1 px-4 py-2.5 bg-gradient-to-r from-indigo-500 to-purple-600 text-white text-sm font-medium rounded-xl hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                    >
-                      {isFetchingRange ? (
-                        <>
-                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                          Loading...
-                        </>
-                      ) : (
-                        <>
-                          <CalendarIcon className="w-4 h-4" />
-                          Fetch Data
-                        </>
-                      )}
-                    </button>
-                    <button
-                      onClick={() => setShowDatePicker(false)}
-                      className="px-4 py-2.5 bg-slate-100 text-slate-600 text-sm font-medium rounded-xl hover:bg-slate-200 transition-all duration-200"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-
-                  {isFetchingRange && (
-                    <div className="mt-2">
-                      <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
-                        <motion.div
-                          className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-purple-500"
-                          style={{ width: `${rangeFetchProgress}%` }}
-                          transition={{ duration: 0.3 }}
-                        />
-                      </div>
-                      <p className="text-xs text-slate-400 mt-1 text-center">
-                        {rangeFetchStatus}
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
           </div>
+
+          {/* Dashboard Title */}
           <div>
             <div className="flex items-center gap-3">
               <div className="p-2.5 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 shadow-lg shadow-indigo-200">
@@ -3587,17 +3452,10 @@ const getGrowthLabel = () => {
                 <p className="text-sm text-slate-400 flex items-center gap-1.5 flex-wrap">
                   <FaCircle className="w-1.5 h-1.5 text-emerald-500" />
                   {data.totalOrders} orders • {data.totals.saleQty} delivered •{" "}
-                  {data.totalCustomers} customers • {data.totalMarketing} sales
-                  persons
+                  {data.totalCustomers} customers • {data.totalMarketing} sales persons
                   {data.salesGrowth !== 0 && (
-                    <span
-                      className={`flex items-center gap-0.5 text-xs font-medium ${data.salesGrowth > 0 ? "text-emerald-600" : "text-red-600"}`}
-                    >
-                      {data.salesGrowth > 0 ? (
-                        <FaArrowUp className="w-2 h-2" />
-                      ) : (
-                        <FaArrowDown className="w-2 h-2" />
-                      )}
+                    <span className={`flex items-center gap-0.5 text-xs font-medium ${data.salesGrowth > 0 ? "text-emerald-600" : "text-red-600"}`}>
+                      {data.salesGrowth > 0 ? <FaArrowUp className="w-2 h-2" /> : <FaArrowDown className="w-2 h-2" />}
                       {data.salesGrowth.toFixed(1)}% sales growth
                     </span>
                   )}
@@ -3606,6 +3464,7 @@ const getGrowthLabel = () => {
             </div>
           </div>
 
+          {/* Header Actions */}
           <div className="flex items-center gap-2 flex-wrap">
             <div className="flex items-center gap-2 bg-white/80 backdrop-blur-sm px-3 py-1.5 rounded-xl border border-slate-200/60 shadow-sm">
               <Calendar className="w-4 h-4 text-slate-400" />
@@ -3623,11 +3482,7 @@ const getGrowthLabel = () => {
               onClick={() => setShowFilters(!showFilters)}
               className="p-2 rounded-xl bg-white/80 backdrop-blur-sm border border-slate-200/60 shadow-sm hover:shadow-md transition-all duration-200"
             >
-              {showFilters ? (
-                <X className="w-4 h-4 text-slate-600" />
-              ) : (
-                <Filter className="w-4 h-4 text-slate-600" />
-              )}
+              {showFilters ? <X className="w-4 h-4 text-slate-600" /> : <Filter className="w-4 h-4 text-slate-600" />}
             </button>
 
             <button
@@ -3649,14 +3504,212 @@ const getGrowthLabel = () => {
               onClick={toggleFullscreen}
               className="p-2 rounded-xl bg-white/80 backdrop-blur-sm border border-slate-200/60 shadow-sm hover:shadow-md transition-all duration-200"
             >
-              {isFullscreen ? (
-                <Minimize2 className="w-4 h-4 text-slate-600" />
-              ) : (
-                <Maximize2 className="w-4 h-4 text-slate-600" />
-              )}
+              {isFullscreen ? <Minimize2 className="w-4 h-4 text-slate-600" /> : <Maximize2 className="w-4 h-4 text-slate-600" />}
             </button>
           </div>
         </motion.div>
+
+        {/* ============================================================ */}
+        {/* LOADING INDICATOR - Shows progress when fetching date range */}
+        {/* ============================================================ */}
+        {isFetchingRange && (
+          <div className="flex items-center gap-3 px-4 py-2 bg-indigo-50 rounded-xl border border-indigo-200 shadow-sm">
+            <div className="relative w-5 h-5 flex-shrink-0">
+              <div className="absolute inset-0 border-2 border-indigo-200 rounded-full" />
+              <div className="absolute inset-0 border-2 border-indigo-500 rounded-full border-t-transparent animate-spin" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-3">
+                <span className="text-sm font-medium text-indigo-700 truncate">
+                  {rangeFetchStatus || "Loading..."}
+                </span>
+                <span className="text-xs font-semibold text-indigo-600 whitespace-nowrap">
+                  {Math.round(rangeFetchProgress)}%
+                </span>
+              </div>
+              <div className="w-full bg-indigo-100 rounded-full h-1.5 mt-1 overflow-hidden">
+                <motion.div
+                  className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-purple-500"
+                  initial={{ width: "0%" }}
+                  animate={{ width: `${rangeFetchProgress}%` }}
+                  transition={{ duration: 0.5 }}
+                />
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                if (cancelTokenRef.current) {
+                  cancelTokenRef.current.cancel("User cancelled");
+                }
+                setIsFetchingRange(false);
+                setRangeFetchProgress(0);
+                setRangeFetchStatus("");
+                toast.info("Data fetch cancelled");
+              }}
+              className="text-xs text-slate-400 hover:text-red-500 transition-colors flex-shrink-0"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+
+        {/* ============================================================ */}
+        {/* DATE PICKER POPUP */}
+        {/* ============================================================ */}
+        {showDatePicker && (
+          <div 
+            className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) {
+                setShowDatePicker(false);
+              }
+            }}
+          >
+            <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 p-6 w-[480px] max-w-[90vw] max-h-[90vh] overflow-y-auto">
+              <div className="flex flex-col gap-4">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-sm font-semibold text-slate-700">Select Date Range</h4>
+                  <button type="button" onClick={() => setShowDatePicker(false)} className="p-1 hover:bg-slate-100 rounded-lg transition-all">
+                    <X className="w-4 h-4 text-slate-400" />
+                  </button>
+                </div>
+
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <div className="flex-1">
+                    <label className="text-xs text-slate-500 block mb-1">Start Date</label>
+                    <DatePicker
+                      selected={dateRange.startDate}
+                      onChange={(date) => setDateRange((prev) => ({ ...prev, startDate: date }))}
+                      selectsStart
+                      startDate={dateRange.startDate}
+                      endDate={dateRange.endDate}
+                      className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      dateFormat="MMM d, yyyy"
+                      placeholderText="Select start date"
+                      popperPlacement="bottom-start"
+                      onClickOutside={() => {}}
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <label className="text-xs text-slate-500 block mb-1">End Date</label>
+                    <DatePicker
+                      selected={dateRange.endDate}
+                      onChange={(date) => setDateRange((prev) => ({ ...prev, endDate: date }))}
+                      selectsEnd
+                      startDate={dateRange.startDate}
+                      endDate={dateRange.endDate}
+                      minDate={dateRange.startDate}
+                      className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      dateFormat="MMM d, yyyy"
+                      placeholderText="Select end date"
+                      popperPlacement="bottom-start"
+                      onClickOutside={() => {}}
+                    />
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  <button type="button" onClick={() => handleQuickRange(7)} className="px-3 py-1.5 text-xs font-medium bg-slate-100 hover:bg-slate-200 rounded-lg transition-all">Last 7 days</button>
+                  <button type="button" onClick={() => handleQuickRange(30)} className="px-3 py-1.5 text-xs font-medium bg-slate-100 hover:bg-slate-200 rounded-lg transition-all">Last 30 days</button>
+                  <button type="button" onClick={() => handleQuickRange(90)} className="px-3 py-1.5 text-xs font-medium bg-slate-100 hover:bg-slate-200 rounded-lg transition-all">Last 90 days</button>
+                  <button type="button" onClick={() => {
+                    const now = new Date();
+                    const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+                    setDateRange({ startDate: firstDay, endDate: now });
+                    setTimeout(() => { setShowDatePicker(false); fetchDataByDateRange(firstDay, now); }, 200);
+                  }} className="px-3 py-1.5 text-xs font-medium bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded-lg transition-all">This Month</button>
+                  <button type="button" onClick={() => {
+                    const now = new Date();
+                    const firstDay = new Date(now.getFullYear(), 0, 1);
+                    setDateRange({ startDate: firstDay, endDate: now });
+                    setTimeout(() => { setShowDatePicker(false); fetchDataByDateRange(firstDay, now); }, 200);
+                  }} className="px-3 py-1.5 text-xs font-medium bg-purple-50 hover:bg-purple-100 text-purple-600 rounded-lg transition-all">Year to Date</button>
+                </div>
+
+                <div className="flex gap-2 pt-2 border-t border-slate-100">
+                  <button
+                    type="button"
+                    onClick={handleDateRangeSubmit}
+                    disabled={isFetchingRange}
+                    className="flex-1 px-4 py-2.5 bg-gradient-to-r from-indigo-500 to-purple-600 text-white text-sm font-medium rounded-xl hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  >
+                    {isFetchingRange ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        Loading...
+                      </>
+                    ) : (
+                      <>
+                        <CalendarIcon className="w-4 h-4" />
+                        Fetch Data
+                      </>
+                    )}
+                  </button>
+                  <button type="button" onClick={() => setShowDatePicker(false)} className="px-4 py-2.5 bg-slate-100 text-slate-600 text-sm font-medium rounded-xl hover:bg-slate-200 transition-all duration-200">Cancel</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ============================================================ */}
+        {/* FULL SCREEN LOADING OVERLAY - Shows when fetching date range */}
+        {/* ============================================================ */}
+        {isFetchingRange && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[99999] flex items-center justify-center">
+            <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full mx-4">
+              <div className="flex flex-col items-center gap-4">
+                <div className="relative w-20 h-20">
+                  <div className="absolute inset-0 border-4 border-indigo-200 rounded-full" />
+                  <div className="absolute inset-0 border-4 border-indigo-500 rounded-full border-t-transparent animate-spin" />
+                  <div className="absolute inset-2 border-4 border-purple-500 rounded-full border-b-transparent animate-spin" style={{ animationDelay: '0.15s' }} />
+                </div>
+                
+                <div>
+                  <h3 className="text-xl font-bold text-slate-800 text-center">Loading Data</h3>
+                  <p className="text-sm text-slate-500 text-center mt-1">Please wait while we fetch your data...</p>
+                </div>
+                
+                <div className="w-full bg-slate-50 rounded-lg p-3 text-center">
+                  <p className="text-sm text-indigo-600 font-medium">{rangeFetchStatus || "Preparing to fetch data..."}</p>
+                </div>
+                
+                <div className="w-full">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs text-slate-400">Progress</span>
+                    <span className="text-xs font-semibold text-indigo-600">{Math.round(rangeFetchProgress)}%</span>
+                  </div>
+                  <div className="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
+                    <motion.div
+                      className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-purple-500"
+                      initial={{ width: "0%" }}
+                      animate={{ width: `${rangeFetchProgress}%` }}
+                      transition={{ duration: 0.5 }}
+                    />
+                  </div>
+                </div>
+                
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (cancelTokenRef.current) {
+                      cancelTokenRef.current.cancel("User cancelled");
+                    }
+                    setIsFetchingRange(false);
+                    setRangeFetchProgress(0);
+                    setRangeFetchStatus("");
+                    toast.info("Data fetch cancelled");
+                  }}
+                  className="text-sm text-slate-500 hover:text-red-500 hover:bg-red-50 px-4 py-2 rounded-lg transition-all"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
 
         {/* AUTO-LOAD PROGRESS */}
         <AnimatePresence>
