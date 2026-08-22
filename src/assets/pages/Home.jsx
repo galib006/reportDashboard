@@ -199,7 +199,6 @@ const formatCurrency = (value) => {
   }).format(Math.round(num));
 };
 
-
 const formatNumber = (value) => {
   const num = Number(value) || 0;
   return new Intl.NumberFormat("en-US", {
@@ -237,61 +236,71 @@ const getStatusColor = (value) => {
 const getDeliveryStatus = (deliveryRate) => {
   const rate = parseFloat(deliveryRate) || 0;
   if (rate >= 90) {
-    return { 
-      status: '✅ Excellent', 
-      icon: '✅', 
-      color: 'text-emerald-600 bg-emerald-100' 
+    return {
+      status: "✅ Excellent",
+      icon: "✅",
+      color: "text-emerald-600 bg-emerald-100",
     };
   }
   if (rate >= 70) {
-    return { 
-      status: '👍 Good', 
-      icon: '👍', 
-      color: 'text-blue-600 bg-blue-100' 
+    return {
+      status: "👍 Good",
+      icon: "👍",
+      color: "text-blue-600 bg-blue-100",
     };
   }
   if (rate >= 50) {
-    return { 
-      status: '⚠️ Average', 
-      icon: '⚠️', 
-      color: 'text-amber-600 bg-amber-100' 
+    return {
+      status: "⚠️ Average",
+      icon: "⚠️",
+      color: "text-amber-600 bg-amber-100",
     };
   }
-  return { 
-    status: '🔴 Needs Improvement', 
-    icon: '🔴', 
-    color: 'text-red-600 bg-red-100' 
+  return {
+    status: "🔴 Needs Improvement",
+    icon: "🔴",
+    color: "text-red-600 bg-red-100",
   };
 };
 // ============================================================
 // FIXED: Performance tier based on AVERAGE Order Value (only for tier badge)
 // ============================================================
 
-const getPerformanceTier = (avgOrderValue, deliveryRate, totalOrderValue = 0, orders = 0, selectedYear, selectedMonth) => {
-  const numericAvg = typeof avgOrderValue === 'string' 
-    ? parseFloat(avgOrderValue.replace(/[$,]/g, '')) 
-    : avgOrderValue;
-  const numericRate = typeof deliveryRate === 'string' 
-    ? parseFloat(deliveryRate.replace(/[%,]/g, '')) 
-    : deliveryRate;
-  const numericTotal = typeof totalOrderValue === 'string' 
-    ? parseFloat(totalOrderValue.replace(/[$,]/g, '')) 
-    : totalOrderValue;
-  
+const getPerformanceTier = (
+  avgOrderValue,
+  deliveryRate,
+  totalOrderValue = 0,
+  orders = 0,
+  selectedYear,
+  selectedMonth,
+) => {
+  const numericAvg =
+    typeof avgOrderValue === "string"
+      ? parseFloat(avgOrderValue.replace(/[$,]/g, ""))
+      : avgOrderValue;
+  const numericRate =
+    typeof deliveryRate === "string"
+      ? parseFloat(deliveryRate.replace(/[%,]/g, ""))
+      : deliveryRate;
+  const numericTotal =
+    typeof totalOrderValue === "string"
+      ? parseFloat(totalOrderValue.replace(/[$,]/g, ""))
+      : totalOrderValue;
+
   // Determine the time period
   let monthsCount = 1;
-  if (selectedYear !== 'All' && selectedMonth !== 'All') {
+  if (selectedYear !== "All" && selectedMonth !== "All") {
     monthsCount = 1; // Single month
-  } else if (selectedYear !== 'All' && selectedMonth === 'All') {
+  } else if (selectedYear !== "All" && selectedMonth === "All") {
     monthsCount = 12; // Full year (or actual months in data)
-  } else if (selectedYear === 'All' && selectedMonth === 'All') {
+  } else if (selectedYear === "All" && selectedMonth === "All") {
     monthsCount = 12; // Multiple years - use yearly average
   }
-  
+
   // Calculate monthly average
   const monthlyAvg = numericTotal / monthsCount;
   const monthlyOrders = Math.round(orders / monthsCount);
-  
+
   // Dynamic thresholds based on time period
   let thresholds;
   if (monthsCount <= 1) {
@@ -304,54 +313,58 @@ const getPerformanceTier = (avgOrderValue, deliveryRate, totalOrderValue = 0, or
     // Yearly/Multiple: Lower thresholds (more consistent)
     thresholds = { excellent: 10000, good: 5000, average: 2000 };
   }
-  
+
   // Apply rules with dynamic thresholds
   if (monthlyAvg < thresholds.average) {
-    return { 
-      tier: '⚠️ Needs Improvement', 
-      icon: FaExclamationCircle, 
-      color: '#EF4444', 
-      bg: 'bg-red-100', 
-      status: 'Needs Improvement' 
+    return {
+      tier: "⚠️ Needs Improvement",
+      icon: FaExclamationCircle,
+      color: "#EF4444",
+      bg: "bg-red-100",
+      status: "Needs Improvement",
     };
   }
-  
-  if (monthlyAvg > thresholds.excellent && monthlyOrders > 5 && numericRate > 20) {
-    return { 
-      tier: '🌟 Excellent', 
-      icon: FaCrown, 
-      color: '#8B5CF6', 
-      bg: 'bg-purple-100', 
-      status: 'Excellent' 
+
+  if (
+    monthlyAvg > thresholds.excellent &&
+    monthlyOrders > 5 &&
+    numericRate > 20
+  ) {
+    return {
+      tier: "🌟 Excellent",
+      icon: FaCrown,
+      color: "#8B5CF6",
+      bg: "bg-purple-100",
+      status: "Excellent",
     };
   }
-  
+
   if (monthlyAvg > thresholds.good && monthlyOrders > 3 && numericRate > 15) {
-    return { 
-      tier: '📊 Good', 
-      icon: FaMedal, 
-      color: '#3B82F6', 
-      bg: 'bg-blue-100', 
-      status: 'Good' 
+    return {
+      tier: "📊 Good",
+      icon: FaMedal,
+      color: "#3B82F6",
+      bg: "bg-blue-100",
+      status: "Good",
     };
   }
-  
+
   if (monthlyAvg > thresholds.average && monthlyOrders > 2) {
-    return { 
-      tier: '📊 Average', 
-      icon: FaMedal, 
-      color: '#F59E0B', 
-      bg: 'bg-amber-100', 
-      status: 'Average' 
+    return {
+      tier: "📊 Average",
+      icon: FaMedal,
+      color: "#F59E0B",
+      bg: "bg-amber-100",
+      status: "Average",
     };
   }
-  
-  return { 
-    tier: '⚠️ Needs Improvement', 
-    icon: FaExclamationCircle, 
-    color: '#EF4444', 
-    bg: 'bg-red-100', 
-    status: 'Needs Improvement' 
+
+  return {
+    tier: "⚠️ Needs Improvement",
+    icon: FaExclamationCircle,
+    color: "#EF4444",
+    bg: "bg-red-100",
+    status: "Needs Improvement",
   };
 };
 
@@ -874,7 +887,7 @@ const useComprehensiveData = (
           data.orderValue > 0 ? (data.saleValue / data.orderValue) * 100 : 0,
       }));
 
-    // Growth Data - Shows ALL months
+    // Growth Data - Shows ALL months (filtered)
     const growthData = monthlySalesData.map((d, i, arr) => {
       let salesGrowth = 0;
       let orderGrowth = 0;
@@ -904,45 +917,185 @@ const useComprehensiveData = (
       };
     });
 
-    // Weekly Growth Data (fallback)
-    const weeklyGrowthData = Array.from(weeklyMap.values())
-      .sort((a, b) => a.week.localeCompare(b.week))
-      .map((w, i, arr) => {
-        let growth = 0;
-        if (i > 0 && arr[i - 1].saleValue > 0) {
-          growth =
-            ((w.saleValue - arr[i - 1].saleValue) / arr[i - 1].saleValue) * 100;
+    // ============================================================
+    // ALL Growth Data - Unfiltered (shows ALL months regardless of filters)
+    // ============================================================
+    const allMonthlySalesDataUnfiltered = Array.from(monthlyMap.entries())
+      .sort((a, b) => monthOrder.indexOf(a[0]) - monthOrder.indexOf(b[0]))
+      .map(([month, data]) => ({
+        name: month,
+        orderValue: Math.round(data.orderValue),
+        saleValue: Math.round(data.saleValue),
+        orderQty: Math.round(data.orderQty),
+        saleQty: Math.round(data.saleQty),
+        balanceValue: Math.round(data.balanceValue),
+        count: data.count,
+        uniqueOrders: data.uniqueOrders.size,
+        deliveryRate:
+          data.orderValue > 0 ? (data.saleValue / data.orderValue) * 100 : 0,
+      }));
+
+    // ALL Growth Data - Shows ALL months regardless of filters
+    const allGrowthData = allMonthlySalesDataUnfiltered.map((d, i, arr) => {
+      let salesGrowth = 0;
+      let orderGrowth = 0;
+
+      if (i > 0 && arr[i - 1].saleValue > 0) {
+        salesGrowth =
+          ((d.saleValue - arr[i - 1].saleValue) / arr[i - 1].saleValue) * 100;
+      } else if (i > 0 && arr[i - 1].saleValue === 0 && d.saleValue > 0) {
+        salesGrowth = 100;
+      }
+
+      if (i > 0 && arr[i - 1].orderValue > 0) {
+        orderGrowth =
+          ((d.orderValue - arr[i - 1].orderValue) / arr[i - 1].orderValue) *
+          100;
+      } else if (i > 0 && arr[i - 1].orderValue === 0 && d.orderValue > 0) {
+        orderGrowth = 100;
+      }
+
+      return {
+        month: d.name,
+        orderValue: Math.round(d.orderValue),
+        saleValue: Math.round(d.saleValue),
+        orderGrowth: orderGrowth,
+        salesGrowth: salesGrowth,
+        uniqueOrders: d.uniqueOrders,
+      };
+    });
+
+    // ============================================================
+    // ALL Weekly Growth Data - Unfiltered (shows ALL weeks regardless of filters)
+    // ============================================================
+    const allWeeklyGrowthData = Array.from(weeklyMap.entries())
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([week, data], index, arr) => {
+        let salesGrowth = 0;
+        if (index > 0 && arr[index - 1][1].saleValue > 0) {
+          salesGrowth =
+            ((data.saleValue - arr[index - 1][1].saleValue) /
+              arr[index - 1][1].saleValue) *
+            100;
         }
         return {
-          month: w.week,
-          salesGrowth: growth,
-          saleValue: w.saleValue,
-          orderValue: w.orderValue,
+          month: week,
+          salesGrowth: salesGrowth,
+          saleValue: data.saleValue,
+          orderValue: data.orderValue,
         };
       });
 
-    // Daily Growth Data (fallback)
-    const dailyGrowthData = Array.from(dailyMap.values())
-      .sort((a, b) => a.date.localeCompare(b.date))
-      .slice(-7)
-      .map((d, i, arr) => {
-        let growth = 0;
-        if (i > 0 && arr[i - 1].saleValue > 0) {
-          growth =
-            ((d.saleValue - arr[i - 1].saleValue) / arr[i - 1].saleValue) * 100;
+    // ============================================================
+    // ALL Daily Growth Data - Unfiltered (shows ALL days regardless of filters)
+    // ============================================================
+    const allDailyGrowthData = Array.from(dailyMap.entries())
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([date, data], index, arr) => {
+        let salesGrowth = 0;
+        if (index > 0 && arr[index - 1][1].saleValue > 0) {
+          salesGrowth =
+            ((data.saleValue - arr[index - 1][1].saleValue) /
+              arr[index - 1][1].saleValue) *
+            100;
         }
         return {
-          month: new Date(d.date).toLocaleDateString("en-US", {
+          month: new Date(date).toLocaleDateString("en-US", {
             month: "short",
             day: "numeric",
           }),
-          salesGrowth: growth,
-          saleValue: d.saleValue,
-          orderValue: d.orderValue,
+          salesGrowth: salesGrowth,
+          saleValue: data.saleValue,
+          orderValue: data.orderValue,
         };
       });
+    // ============================================================
+    // ALL Yearly Growth Data - Unfiltered (shows ALL years regardless of filters)
+    // ============================================================
+    // ============================================================
+    // ALL Yearly Growth Data - Unfiltered (shows ALL years regardless of filters)
+    // ============================================================
+    const yearlyMap = new Map();
 
-    const monthlyData = monthlySalesData;
+    // Use the ORIGINAL apiData, not filtered
+    apiData.forEach((item) => {
+      const date = new Date(item.OrderReceiveDate);
+      const yearKey = date.getFullYear().toString();
+
+      if (!yearlyMap.has(yearKey)) {
+        yearlyMap.set(yearKey, {
+          year: yearKey,
+          orderValue: 0,
+          saleValue: 0,
+          orderQty: 0,
+          saleQty: 0,
+          balanceValue: 0,
+          count: 0,
+          uniqueOrders: new Set(),
+        });
+      }
+      const yearly = yearlyMap.get(yearKey);
+      yearly.orderValue += Math.round(Number(item.TotalOrderValue) || 0);
+      yearly.saleValue += Math.round(Number(item.ChallanValue) || 0);
+      yearly.orderQty += Math.round(Number(item.BreakDownQTY) || 0);
+      yearly.saleQty += Math.round(Number(item.ChallanQTY) || 0);
+      yearly.balanceValue += Math.round(Number(item.BalanceValue) || 0);
+      yearly.count += 1;
+      yearly.uniqueOrders.add(item.WorkOrderNo || item.workOrderNo || "N/A");
+    });
+
+    const allYearlySalesDataUnfiltered = Array.from(yearlyMap.entries())
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([year, data]) => ({
+        name: year, // This should be the year (e.g., "2025", "2026")
+        orderValue: Math.round(data.orderValue),
+        saleValue: Math.round(data.saleValue),
+        orderQty: Math.round(data.orderQty),
+        saleQty: Math.round(data.saleQty),
+        balanceValue: Math.round(data.balanceValue),
+        count: data.count,
+        uniqueOrders: data.uniqueOrders.size,
+        deliveryRate:
+          data.orderValue > 0 ? (data.saleValue / data.orderValue) * 100 : 0,
+      }));
+
+    // ALL Yearly Growth Data - Shows ALL years regardless of filters
+    const allYearlyGrowthData = allYearlySalesDataUnfiltered.map(
+      (d, i, arr) => {
+        let salesGrowth = 0;
+        let orderGrowth = 0;
+
+        if (i > 0 && arr[i - 1].saleValue > 0) {
+          salesGrowth =
+            ((d.saleValue - arr[i - 1].saleValue) / arr[i - 1].saleValue) * 100;
+        } else if (i > 0 && arr[i - 1].saleValue === 0 && d.saleValue > 0) {
+          salesGrowth = 100;
+        }
+
+        if (i > 0 && arr[i - 1].orderValue > 0) {
+          orderGrowth =
+            ((d.orderValue - arr[i - 1].orderValue) / arr[i - 1].orderValue) *
+            100;
+        } else if (i > 0 && arr[i - 1].orderValue === 0 && d.orderValue > 0) {
+          orderGrowth = 100;
+        }
+
+        return {
+          month: d.name, // The x-axis will show years
+          orderValue: Math.round(d.orderValue),
+          saleValue: Math.round(d.saleValue),
+          orderGrowth: orderGrowth,
+          salesGrowth: salesGrowth,
+          uniqueOrders: d.uniqueOrders,
+        };
+      },
+    );
+
+    // Yearly Data for chart display
+    const yearlyData = allYearlySalesDataUnfiltered;
+
+        const monthlyData = monthlySalesData;
+    
     const dailyData = Array.from(dailyMap.values())
       .sort((a, b) => a.date.localeCompare(b.date))
       .map((d) => ({
@@ -971,6 +1124,28 @@ const useComprehensiveData = (
             : 0,
         uniqueOrderCount: w.uniqueOrders.size,
       }));
+
+    // NOW calculate performanceMetrics
+    const performanceMetrics = {
+      avgDailyOrder: Math.round(
+        dailyData.reduce((sum, d) => sum + d.orderValue, 0) /
+          (dailyData.length || 1),
+      ),
+      avgDailySale: Math.round(
+        dailyData.reduce((sum, d) => sum + d.saleValue, 0) /
+          (dailyData.length || 1),
+      ),
+      avgOrderValue: Math.round(totals.orderValue / (orderMap.size || 1)),
+      avgSaleValue: Math.round(totals.saleValue / (orderMap.size || 1)),
+      avgCustomerValue: Math.round(totals.saleValue / (customerMap.size || 1)),
+      avgMarketingValue: Math.round(
+        totals.saleValue / (marketingMap.size || 1),
+      ),
+      orderToDeliveryRatio:
+        totals.orderQty > 0 ? totals.saleQty / totals.orderQty : 0,
+      customerRetention:
+        customerMap.size > 0 ? (customerMap.size / orderMap.size) * 100 : 0,
+    };
 
     // ============================================================
     // FIXED: Marketing Data - Sort by TOTAL Order Value for ranking
@@ -1096,87 +1271,94 @@ const useComprehensiveData = (
 
     // Order Funnel Data
     const orderFunnelData = [
-  {
-    name: "Orders Received",
-    value: Math.round(totals.orderValue) || 1,
-    fill: COLORS.primary,
-  },
-  {
-    name: "Delivered",
-    value: Math.round(totals.saleValue) || 1,
-    fill: COLORS.success,
-  },
-  {
-    name: "Pending",
-    value: Math.round(totals.balanceValue) || 1,
-    fill: COLORS.danger,
-  },
-];
+      {
+        name: "Orders Received",
+        value: Math.round(totals.orderValue) || 1,
+        fill: COLORS.primary,
+      },
+      {
+        name: "Delivered",
+        value: Math.round(totals.saleValue) || 1,
+        fill: COLORS.success,
+      },
+      {
+        name: "Pending",
+        value: Math.round(totals.balanceValue) || 1,
+        fill: COLORS.danger,
+      },
+    ];
 
     const funnelConversionData = orderFunnelData;
 
-   // ============================================================
-// FIXED: Channel Performance - Sort by TOTAL, tier by AVG
-// ============================================================
-const channelPerformanceData = allMarketingDataRanked
-  .slice(0, 8)
-  .map((m, i) => {
-    const avgOrderValue = m.avgOrderValue || 0;
-    const deliveryRate = m.deliveryRate || 0;
-    const totalOrderValue = m.orderValue || 0;
-    const orders = m.orders || 0;
+    // ============================================================
+    // FIXED: Channel Performance - Sort by TOTAL, tier by AVG
+    // ============================================================
+    const channelPerformanceData = allMarketingDataRanked
+      .slice(0, 8)
+      .map((m, i) => {
+        const avgOrderValue = m.avgOrderValue || 0;
+        const deliveryRate = m.deliveryRate || 0;
+        const totalOrderValue = m.orderValue || 0;
+        const orders = m.orders || 0;
 
-    const tier = getPerformanceTier(
-      avgOrderValue,
-      deliveryRate,
-      totalOrderValue,
-      orders,
-      selectedYear,
-      selectedMonth
-    );
-    const Icon = tier.icon;
+        const tier = getPerformanceTier(
+          avgOrderValue,
+          deliveryRate,
+          totalOrderValue,
+          orders,
+          selectedYear,
+          selectedMonth,
+        );
+        const Icon = tier.icon;
 
-    return {
-      channel: m.name,
-      // Keep formatted strings for display
-      orderValue: formatCurrency(m.orderValue),
-      revenue: formatCurrency(m.value),
-      avgOrderValue: formatCurrency(avgOrderValue),
-      // Add numeric versions for charting
-      orderValueNum: Math.round(m.orderValue || 0),
-      saleValueNum: Math.round(m.value || 0),
-      orders: m.orders,
-      delivered: Math.round(m.orders * (deliveryRate / 100)),
-      deliveryRate: deliveryRate.toFixed(0) + "%",
-      avgSaleValue: formatCurrency(m.avgSaleValue),
-      customers: m.customers,
-      categories: m.categories,
-      leakage: m.orderValue > 0
-        ? formatCurrency(m.orderValue - m.value)
-        : formatCurrency(0),
-      leakagePercent: m.orderValue > 0
-        ? (((m.orderValue - m.value) / m.orderValue) * 100).toFixed(0) + "%"
-        : "0%",
-      status: tier.status,
-      tier: tier.tier,
-      tierIcon: tier.icon,
-      tierColor: tier.color,
-      tierBg: tier.bg,
-      color: CHART_COLORS[i % CHART_COLORS.length],
-      orderTrend: allMarketingDataRanked.length > 1
-        ? ((m.orderValue - (allMarketingDataRanked[i + 1]?.orderValue || 0)) / (allMarketingDataRanked[i + 1]?.orderValue || 1)) * 100
-        : 0,
-    };
-  });
+        return {
+          channel: m.name,
+          // Keep formatted strings for display
+          orderValue: formatCurrency(m.orderValue),
+          revenue: formatCurrency(m.value),
+          avgOrderValue: formatCurrency(avgOrderValue),
+          // Add numeric versions for charting
+          orderValueNum: Math.round(m.orderValue || 0),
+          saleValueNum: Math.round(m.value || 0),
+          orders: m.orders,
+          delivered: Math.round(m.orders * (deliveryRate / 100)),
+          deliveryRate: deliveryRate.toFixed(0) + "%",
+          avgSaleValue: formatCurrency(m.avgSaleValue),
+          customers: m.customers,
+          categories: m.categories,
+          leakage:
+            m.orderValue > 0
+              ? formatCurrency(m.orderValue - m.value)
+              : formatCurrency(0),
+          leakagePercent:
+            m.orderValue > 0
+              ? (((m.orderValue - m.value) / m.orderValue) * 100).toFixed(0) +
+                "%"
+              : "0%",
+          status: tier.status,
+          tier: tier.tier,
+          tierIcon: tier.icon,
+          tierColor: tier.color,
+          tierBg: tier.bg,
+          color: CHART_COLORS[i % CHART_COLORS.length],
+          orderTrend:
+            allMarketingDataRanked.length > 1
+              ? ((m.orderValue -
+                  (allMarketingDataRanked[i + 1]?.orderValue || 0)) /
+                  (allMarketingDataRanked[i + 1]?.orderValue || 1)) *
+                100
+              : 0,
+        };
+      });
     // ============================================================
     // FIXED: Sales vs Order Data - Only Order Value & Sales Revenue
     // ============================================================
-  const salesVsOrderData = allMarketingDataRanked.map((m) => ({
-  name: m.name,
-  orderValue: Math.round(m.orderValue || 0),
-  saleValue: Math.round(m.value || 0),
-  deliveryRate: m.deliveryRate || 0,
-}));
+    const salesVsOrderData = allMarketingDataRanked.map((m) => ({
+      name: m.name,
+      orderValue: Math.round(m.orderValue || 0),
+      saleValue: Math.round(m.value || 0),
+      deliveryRate: m.deliveryRate || 0,
+    }));
 
     const completionData = [
       { name: "Complete", value: statusData.complete, fill: COLORS.success },
@@ -1187,55 +1369,34 @@ const channelPerformanceData = allMarketingDataRanked
       },
       { name: "Pending", value: statusData.pending, fill: COLORS.danger },
     ];
-
-    const performanceMetrics = {
-      avgDailyOrder: Math.round(
-        dailyData.reduce((sum, d) => sum + d.orderValue, 0) /
-          (dailyData.length || 1),
-      ),
-      avgDailySale: Math.round(
-        dailyData.reduce((sum, d) => sum + d.saleValue, 0) /
-          (dailyData.length || 1),
-      ),
-      avgOrderValue: Math.round(totals.orderValue / (orderMap.size || 1)),
-      avgSaleValue: Math.round(totals.saleValue / (orderMap.size || 1)),
-      avgCustomerValue: Math.round(totals.saleValue / (customerMap.size || 1)),
-      avgMarketingValue: Math.round(
-        totals.saleValue / (marketingMap.size || 1),
-      ),
-      orderToDeliveryRatio:
-        totals.orderQty > 0 ? totals.saleQty / totals.orderQty : 0,
-      customerRetention:
-        customerMap.size > 0 ? (customerMap.size / orderMap.size) * 100 : 0,
-    };
-
+      
     // Top Performing Marketing - Sort by TOTAL
-const topPerformingMarketing = allMarketingDataRanked
-  .slice(0, 5)
-  .map((m) => {
-    // ✅ Pass ALL parameters including time
-    const tier = getPerformanceTier(
-      m.avgOrderValue,
-      m.deliveryRate,
-      m.orderValue,
-      m.orders,
-      selectedYear,
-      selectedMonth
-    );
-    return {
-      name: m.name,
-      revenueDisplay: formatCurrency(m.value),
-      revenue: m.value,
-      orderValue: m.orderValue,
-      avgOrderValue: formatCurrency(m.avgOrderValue),
-      orders: m.orders,
-      customers: m.customers,
-      deliveryRate: m.deliveryRate.toFixed(0) + "%",
-      tier: tier.tier,
-      tierColor: tier.color,
-      tierBg: tier.bg,
-    };
-  });
+    const topPerformingMarketing = allMarketingDataRanked
+      .slice(0, 5)
+      .map((m) => {
+        // ✅ Pass ALL parameters including time
+        const tier = getPerformanceTier(
+          m.avgOrderValue,
+          m.deliveryRate,
+          m.orderValue,
+          m.orders,
+          selectedYear,
+          selectedMonth,
+        );
+        return {
+          name: m.name,
+          revenueDisplay: formatCurrency(m.value),
+          revenue: m.value,
+          orderValue: m.orderValue,
+          avgOrderValue: formatCurrency(m.avgOrderValue),
+          orders: m.orders,
+          customers: m.customers,
+          deliveryRate: m.deliveryRate.toFixed(0) + "%",
+          tier: tier.tier,
+          tierColor: tier.color,
+          tierBg: tier.bg,
+        };
+      });
 
     // Category Performance - Sort by TOTAL
     const categoryPerformance = allCategoryData.slice(0, 5).map((c) => ({
@@ -1259,45 +1420,52 @@ const topPerformingMarketing = allMarketingDataRanked
       }));
 
     // ============================================================
-// FIXED: Sales Person Ranking - With Time-Aware Tiers
-// ============================================================
-const salesPersonRanking = allMarketingDataRanked.map((m, index) => {
-  const avgOrderValue = m.avgOrderValue || 0;
-  const deliveryRate = m.deliveryRate || 0;
-  const totalOrderValue = m.orderValue || 0;
-  const orders = m.orders || 0;
-  
-  // ✅ Pass ALL parameters including time
-  const tier = getPerformanceTier(
-    avgOrderValue, 
-    deliveryRate, 
-    totalOrderValue, 
-    orders,
-    selectedYear,
-    selectedMonth
-  );
-  const Icon = tier.icon;
-  const deliveryStatus = getDeliveryStatus(m.deliveryRate);
-  
-  return {
-    rank: index + 1,
-    name: m.name,
-    orderValue: formatCurrency(m.orderValue),
-    revenue: formatCurrency(m.value),
-    avgOrderValue: formatCurrency(m.avgOrderValue),
-    avgSaleValue: formatCurrency(m.avgSaleValue),
-    orders: m.orders,
-    customers: m.customers,
-    deliveryRate: m.deliveryRate.toFixed(0) + "%",
-    deliveryStatus: deliveryStatus.status,
-    deliveryStatusIcon: deliveryStatus.icon,
-    tier: tier.tier,
-    tierIcon: Icon,
-    tierColor: tier.color,
-    tierBg: tier.bg,
-    badge: index === 0 ? "🥇" : index === 1 ? "🥈" : index === 2 ? "🥉" : `${index + 1}.`,
-  };
-});
+    // FIXED: Sales Person Ranking - With Time-Aware Tiers
+    // ============================================================
+    const salesPersonRanking = allMarketingDataRanked.map((m, index) => {
+      const avgOrderValue = m.avgOrderValue || 0;
+      const deliveryRate = m.deliveryRate || 0;
+      const totalOrderValue = m.orderValue || 0;
+      const orders = m.orders || 0;
+
+      // ✅ Pass ALL parameters including time
+      const tier = getPerformanceTier(
+        avgOrderValue,
+        deliveryRate,
+        totalOrderValue,
+        orders,
+        selectedYear,
+        selectedMonth,
+      );
+      const Icon = tier.icon;
+      const deliveryStatus = getDeliveryStatus(m.deliveryRate);
+
+      return {
+        rank: index + 1,
+        name: m.name,
+        orderValue: formatCurrency(m.orderValue),
+        revenue: formatCurrency(m.value),
+        avgOrderValue: formatCurrency(m.avgOrderValue),
+        avgSaleValue: formatCurrency(m.avgSaleValue),
+        orders: m.orders,
+        customers: m.customers,
+        deliveryRate: m.deliveryRate.toFixed(0) + "%",
+        deliveryStatus: deliveryStatus.status,
+        deliveryStatusIcon: deliveryStatus.icon,
+        tier: tier.tier,
+        tierIcon: Icon,
+        tierColor: tier.color,
+        tierBg: tier.bg,
+        badge:
+          index === 0
+            ? "🥇"
+            : index === 1
+              ? "🥈"
+              : index === 2
+                ? "🥉"
+                : `${index + 1}.`,
+      };
+    });
 
     // ============================================================
     // FIXED: Customer Segmentation - Sort by TOTAL, show AVG for context
@@ -1420,6 +1588,12 @@ const salesPersonRanking = allMarketingDataRanked.map((m, index) => {
       deliveryPercent,
       valuePercent,
       salesGrowth,
+      growthData,
+      allGrowthData,
+      allWeeklyGrowthData,
+      allDailyGrowthData,
+      allYearlyGrowthData,
+      yearlyData,
       topCustomers,
       topMarketing,
       topCategories,
@@ -1476,9 +1650,6 @@ const salesPersonRanking = allMarketingDataRanked.map((m, index) => {
         revenue: Math.round(m.value),
       })),
       completionData,
-      growthData,
-      weeklyGrowthData,
-      dailyGrowthData,
       buyerCategoryMatrix: [],
       allMarketingData,
       allCategoryData,
@@ -1529,14 +1700,12 @@ const salesPersonRanking = allMarketingDataRanked.map((m, index) => {
           "Rising material costs",
         ],
       },
-      categoryMatrix: allCategoryData
-        .slice(0, 8)
-        .map((c) => ({
-          name: c.name,
-          growth: c.orders > 0 ? c.value / c.orders : 0,
-          marketShare: c.value / totals.saleValue,
-          revenue: c.value,
-        })),
+      categoryMatrix: allCategoryData.slice(0, 8).map((c) => ({
+        name: c.name,
+        growth: c.orders > 0 ? c.value / c.orders : 0,
+        marketShare: c.value / totals.saleValue,
+        revenue: c.value,
+      })),
       salesPersonRanking,
       salesGrowthData: growthData,
       monthlySalesData,
@@ -1574,7 +1743,6 @@ function getWeekNumber(date) {
     Math.round(((d - week1) / 86400000 - 3 + ((week1.getDay() + 6) % 7)) / 7)
   );
 }
-
 
 // ============================================================
 // Funnel Chart Component
@@ -1660,7 +1828,7 @@ const FunnelChartComponent = ({ data }) => {
       </div>
     </div>
   );
-}; 
+};
 
 // Status Indicator
 const StatusIndicator = ({ status }) => {
@@ -2212,7 +2380,9 @@ const EfficiencyChartComponent = ({ data }) => {
 // In ChannelPerformanceMatrix component
 const ChannelPerformanceMatrix = ({ data }) => {
   if (!data || data.length === 0) {
-    return <div className="text-center text-slate-400 py-8">No channel data</div>;
+    return (
+      <div className="text-center text-slate-400 py-8">No channel data</div>
+    );
   }
 
   return (
@@ -2220,13 +2390,27 @@ const ChannelPerformanceMatrix = ({ data }) => {
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-slate-200">
-            <th className="text-left py-2 px-3 text-xs font-medium text-slate-400">Sales Person</th>
-            <th className="text-right py-2 px-3 text-xs font-medium text-slate-400">Total Order Value</th>
-            <th className="text-right py-2 px-3 text-xs font-medium text-slate-400">Avg Order Value</th>
-            <th className="text-right py-2 px-3 text-xs font-medium text-slate-400">Sales Revenue</th>
-            <th className="text-right py-2 px-3 text-xs font-medium text-slate-400">Orders</th>
-            <th className="text-right py-2 px-3 text-xs font-medium text-slate-400">Delivery %</th>
-            <th className="text-center py-2 px-3 text-xs font-medium text-slate-400">Performance</th>
+            <th className="text-left py-2 px-3 text-xs font-medium text-slate-400">
+              Sales Person
+            </th>
+            <th className="text-right py-2 px-3 text-xs font-medium text-slate-400">
+              Total Order Value
+            </th>
+            <th className="text-right py-2 px-3 text-xs font-medium text-slate-400">
+              Avg Order Value
+            </th>
+            <th className="text-right py-2 px-3 text-xs font-medium text-slate-400">
+              Sales Revenue
+            </th>
+            <th className="text-right py-2 px-3 text-xs font-medium text-slate-400">
+              Orders
+            </th>
+            <th className="text-right py-2 px-3 text-xs font-medium text-slate-400">
+              Delivery %
+            </th>
+            <th className="text-center py-2 px-3 text-xs font-medium text-slate-400">
+              Performance
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -2245,23 +2429,45 @@ const ChannelPerformanceMatrix = ({ data }) => {
               >
                 <td className="py-2 px-3 text-slate-700 font-medium">
                   <div className="flex items-center gap-2">
-                    <span className="w-3 h-3 rounded-full" style={{ backgroundColor: channel.color }} />
+                    <span
+                      className="w-3 h-3 rounded-full"
+                      style={{ backgroundColor: channel.color }}
+                    />
                     {channel.channel}
-                    {isCritical && <span className="text-[10px] text-red-600 font-bold ml-1">⚠️ CRITICAL</span>}
+                    {isCritical && (
+                      <span className="text-[10px] text-red-600 font-bold ml-1">
+                        ⚠️ CRITICAL
+                      </span>
+                    )}
                   </div>
                 </td>
-                <td className="text-right py-2 px-3 text-indigo-600">{channel.orderValue}</td>
-                <td className="text-right py-2 px-3 text-slate-600">{channel.avgOrderValue}</td>
-                <td className="text-right py-2 px-3 font-semibold text-emerald-600">{channel.revenue}</td>
-                <td className="text-right py-2 px-3 text-slate-600">{channel.orders}</td>
+                <td className="text-right py-2 px-3 text-indigo-600">
+                  {channel.orderValue}
+                </td>
+                <td className="text-right py-2 px-3 text-slate-600">
+                  {channel.avgOrderValue}
+                </td>
+                <td className="text-right py-2 px-3 font-semibold text-emerald-600">
+                  {channel.revenue}
+                </td>
+                <td className="text-right py-2 px-3 text-slate-600">
+                  {channel.orders}
+                </td>
                 <td className="text-right py-2 px-3">
-                  <span className={`font-medium ${deliveryRate >= 70 ? "text-emerald-600" : deliveryRate >= 50 ? "text-amber-600" : "text-red-600"}`}>
+                  <span
+                    className={`font-medium ${deliveryRate >= 70 ? "text-emerald-600" : deliveryRate >= 50 ? "text-amber-600" : "text-red-600"}`}
+                  >
                     {channel.deliveryRate}
                   </span>
                 </td>
                 <td className="text-center py-2 px-3">
-                  <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-medium ${channel.tierBg} text-${channel.tierColor}`}>
-                    <channel.tierIcon className="w-3 h-3" style={{ color: channel.tierColor }} />
+                  <span
+                    className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-medium ${channel.tierBg} text-${channel.tierColor}`}
+                  >
+                    <channel.tierIcon
+                      className="w-3 h-3"
+                      style={{ color: channel.tierColor }}
+                    />
                     {channel.tier}
                   </span>
                 </td>
@@ -2387,20 +2593,23 @@ const OrderVsSalesChart = ({ data }) => {
   // Transform data to ensure numeric values
   const chartData = data.map((item) => ({
     name: item.channel || item.name || "Unknown",
-    orderValue: typeof item.orderValue === 'string' 
-      ? parseFloat(item.orderValue.replace(/[$,]/g, '')) || 0 
-      : (item.orderValue || 0),
-    saleValue: typeof item.revenue === 'string' 
-      ? parseFloat(item.revenue.replace(/[$,]/g, '')) || 0 
-      : (item.revenue || 0),
+    orderValue:
+      typeof item.orderValue === "string"
+        ? parseFloat(item.orderValue.replace(/[$,]/g, "")) || 0
+        : item.orderValue || 0,
+    saleValue:
+      typeof item.revenue === "string"
+        ? parseFloat(item.revenue.replace(/[$,]/g, "")) || 0
+        : item.revenue || 0,
     // Also handle the case where data might come from salesVsOrderData
-    saleValueAlt: typeof item.saleValue === 'string'
-      ? parseFloat(item.saleValue.replace(/[$,]/g, '')) || 0
-      : (item.saleValue || 0),
+    saleValueAlt:
+      typeof item.saleValue === "string"
+        ? parseFloat(item.saleValue.replace(/[$,]/g, "")) || 0
+        : item.saleValue || 0,
   }));
 
   // Use saleValue or fallback to saleValueAlt
-  const finalData = chartData.map(item => ({
+  const finalData = chartData.map((item) => ({
     ...item,
     saleValue: item.saleValue || item.saleValueAlt || 0,
   }));
@@ -2644,41 +2853,110 @@ function Home() {
     return ["All", ...Array.from(names)];
   }, [apiData]);
 
-  const getChartData = () => {
-    switch (viewMode) {
-      case "daily":
-        return data.dailyData || [];
-      case "weekly":
-        return data.weeklyData || [];
-      case "monthly":
-      default:
-        return data.monthlyData || [];
-    }
-  };
+  // In the chartData definition
+const getChartData = () => {
+  switch (viewMode) {
+    case "yearly":
+      return data.yearlyData || [];
+    case "daily":
+      return data.dailyData || [];
+    case "weekly":
+      return data.weeklyData || [];
+    case "monthly":
+    default:
+      return data.monthlyData || [];
+  }
+};
 
   const chartData = getChartData();
 
-  const getGrowthChartData = () => {
-    if (
-      viewMode === "monthly" &&
-      data.growthData &&
-      data.growthData.length >= 2
-    ) {
-      return data.growthData;
-    } else if (
-      viewMode === "weekly" &&
-      data.weeklyGrowthData &&
-      data.weeklyGrowthData.length >= 2
-    ) {
-      return data.weeklyGrowthData;
-    } else if (data.dailyGrowthData && data.dailyGrowthData.length >= 3) {
-      return data.dailyGrowthData;
-    }
-    return [];
-  };
+  // Inside Home component, replace the growthChartData section:
 
-  const growthChartData = getGrowthChartData();
-  const hasEnoughData = growthChartData.length >= 2;
+// Smart growth data selection
+const getGrowthData = () => {
+  // 1. EXACT VIEW MODE MATCH - highest priority
+  if (viewMode === "yearly" && data.allYearlyGrowthData && data.allYearlyGrowthData.length >= 2) {
+    console.log("Using Yearly data");
+    return data.allYearlyGrowthData;
+  }
+  
+  if (viewMode === "monthly" && data.allGrowthData && data.allGrowthData.length >= 2) {
+    console.log("Using Monthly data");
+    return data.allGrowthData;
+  }
+  
+  if (viewMode === "weekly" && data.allWeeklyGrowthData && data.allWeeklyGrowthData.length >= 2) {
+    console.log("Using Weekly data");
+    return data.allWeeklyGrowthData;
+  }
+  
+  if (viewMode === "daily" && data.allDailyGrowthData && data.allDailyGrowthData.length >= 3) {
+    console.log("Using Daily data");
+    return data.allDailyGrowthData;
+  }
+
+  // 2. DATE RANGE OVERRIDE - if a date range is selected
+  const hasDateRange = cndata?._lastFetch?.dateRange;
+  if (hasDateRange && data.allDailyGrowthData && data.allDailyGrowthData.length >= 3) {
+    console.log("Using Daily data (date range)");
+    return data.allDailyGrowthData;
+  }
+
+  // 3. SMART FALLBACK - best available data
+  if (data.allYearlyGrowthData && data.allYearlyGrowthData.length >= 2) {
+    console.log("Fallback: Using Yearly data");
+    return data.allYearlyGrowthData;
+  }
+  
+  if (data.allGrowthData && data.allGrowthData.length >= 2) {
+    console.log("Fallback: Using Monthly data");
+    return data.allGrowthData;
+  }
+  
+  if (data.allWeeklyGrowthData && data.allWeeklyGrowthData.length >= 2) {
+    console.log("Fallback: Using Weekly data");
+    return data.allWeeklyGrowthData;
+  }
+  
+  if (data.allDailyGrowthData && data.allDailyGrowthData.length >= 3) {
+    console.log("Fallback: Using Daily data");
+    return data.allDailyGrowthData;
+  }
+
+  // 4. LAST RESORT
+  console.log("Using filtered fallback data");
+  return data.growthData || data.weeklyGrowthData || data.dailyGrowthData || [];
+};
+
+const growthChartData = getGrowthData();
+const hasEnoughData = growthChartData.length >= 2;
+
+const getGrowthLabel = () => {
+  if (viewMode === "yearly") return "Year-over-year";
+  if (viewMode === "daily") return "Day-over-day";
+  if (viewMode === "weekly") return "Week-over-week";
+  return "Month-over-month";
+};
+ 
+
+  // Fallback to filtered data
+  //   if (viewMode === "monthly" && data.growthData && data.growthData.length >= 2) {
+  //     return data.growthData;
+  //   } else if (viewMode === "weekly" && data.weeklyGrowthData && data.weeklyGrowthData.length >= 2) {
+  //     return data.weeklyGrowthData;
+  //   } else if (data.dailyGrowthData && data.dailyGrowthData.length >= 3) {
+  //     return data.dailyGrowthData;
+  //   }
+  //   return [];
+  // };
+
+  // const growthChartData =
+  //   (viewMode === "weekly" && data.allWeeklyGrowthData) ||
+  //   (viewMode === "daily" && data.allDailyGrowthData) ||
+  //   data.allGrowthData ||
+  //   data.growthData ||
+  //   [];
+  // const hasEnoughData = growthChartData.length >= 2;
 
   const getCurrentMonthDates = () => {
     const now = new Date();
@@ -3489,11 +3767,11 @@ function Home() {
                       onChange={(e) => setViewMode(e.target.value)}
                       className="px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200 min-w-[140px]"
                     >
+                      <option value="yearly">📅 Yearly View</option>
                       <option value="monthly">📈 Monthly View</option>
                       <option value="weekly">📊 Weekly View</option>
                       <option value="daily">📅 Daily View</option>
                     </select>
-
                     {(selectedYear !== "All" ||
                       selectedMonth !== "All" ||
                       selectedMarketing !== "All") && (
@@ -3503,9 +3781,9 @@ function Home() {
                           setSelectedMonth("All");
                           setSelectedMarketing("All");
                         }}
-                        className="px-4 py-2.5 text-sm font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-xl transition-all duration-200"
+                        className="px-4 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-indigo-500 to-purple-600 rounded-xl hover:shadow-lg transition-all duration-200"
                       >
-                        ✕ Clear
+                        Show All Data
                       </button>
                     )}
                   </div>
@@ -3676,11 +3954,29 @@ function Home() {
                 <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-slate-200/60 p-4 md:p-6">
                   <div className="flex items-center justify-between mb-4">
                     <div>
-                      <h3 className="text-base font-semibold text-slate-800">
+                      {/* <h3 className="text-base font-semibold text-slate-800">
                         Monthly Performance
                       </h3>
                       <p className="text-xs text-slate-400">
                         Order vs Sales revenue trends
+                      </p> */}
+                      <h3 className="text-base font-semibold text-slate-800">
+                        {viewMode === "yearly"
+                          ? "Year-over-year Growth Rate"
+                          : viewMode === "daily"
+                            ? "Day-over-day Growth Rate"
+                            : viewMode === "weekly"
+                              ? "Week-over-week Growth Rate"
+                              : "Month-over-month Growth Rate"}
+                      </h3>
+                      <p className="text-xs text-slate-400">
+                        {viewMode === "yearly"
+                          ? "Year-over-year growth percentage"
+                          : viewMode === "daily"
+                            ? "Day-over-day growth percentage"
+                            : viewMode === "weekly"
+                              ? "Week-over-week growth percentage"
+                              : "Month-over-month growth percentage"}
                       </p>
                     </div>
                     <div className="flex items-center gap-3 text-xs">
@@ -3835,36 +4131,47 @@ function Home() {
                     </h3>
                     <div className="space-y-2">
                       {data.topPerformingMarketing.slice(0, 5).map((m, i) => {
-  const avgValue = parseFloat(m.avgOrderValue.replace(/[$,]/g, ""));
-  // ✅ Pass ALL parameters
-  const tier = getPerformanceTier(
-    avgValue, 
-    parseFloat(m.deliveryRate),
-    m.orderValue,      // Total Order Value
-    m.orders,          // Number of Orders
-    selectedYear,      // Time context
-    selectedMonth      // Time context
-  );
-  const Icon = tier.icon;
-  return (
-    <div
-      key={m.name}
-      className={`flex items-center justify-between text-sm p-2 rounded-lg ${tier.bg}`}
-    >
-      <div className="flex items-center gap-2">
-        <Icon className={`w-4 h-4`} style={{ color: tier.color }} />
-        <span className="text-slate-700 font-medium">{m.name}</span>
-      </div>
-      <div className="flex items-center gap-3">
-        <span className="text-[10px] text-slate-400">{m.orders} orders</span>
-        <span className="text-[10px] text-slate-400">{m.deliveryRate}</span>
-        <span className="font-semibold text-emerald-600">
-          {formatCompactCurrency(m.orderValue)}
-        </span>
-      </div>
-    </div>
-  );
-})}
+                        const avgValue = parseFloat(
+                          m.avgOrderValue.replace(/[$,]/g, ""),
+                        );
+                        // ✅ Pass ALL parameters
+                        const tier = getPerformanceTier(
+                          avgValue,
+                          parseFloat(m.deliveryRate),
+                          m.orderValue, // Total Order Value
+                          m.orders, // Number of Orders
+                          selectedYear, // Time context
+                          selectedMonth, // Time context
+                        );
+                        const Icon = tier.icon;
+                        return (
+                          <div
+                            key={m.name}
+                            className={`flex items-center justify-between text-sm p-2 rounded-lg ${tier.bg}`}
+                          >
+                            <div className="flex items-center gap-2">
+                              <Icon
+                                className={`w-4 h-4`}
+                                style={{ color: tier.color }}
+                              />
+                              <span className="text-slate-700 font-medium">
+                                {m.name}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <span className="text-[10px] text-slate-400">
+                                {m.orders} orders
+                              </span>
+                              <span className="text-[10px] text-slate-400">
+                                {m.deliveryRate}
+                              </span>
+                              <span className="font-semibold text-emerald-600">
+                                {formatCompactCurrency(m.orderValue)}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
 
@@ -3906,10 +4213,10 @@ function Home() {
                   <div className="flex items-center justify-between mb-4">
                     <div>
                       <h3 className="text-base font-semibold text-slate-800">
-                        Monthly Growth Rate
+                        {getGrowthLabel()} Growth Rate
                       </h3>
                       <p className="text-xs text-slate-400">
-                        Month-over-month growth percentage
+                        {getGrowthLabel()} growth percentage
                       </p>
                     </div>
                     <div className="flex items-center gap-3 text-xs">
@@ -4627,39 +4934,47 @@ function Home() {
                     <h3 className="text-base font-semibold text-slate-800 mb-3">
                       Funnel Efficiency Metrics
                     </h3>
-                      
-                      
-                      
-                     <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-  <div className="bg-indigo-50 rounded-xl p-4 text-center">
-    <p className="text-xs text-slate-400">Total Order Value</p>
-    <p className="text-2xl font-bold text-indigo-600">
-      {formatCurrency(data.totals.orderValue)}
-    </p>
-  </div>
-  <div className="bg-emerald-50 rounded-xl p-4 text-center">
-    <p className="text-xs text-slate-400">Delivered Value</p>
-    <p className="text-2xl font-bold text-emerald-600">
-      {formatCurrency(data.totals.saleValue)}
-    </p>
-    <p className="text-xs text-emerald-500">
-      {((data.totals.saleValue / (data.totals.orderValue || 1)) * 100).toFixed(0)}%
-      conversion
-    </p>
-  </div>
-  <div className="bg-red-50 rounded-xl p-4 text-center">
-    <p className="text-xs text-slate-400">Pending Value</p>
-    <p className="text-2xl font-bold text-red-600">
-      {formatCurrency(data.totals.balanceValue)}
-    </p>
-    <p className="text-xs text-red-500">
-      {((data.totals.balanceValue / (data.totals.orderValue || 1)) * 100).toFixed(0)}%
-      pending
-    </p>
-  </div>
-</div>
 
-
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                      <div className="bg-indigo-50 rounded-xl p-4 text-center">
+                        <p className="text-xs text-slate-400">
+                          Total Order Value
+                        </p>
+                        <p className="text-2xl font-bold text-indigo-600">
+                          {formatCurrency(data.totals.orderValue)}
+                        </p>
+                      </div>
+                      <div className="bg-emerald-50 rounded-xl p-4 text-center">
+                        <p className="text-xs text-slate-400">
+                          Delivered Value
+                        </p>
+                        <p className="text-2xl font-bold text-emerald-600">
+                          {formatCurrency(data.totals.saleValue)}
+                        </p>
+                        <p className="text-xs text-emerald-500">
+                          {(
+                            (data.totals.saleValue /
+                              (data.totals.orderValue || 1)) *
+                            100
+                          ).toFixed(0)}
+                          % conversion
+                        </p>
+                      </div>
+                      <div className="bg-red-50 rounded-xl p-4 text-center">
+                        <p className="text-xs text-slate-400">Pending Value</p>
+                        <p className="text-2xl font-bold text-red-600">
+                          {formatCurrency(data.totals.balanceValue)}
+                        </p>
+                        <p className="text-xs text-red-500">
+                          {(
+                            (data.totals.balanceValue /
+                              (data.totals.orderValue || 1)) *
+                            100
+                          ).toFixed(0)}
+                          % pending
+                        </p>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -4726,19 +5041,21 @@ function Home() {
                       Bar chart showing Order Value vs Sales Revenue
                     </p>
                     {data.channelPerformanceData &&
-                      data.channelPerformanceData.length > 0 ? (
-                        <OrderVsSalesChart data={data.channelPerformanceData.map(item => ({
+                    data.channelPerformanceData.length > 0 ? (
+                      <OrderVsSalesChart
+                        data={data.channelPerformanceData.map((item) => ({
                           ...item,
                           orderValue: item.orderValueNum || 0,
                           saleValue: item.saleValueNum || 0,
-                          name: item.channel
-                        }))} />
-                      ) : (
-                        <div className="h-[280px] flex items-center justify-center text-slate-400 flex-col gap-2">
-                          <div className="text-4xl">📊</div>
-                          <p>No data available</p>
-                        </div>
-                      )}
+                          name: item.channel,
+                        }))}
+                      />
+                    ) : (
+                      <div className="h-[280px] flex items-center justify-center text-slate-400 flex-col gap-2">
+                        <div className="text-4xl">📊</div>
+                        <p>No data available</p>
+                      </div>
+                    )}
                   </div>
                   {/* FIXED: Sales Performance Matrix - Sort by TOTAL, tier by AVG */}
                   <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-slate-200/60 p-4 md:p-6 lg:col-span-2">
