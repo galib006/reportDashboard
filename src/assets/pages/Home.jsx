@@ -1636,7 +1636,8 @@ const useComprehensiveData = (
       });
       efficiencyData = Array.from(yearlyEfficiencyMap.values()).map((m) => ({
         name: m.name,
-        efficiency: m.orders > 0 ? Math.round((m.value || 0) / (m.orders || 1)) : 0,
+        efficiency:
+          m.orders > 0 ? Math.round((m.value || 0) / (m.orders || 1)) : 0,
         orders: m.orders || 0,
         revenue: Math.round(m.value || 0),
       }));
@@ -1661,7 +1662,8 @@ const useComprehensiveData = (
         .sort((a, b) => a.name.localeCompare(b.name))
         .map((m) => ({
           name: m.name,
-          efficiency: m.orders > 0 ? Math.round((m.value || 0) / (m.orders || 1)) : 0,
+          efficiency:
+            m.orders > 0 ? Math.round((m.value || 0) / (m.orders || 1)) : 0,
           orders: m.orders || 0,
           revenue: Math.round(m.value || 0),
         }));
@@ -1673,7 +1675,10 @@ const useComprehensiveData = (
         const dayKey = date.toISOString().split("T")[0];
         if (!dailyEfficiencyMap.has(dayKey)) {
           dailyEfficiencyMap.set(dayKey, {
-            name: new Date(dayKey).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+            name: new Date(dayKey).toLocaleDateString("en-US", {
+              month: "short",
+              day: "numeric",
+            }),
             orders: 0,
             value: 0,
           });
@@ -1687,7 +1692,8 @@ const useComprehensiveData = (
         .slice(-30) // Limit to last 30 days
         .map((m) => ({
           name: m.name,
-          efficiency: m.orders > 0 ? Math.round((m.value || 0) / (m.orders || 1)) : 0,
+          efficiency:
+            m.orders > 0 ? Math.round((m.value || 0) / (m.orders || 1)) : 0,
           orders: m.orders || 0,
           revenue: Math.round(m.value || 0),
         }));
@@ -1695,7 +1701,8 @@ const useComprehensiveData = (
       // Monthly efficiency (default) - by marketing/sales person
       efficiencyData = allMarketingData.map((m) => ({
         name: m.name,
-        efficiency: m.orders > 0 ? Math.round((m.value || 0) / (m.orders || 1)) : 0,
+        efficiency:
+          m.orders > 0 ? Math.round((m.value || 0) / (m.orders || 1)) : 0,
         orders: m.orders || 0,
         revenue: Math.round(m.value || 0),
       }));
@@ -1846,9 +1853,7 @@ const useComprehensiveData = (
           .reduce((sum, item) => sum + item.saleValue, 0),
       })),
       growthMetrics,
-      
     };
-    
   }, [apiData, selectedYear, selectedMonth, selectedMarketing, viewMode]);
 };
 
@@ -3340,12 +3345,12 @@ function Home() {
     if (dateRange.startDate && dateRange.endDate) {
       const diffTime = Math.abs(dateRange.endDate - dateRange.startDate);
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      if (diffDays > 365) {
-        toast.warning(
-          "Date range exceeds 365 days. Please select a smaller range.",
-        );
-        return;
-      }
+      // if (diffDays > 365) {
+      //   toast.warning(
+      //     "Date range exceeds 365 days. Please select a smaller range.",
+      //   );
+      //   return;
+      // }
       // Close the date picker first
       setShowDatePicker(false);
       // Small delay to ensure the popup closes before fetching
