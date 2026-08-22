@@ -1064,38 +1064,35 @@ if (i > 0 && arr[i - 1].saleValue > 0) {
       }));
 
     // ALL Yearly Growth Data - Shows ALL years regardless of filters
-    const allYearlyGrowthData = allYearlySalesDataUnfiltered.map(
-      (d, i, arr) => {
-        let salesGrowth = 0;
-        let orderGrowth = 0;
+const allYearlyGrowthData = allYearlySalesDataUnfiltered.map(
+  (d, i, arr) => {
+    let salesGrowth = 0;
+    let orderGrowth = 0;
 
-       // In useComprehensiveData, update the growth calculation:
-if (i > 0 && arr[i - 1].saleValue > 0) {
-  salesGrowth = ((d.saleValue - arr[i - 1].saleValue) / arr[i - 1].saleValue) * 100;
-} else if (i > 0 && arr[i - 1].saleValue === 0 && d.saleValue > 0) {
-  salesGrowth = 100; // If previous was 0 and current > 0, treat as 100% growth
-} else if (i > 0 && arr[i - 1].saleValue === 0 && d.saleValue === 0) {
-  salesGrowth = 0; // Both are 0, no growth
-}
+    if (i > 0 && arr[i - 1].saleValue > 0) {
+      salesGrowth = ((d.saleValue - arr[i - 1].saleValue) / arr[i - 1].saleValue) * 100;
+    } else if (i > 0 && arr[i - 1].saleValue === 0 && d.saleValue > 0) {
+      salesGrowth = 100;
+    } else if (i > 0 && arr[i - 1].saleValue === 0 && d.saleValue === 0) {
+      salesGrowth = 0;
+    }
 
-        if (i > 0 && arr[i - 1].orderValue > 0) {
-          orderGrowth =
-            ((d.orderValue - arr[i - 1].orderValue) / arr[i - 1].orderValue) *
-            100;
-        } else if (i > 0 && arr[i - 1].orderValue === 0 && d.orderValue > 0) {
-          orderGrowth = 100;
-        }
+    if (i > 0 && arr[i - 1].orderValue > 0) {
+      orderGrowth = ((d.orderValue - arr[i - 1].orderValue) / arr[i - 1].orderValue) * 100;
+    } else if (i > 0 && arr[i - 1].orderValue === 0 && d.orderValue > 0) {
+      orderGrowth = 100;
+    }
 
-        return {
-          month: d.name, // The x-axis will show years
-          orderValue: Math.round(d.orderValue),
-          saleValue: Math.round(d.saleValue),
-          orderGrowth: orderGrowth,
-          salesGrowth: salesGrowth,
-          uniqueOrders: d.uniqueOrders,
-        };
-      },
-    );
+    return {
+      month: d.name, // This should be the year (e.g., "2025", "2026")
+      orderValue: Math.round(d.orderValue),
+      saleValue: Math.round(d.saleValue),
+      orderGrowth: orderGrowth,
+      salesGrowth: salesGrowth,
+      uniqueOrders: d.uniqueOrders,
+    };
+  },
+);
 
     // Yearly Data for chart display
     const yearlyData = allYearlySalesDataUnfiltered;
@@ -2874,31 +2871,44 @@ const getChartData = () => {
   const chartData = getChartData();
 
   // Inside Home component, replace the growthChartData section:
-
 // Smart growth data selection
 const getGrowthData = () => {
-  // 1. EXACT VIEW MODE MATCH - highest priority
-  if (viewMode === "yearly" && data.allYearlyGrowthData && data.allYearlyGrowthData.length >= 2) {
-    console.log("Using Yearly data");
-    return data.allYearlyGrowthData;
+  // 1. EXACT VIEW MODE MATCH - ABSOLUTE HIGHEST PRIORITY
+  if (viewMode === "yearly") {
+    if (data.allYearlyGrowthData && data.allYearlyGrowthData.length >= 2) {
+      console.log("Using Yearly data");
+      return data.allYearlyGrowthData;
+    }
+    // If yearly data is not available, return empty array instead of falling back
+    console.log("Yearly data not available");
+    return [];
   }
   
-  if (viewMode === "monthly" && data.allGrowthData && data.allGrowthData.length >= 2) {
-    console.log("Using Monthly data");
-    return data.allGrowthData;
+  if (viewMode === "monthly") {
+    if (data.allGrowthData && data.allGrowthData.length >= 2) {
+      console.log("Using Monthly data");
+      return data.allGrowthData;
+    }
+    return [];
   }
   
-  if (viewMode === "weekly" && data.allWeeklyGrowthData && data.allWeeklyGrowthData.length >= 2) {
-    console.log("Using Weekly data");
-    return data.allWeeklyGrowthData;
+  if (viewMode === "weekly") {
+    if (data.allWeeklyGrowthData && data.allWeeklyGrowthData.length >= 2) {
+      console.log("Using Weekly data");
+      return data.allWeeklyGrowthData;
+    }
+    return [];
   }
   
-  if (viewMode === "daily" && data.allDailyGrowthData && data.allDailyGrowthData.length >= 3) {
-    console.log("Using Daily data");
-    return data.allDailyGrowthData;
+  if (viewMode === "daily") {
+    if (data.allDailyGrowthData && data.allDailyGrowthData.length >= 3) {
+      console.log("Using Daily data");
+      return data.allDailyGrowthData;
+    }
+    return [];
   }
 
-  // 2. DATE RANGE OVERRIDE - if a date range is selected
+  // 2. DATE RANGE OVERRIDE - only if no specific view mode is active
   const hasDateRange = cndata?._lastFetch?.dateRange;
   if (hasDateRange && data.allDailyGrowthData && data.allDailyGrowthData.length >= 3) {
     console.log("Using Daily data (date range)");
@@ -2931,11 +2941,7 @@ const getGrowthData = () => {
   return data.growthData || data.weeklyGrowthData || data.dailyGrowthData || [];
 };
 
-const growthChartData = getGrowthData().map(item => ({
-  ...item,
-  salesGrowth: Math.min(Math.max(item.salesGrowth, -100), 1000),
-  orderGrowth: Math.min(Math.max(item.orderGrowth, -100), 1000),
-}));
+const growthChartData = getGrowthData();
 const hasEnoughData = growthChartData.length >= 2;
 
 const getGrowthLabel = () => {
@@ -4262,8 +4268,7 @@ const handleDateRangeSubmit = (e) => {
                     </div>
                   </div>
                 </div>
-
-                {/* Growth Rate Chart - Shows ALL months */}
+{/* Growth Rate Chart */}
 <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-slate-200/60 p-4 md:p-6">
   <div className="flex items-center justify-between mb-4">
     <div>
@@ -4292,7 +4297,10 @@ const handleDateRangeSubmit = (e) => {
         margin={{ top: 30, right: 30, left: 20, bottom: 20 }}
       >
         <CartesianGrid strokeDasharray="3 3" />
-        <XAxis dataKey="month" />
+        <XAxis 
+          dataKey="month" 
+          tick={{ fontSize: 12, fontWeight: 500 }}
+        />
         <YAxis 
           tickFormatter={(v) => `${v.toFixed(1)}%`}
           domain={['auto', 'auto']}
@@ -4348,11 +4356,13 @@ const handleDateRangeSubmit = (e) => {
       <div className="text-4xl">📊</div>
       <p>Not enough data for growth comparison</p>
       <p className="text-xs">
-        Need at least 2 months, 2 weeks, or 3 days of data
+        Need at least 2 {viewMode === "yearly" ? "years" : viewMode === "weekly" ? "weeks" : viewMode === "daily" ? "days" : "months"} of data
       </p>
     </div>
   )}
 </div>
+                
+
               </div>
             )}
 
