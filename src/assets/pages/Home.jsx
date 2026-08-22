@@ -1115,10 +1115,9 @@ const useComprehensiveData = (
 
     const funnelConversionData = orderFunnelData;
 
-    // ============================================================
-    // FIXED: Channel Performance - Sort by TOTAL, tier by AVG
-    // ============================================================
-    // In useComprehensiveData hook - channelPerformanceData section
+   // ============================================================
+// FIXED: Channel Performance - Sort by TOTAL, tier by AVG
+// ============================================================
 const channelPerformanceData = allMarketingDataRanked
   .slice(0, 8)
   .map((m, i) => {
@@ -1127,7 +1126,6 @@ const channelPerformanceData = allMarketingDataRanked
     const totalOrderValue = m.orderValue || 0;
     const orders = m.orders || 0;
 
-    // ✅ Pass time parameters
     const tier = getPerformanceTier(
       avgOrderValue,
       deliveryRate,
@@ -1140,9 +1138,13 @@ const channelPerformanceData = allMarketingDataRanked
 
     return {
       channel: m.name,
+      // Keep formatted strings for display
       orderValue: formatCurrency(m.orderValue),
       revenue: formatCurrency(m.value),
       avgOrderValue: formatCurrency(avgOrderValue),
+      // Add numeric versions for charting
+      orderValueNum: Math.round(m.orderValue || 0),
+      saleValueNum: Math.round(m.value || 0),
       orders: m.orders,
       delivered: Math.round(m.orders * (deliveryRate / 100)),
       deliveryRate: deliveryRate.toFixed(0) + "%",
@@ -1166,16 +1168,15 @@ const channelPerformanceData = allMarketingDataRanked
         : 0,
     };
   });
-
     // ============================================================
     // FIXED: Sales vs Order Data - Only Order Value & Sales Revenue
     // ============================================================
-    const salesVsOrderData = allMarketingDataRanked.map((m) => ({
-      name: m.name,
-      orderValue: m.orderValue || 0,
-      saleValue: m.value || 0,
-      deliveryRate: m.deliveryRate || 0,
-    }));
+  const salesVsOrderData = allMarketingDataRanked.map((m) => ({
+  name: m.name,
+  orderValue: Math.round(m.orderValue || 0),
+  saleValue: Math.round(m.value || 0),
+  deliveryRate: m.deliveryRate || 0,
+}));
 
     const completionData = [
       { name: "Complete", value: statusData.complete, fill: COLORS.success },
@@ -2371,7 +2372,7 @@ const RevenueDistributionPie = ({ data }) => {
 };
 
 // ============================================================
-// FIXED: Order vs Sales Comparison Chart - Only Order Value & Sales Revenue
+// FIXED: Order vs Sales Comparison Chart - Proper data handling
 // ============================================================
 const OrderVsSalesChart = ({ data }) => {
   if (!data || data.length === 0) {
@@ -2383,10 +2384,31 @@ const OrderVsSalesChart = ({ data }) => {
     );
   }
 
+  // Transform data to ensure numeric values
+  const chartData = data.map((item) => ({
+    name: item.channel || item.name || "Unknown",
+    orderValue: typeof item.orderValue === 'string' 
+      ? parseFloat(item.orderValue.replace(/[$,]/g, '')) || 0 
+      : (item.orderValue || 0),
+    saleValue: typeof item.revenue === 'string' 
+      ? parseFloat(item.revenue.replace(/[$,]/g, '')) || 0 
+      : (item.revenue || 0),
+    // Also handle the case where data might come from salesVsOrderData
+    saleValueAlt: typeof item.saleValue === 'string'
+      ? parseFloat(item.saleValue.replace(/[$,]/g, '')) || 0
+      : (item.saleValue || 0),
+  }));
+
+  // Use saleValue or fallback to saleValueAlt
+  const finalData = chartData.map(item => ({
+    ...item,
+    saleValue: item.saleValue || item.saleValueAlt || 0,
+  }));
+
   return (
     <ResponsiveContainer width="100%" height={280}>
       <BarChart
-        data={data}
+        data={finalData}
         margin={{ top: 10, right: 10, left: 0, bottom: 60 }}
       >
         <CartesianGrid strokeDasharray="3 3" />
@@ -4704,16 +4726,20 @@ function Home() {
                       Bar chart showing Order Value vs Sales Revenue
                     </p>
                     {data.channelPerformanceData &&
-                    data.channelPerformanceData.length > 0 ? (
-                      <OrderVsSalesChart data={data.channelPerformanceData} />
-                    ) : (
-                      <div className="h-[280px] flex items-center justify-center text-slate-400 flex-col gap-2">
-                        <div className="text-4xl">📊</div>
-                        <p>No data available</p>
-                      </div>
-                    )}
+                      data.channelPerformanceData.length > 0 ? (
+                        <OrderVsSalesChart data={data.channelPerformanceData.map(item => ({
+                          ...item,
+                          orderValue: item.orderValueNum || 0,
+                          saleValue: item.saleValueNum || 0,
+                          name: item.channel
+                        }))} />
+                      ) : (
+                        <div className="h-[280px] flex items-center justify-center text-slate-400 flex-col gap-2">
+                          <div className="text-4xl">📊</div>
+                          <p>No data available</p>
+                        </div>
+                      )}
                   </div>
-
                   {/* FIXED: Sales Performance Matrix - Sort by TOTAL, tier by AVG */}
                   <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-slate-200/60 p-4 md:p-6 lg:col-span-2">
                     <h3 className="text-base font-semibold text-slate-800 mb-3">
