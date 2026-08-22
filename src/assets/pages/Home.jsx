@@ -892,12 +892,14 @@ const useComprehensiveData = (
       let salesGrowth = 0;
       let orderGrowth = 0;
 
-      if (i > 0 && arr[i - 1].saleValue > 0) {
-        salesGrowth =
-          ((d.saleValue - arr[i - 1].saleValue) / arr[i - 1].saleValue) * 100;
-      } else if (i > 0 && arr[i - 1].saleValue === 0 && d.saleValue > 0) {
-        salesGrowth = 100;
-      }
+      // In useComprehensiveData, update the growth calculation:
+if (i > 0 && arr[i - 1].saleValue > 0) {
+  salesGrowth = ((d.saleValue - arr[i - 1].saleValue) / arr[i - 1].saleValue) * 100;
+} else if (i > 0 && arr[i - 1].saleValue === 0 && d.saleValue > 0) {
+  salesGrowth = 100; // If previous was 0 and current > 0, treat as 100% growth
+} else if (i > 0 && arr[i - 1].saleValue === 0 && d.saleValue === 0) {
+  salesGrowth = 0; // Both are 0, no growth
+}
 
       if (i > 0 && arr[i - 1].orderValue > 0) {
         orderGrowth =
@@ -940,12 +942,14 @@ const useComprehensiveData = (
       let salesGrowth = 0;
       let orderGrowth = 0;
 
-      if (i > 0 && arr[i - 1].saleValue > 0) {
-        salesGrowth =
-          ((d.saleValue - arr[i - 1].saleValue) / arr[i - 1].saleValue) * 100;
-      } else if (i > 0 && arr[i - 1].saleValue === 0 && d.saleValue > 0) {
-        salesGrowth = 100;
-      }
+      // In useComprehensiveData, update the growth calculation:
+if (i > 0 && arr[i - 1].saleValue > 0) {
+  salesGrowth = ((d.saleValue - arr[i - 1].saleValue) / arr[i - 1].saleValue) * 100;
+} else if (i > 0 && arr[i - 1].saleValue === 0 && d.saleValue > 0) {
+  salesGrowth = 100; // If previous was 0 and current > 0, treat as 100% growth
+} else if (i > 0 && arr[i - 1].saleValue === 0 && d.saleValue === 0) {
+  salesGrowth = 0; // Both are 0, no growth
+}
 
       if (i > 0 && arr[i - 1].orderValue > 0) {
         orderGrowth =
@@ -1065,12 +1069,14 @@ const useComprehensiveData = (
         let salesGrowth = 0;
         let orderGrowth = 0;
 
-        if (i > 0 && arr[i - 1].saleValue > 0) {
-          salesGrowth =
-            ((d.saleValue - arr[i - 1].saleValue) / arr[i - 1].saleValue) * 100;
-        } else if (i > 0 && arr[i - 1].saleValue === 0 && d.saleValue > 0) {
-          salesGrowth = 100;
-        }
+       // In useComprehensiveData, update the growth calculation:
+if (i > 0 && arr[i - 1].saleValue > 0) {
+  salesGrowth = ((d.saleValue - arr[i - 1].saleValue) / arr[i - 1].saleValue) * 100;
+} else if (i > 0 && arr[i - 1].saleValue === 0 && d.saleValue > 0) {
+  salesGrowth = 100; // If previous was 0 and current > 0, treat as 100% growth
+} else if (i > 0 && arr[i - 1].saleValue === 0 && d.saleValue === 0) {
+  salesGrowth = 0; // Both are 0, no growth
+}
 
         if (i > 0 && arr[i - 1].orderValue > 0) {
           orderGrowth =
@@ -2334,20 +2340,15 @@ const EfficiencyChartComponent = ({ data }) => {
           name="Orders"
           label={{ value: "Orders", position: "bottom" }}
         />
-        <YAxis
-          type="number"
-          dataKey="efficiency"
-          name="Efficiency"
-          tickFormatter={(v) => {
-            if (v >= 1000) return `$${(v / 1000).toFixed(1)}K`;
-            return `$${v}`;
-          }}
-          label={{
-            value: "Efficiency (per order)",
-            angle: -90,
-            position: "left",
-          }}
-        />
+        <YAxis 
+  tickFormatter={(v) => {
+    if (v >= 1000) return `${(v / 1000).toFixed(0)}K%`;
+    if (v >= 100) return `${v.toFixed(0)}%`;
+    if (v >= 10) return `${v.toFixed(1)}%`;
+    return `${v.toFixed(1)}%`;
+  }}
+  domain={['auto', 'auto']}
+/>
         <ZAxis type="number" dataKey="revenue" range={[50, 400]} />
         <Tooltip
           formatter={(v, name) => {
@@ -2930,7 +2931,11 @@ const getGrowthData = () => {
   return data.growthData || data.weeklyGrowthData || data.dailyGrowthData || [];
 };
 
-const growthChartData = getGrowthData();
+const growthChartData = getGrowthData().map(item => ({
+  ...item,
+  salesGrowth: Math.min(Math.max(item.salesGrowth, -100), 1000),
+  orderGrowth: Math.min(Math.max(item.orderGrowth, -100), 1000),
+}));
 const hasEnoughData = growthChartData.length >= 2;
 
 const getGrowthLabel = () => {
@@ -4004,34 +4009,31 @@ const handleDateRangeSubmit = (e) => {
             {/* Overview Tab */}
             {activeTab === "overview" && (
               <div className="space-y-6">
+
+
+
                 <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-slate-200/60 p-4 md:p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <div>
-                      {/* <h3 className="text-base font-semibold text-slate-800">
-                        Monthly Performance
-                      </h3>
-                      <p className="text-xs text-slate-400">
-                        Order vs Sales revenue trends
-                      </p> */}
-                      <h3 className="text-base font-semibold text-slate-800">
-                        {viewMode === "yearly"
-                          ? "Year-over-year Growth Rate"
-                          : viewMode === "daily"
-                            ? "Day-over-day Growth Rate"
-                            : viewMode === "weekly"
-                              ? "Week-over-week Growth Rate"
-                              : "Month-over-month Growth Rate"}
-                      </h3>
-                      <p className="text-xs text-slate-400">
-                        {viewMode === "yearly"
-                          ? "Year-over-year growth percentage"
-                          : viewMode === "daily"
-                            ? "Day-over-day growth percentage"
-                            : viewMode === "weekly"
-                              ? "Week-over-week growth percentage"
-                              : "Month-over-month growth percentage"}
-                      </p>
-                    </div>
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <h3 className="text-base font-semibold text-slate-800">
+            {viewMode === "yearly" 
+              ? "Yearly Performance" 
+              : viewMode === "daily" 
+                ? "Daily Performance" 
+                : viewMode === "weekly" 
+                  ? "Weekly Performance" 
+                  : "Monthly Performance"}
+          </h3>
+          <p className="text-xs text-slate-400">
+            {viewMode === "yearly" 
+              ? "Year-over-year trends" 
+              : viewMode === "daily" 
+                ? "Day-by-day trends" 
+                : viewMode === "weekly" 
+                  ? "Week-by-week trends" 
+                  : "Month-over-month trends"}
+          </p>
+        </div>
                     <div className="flex items-center gap-3 text-xs">
                       <span className="flex items-center gap-1">
                         <span className="w-2 h-2 rounded-full bg-indigo-500"></span>
@@ -4261,97 +4263,96 @@ const handleDateRangeSubmit = (e) => {
                   </div>
                 </div>
 
-                {/* Monthly Growth Rate - Shows ALL months */}
-                <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-slate-200/60 p-4 md:p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <div>
-                      <h3 className="text-base font-semibold text-slate-800">
-                        {getGrowthLabel()} Growth Rate
-                      </h3>
-                      <p className="text-xs text-slate-400">
-                        {getGrowthLabel()} growth percentage
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-3 text-xs">
-                      <span className="flex items-center gap-1">
-                        <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                        Sales Growth
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <span className="w-2 h-2 rounded-full bg-indigo-500"></span>
-                        Order Growth
-                      </span>
-                    </div>
-                  </div>
-                  {hasEnoughData ? (
-                    <ResponsiveContainer width="100%" height={280}>
-                      <BarChart
-                        data={growthChartData}
-                        margin={{ top: 30, right: 30, left: 20, bottom: 20 }}
-                      >
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="month" />
-                        <YAxis tickFormatter={(v) => `${v.toFixed(0)}%`} />
-                        <Tooltip
-                          formatter={(v) => `${v.toFixed(1)}%`}
-                          contentStyle={{
-                            backgroundColor: "white",
-                            border: "1px solid #e2e8f0",
-                            borderRadius: "8px",
-                            padding: "8px 12px",
-                          }}
-                        />
-                        <Legend />
-                        <Bar
-                          dataKey="salesGrowth"
-                          name="Sales Growth %"
-                          radius={[4, 4, 0, 0]}
-                        >
-                          {growthChartData.map((entry, index) => (
-                            <Cell
-                              key={`cell-${index}`}
-                              fill={
-                                entry.salesGrowth >= 0
-                                  ? COLORS.success
-                                  : COLORS.danger
-                              }
-                            />
-                          ))}
-                        </Bar>
-                        <Bar
-                          dataKey="orderGrowth"
-                          name="Order Growth %"
-                          radius={[4, 4, 0, 0]}
-                          fill={COLORS.primary}
-                        >
-                          {growthChartData.map((entry, index) => (
-                            <Cell
-                              key={`cell-order-${index}`}
-                              fill={
-                                entry.orderGrowth >= 0
-                                  ? COLORS.indigo
-                                  : COLORS.rose
-                              }
-                            />
-                          ))}
-                        </Bar>
-                        <ReferenceLine
-                          y={0}
-                          stroke={COLORS.gray}
-                          strokeDasharray="3 3"
-                        />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  ) : (
-                    <div className="h-[280px] flex items-center justify-center text-slate-400 flex-col gap-2">
-                      <div className="text-4xl">📊</div>
-                      <p>Not enough data for growth comparison</p>
-                      <p className="text-xs">
-                        Need at least 2 months, 2 weeks, or 3 days of data
-                      </p>
-                    </div>
-                  )}
-                </div>
+                {/* Growth Rate Chart - Shows ALL months */}
+<div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-slate-200/60 p-4 md:p-6">
+  <div className="flex items-center justify-between mb-4">
+    <div>
+      <h3 className="text-base font-semibold text-slate-800">
+        {getGrowthLabel()} Growth Rate
+      </h3>
+      <p className="text-xs text-slate-400">
+        {getGrowthLabel()} growth percentage
+      </p>
+    </div>
+    <div className="flex items-center gap-3 text-xs">
+      <span className="flex items-center gap-1">
+        <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+        Sales Growth
+      </span>
+      <span className="flex items-center gap-1">
+        <span className="w-2 h-2 rounded-full bg-indigo-500"></span>
+        Order Growth
+      </span>
+    </div>
+  </div>
+  {hasEnoughData ? (
+    <ResponsiveContainer width="100%" height={280}>
+      <BarChart
+        data={growthChartData}
+        margin={{ top: 30, right: 30, left: 20, bottom: 20 }}
+      >
+        <CartesianGrid strokeDasharray="3 3" />
+        <XAxis dataKey="month" />
+        <YAxis 
+          tickFormatter={(v) => `${v.toFixed(1)}%`}
+          domain={['auto', 'auto']}
+        />
+        <Tooltip
+          formatter={(v) => `${v.toFixed(1)}%`}
+          contentStyle={{
+            backgroundColor: "white",
+            border: "1px solid #e2e8f0",
+            borderRadius: "8px",
+            padding: "8px 12px",
+          }}
+        />
+        <Legend />
+        <ReferenceLine y={0} stroke="#94A3B8" strokeDasharray="3 3" />
+        <Bar
+          dataKey="salesGrowth"
+          name="Sales Growth %"
+          radius={[4, 4, 0, 0]}
+        >
+          {growthChartData.map((entry, index) => (
+            <Cell
+              key={`cell-${index}`}
+              fill={
+                entry.salesGrowth >= 0
+                  ? COLORS.success
+                  : COLORS.danger
+              }
+            />
+          ))}
+        </Bar>
+        <Bar
+          dataKey="orderGrowth"
+          name="Order Growth %"
+          radius={[4, 4, 0, 0]}
+          fill={COLORS.primary}
+        >
+          {growthChartData.map((entry, index) => (
+            <Cell
+              key={`cell-order-${index}`}
+              fill={
+                entry.orderGrowth >= 0
+                  ? COLORS.indigo
+                  : COLORS.rose
+              }
+            />
+          ))}
+        </Bar>
+      </BarChart>
+    </ResponsiveContainer>
+  ) : (
+    <div className="h-[280px] flex items-center justify-center text-slate-400 flex-col gap-2">
+      <div className="text-4xl">📊</div>
+      <p>Not enough data for growth comparison</p>
+      <p className="text-xs">
+        Need at least 2 months, 2 weeks, or 3 days of data
+      </p>
+    </div>
+  )}
+</div>
               </div>
             )}
 
