@@ -889,37 +889,38 @@ const useComprehensiveData = (
       }));
 
     // Growth Data - Shows ALL months (filtered)
-    const growthData = monthlySalesData.map((d, i, arr) => {
-      let salesGrowth = 0;
-      let orderGrowth = 0;
+    // const growthData = monthlySalesData.map((d, i, arr) => {
+    //   let salesGrowth = 0;
+    //   let orderGrowth = 0;
 
-      // In useComprehensiveData, update the growth calculation:
-      if (i > 0 && arr[i - 1].saleValue > 0) {
-        salesGrowth =
-          ((d.saleValue - arr[i - 1].saleValue) / arr[i - 1].saleValue) * 100;
-      } else if (i > 0 && arr[i - 1].saleValue === 0 && d.saleValue > 0) {
-        salesGrowth = 100; // If previous was 0 and current > 0, treat as 100% growth
-      } else if (i > 0 && arr[i - 1].saleValue === 0 && d.saleValue === 0) {
-        salesGrowth = 0; // Both are 0, no growth
-      }
+    //   // In useComprehensiveData, update the growth calculation:
+    //   if (i > 0 && arr[i - 1].saleValue > 0) {
+    //     salesGrowth =
+    //       ((d.saleValue - arr[i - 1].saleValue) / arr[i - 1].saleValue) * 100;
+    //   } else if (i > 0 && arr[i - 1].saleValue === 0 && d.saleValue > 0) {
+    //     salesGrowth = 100; // If previous was 0 and current > 0, treat as 100% growth
+    //   } else if (i > 0 && arr[i - 1].saleValue === 0 && d.saleValue === 0) {
+    //     salesGrowth = 0; // Both are 0, no growth
+    //   }
 
-      if (i > 0 && arr[i - 1].orderValue > 0) {
-        orderGrowth =
-          ((d.orderValue - arr[i - 1].orderValue) / arr[i - 1].orderValue) *
-          100;
-      } else if (i > 0 && arr[i - 1].orderValue === 0 && d.orderValue > 0) {
-        orderGrowth = 100;
-      }
+    //   if (i > 0 && arr[i - 1].orderValue > 0) {
+    //     orderGrowth =
+    //       ((d.orderValue - arr[i - 1].orderValue) / arr[i - 1].orderValue) *
+    //       100;
+    //   } else if (i > 0 && arr[i - 1].orderValue === 0 && d.orderValue > 0) {
+    //     orderGrowth = 100;
+    //   }
 
-      return {
-        month: d.name,
-        orderValue: Math.round(d.orderValue),
-        saleValue: Math.round(d.saleValue),
-        orderGrowth: orderGrowth,
-        salesGrowth: salesGrowth,
-        uniqueOrders: d.uniqueOrders,
-      };
-    });
+    //   return {
+    //     month: d.name,
+    //     orderValue: Math.round(d.orderValue),
+    //     saleValue: Math.round(d.saleValue),
+    //     orderGrowth: orderGrowth,
+    //     salesGrowth: salesGrowth,
+    //     uniqueOrders: d.uniqueOrders,
+    //   };
+    // });
+    let growthData = [];
 
     // ============================================================
     // ALL Growth Data - Unfiltered (shows ALL months regardless of filters)
