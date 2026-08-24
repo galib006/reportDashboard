@@ -1007,50 +1007,74 @@ const allGrowthData = allMonthlySalesDataUnfiltered.map((d, i, arr) => {
     };
   });
 
-    // ============================================================
-    // ALL Weekly Growth Data - Unfiltered (shows ALL weeks regardless of filters)
-    // ============================================================
-    const allWeeklyGrowthData = Array.from(weeklyMap.entries())
-      .sort((a, b) => a[0].localeCompare(b[0]))
-      .map(([week, data], index, arr) => {
-        let salesGrowth = 0;
-        if (index > 0 && arr[index - 1][1].saleValue > 0) {
-          salesGrowth =
-            ((data.saleValue - arr[index - 1][1].saleValue) /
-              arr[index - 1][1].saleValue) *
-            100;
-        }
-        return {
-          month: week,
-          salesGrowth: salesGrowth,
-          saleValue: data.saleValue,
-          orderValue: data.orderValue,
-        };
-      });
 
-    // ============================================================
+   // ALL Weekly Growth Data - Unfiltered (shows ALL weeks regardless of filters)
+const allWeeklyGrowthData = Array.from(weeklyMap.entries())
+  .sort((a, b) => a[0].localeCompare(b[0]))
+  .map(([week, data], index, arr) => {
+    let salesGrowth = 0;
+    const MIN_THRESHOLD = 1000; // Minimum threshold for meaningful growth calculation
+    const MAX_GROWTH = 200;
+    const MIN_GROWTH = -100;
+    
+    if (index > 0) {
+      const prevSale = arr[index - 1][1].saleValue || 0;
+      const currentSale = data.saleValue || 0;
+      
+      // Apply threshold logic
+      if (prevSale < MIN_THRESHOLD && currentSale > MIN_THRESHOLD) {
+        salesGrowth = 100; // Big jump from small to large
+      } else if (prevSale >= MIN_THRESHOLD) {
+        salesGrowth = ((currentSale - prevSale) / prevSale) * 100;
+        // Cap at realistic range
+        salesGrowth = Math.max(MIN_GROWTH, Math.min(MAX_GROWTH, salesGrowth));
+      } else {
+        salesGrowth = 0; // Both are small
+      }
+    }
+    
+    return {
+      month: week,
+      salesGrowth: Math.round(salesGrowth * 10) / 10,
+      saleValue: data.saleValue,
+      orderValue: data.orderValue,
+    };
+  });
+
     // ALL Daily Growth Data - Unfiltered (shows ALL days regardless of filters)
-    // ============================================================
-    const allDailyGrowthData = Array.from(dailyMap.entries())
-      .sort((a, b) => a[0].localeCompare(b[0]))
-      .map(([date, data], index, arr) => {
-        let salesGrowth = 0;
-        if (index > 0 && arr[index - 1][1].saleValue > 0) {
-          salesGrowth =
-            ((data.saleValue - arr[index - 1][1].saleValue) /
-              arr[index - 1][1].saleValue) *
-            100;
-        }
-        return {
-          month: new Date(date).toLocaleDateString("en-US", {
-            month: "short",
-            day: "numeric",
-          }),
-          salesGrowth: salesGrowth,
-          saleValue: data.saleValue,
-          orderValue: data.orderValue,
-        };
-      });
+const allDailyGrowthData = Array.from(dailyMap.entries())
+  .sort((a, b) => a[0].localeCompare(b[0]))
+  .map(([date, data], index, arr) => {
+    let salesGrowth = 0;
+    const MIN_THRESHOLD = 500; // Lower threshold for daily data
+    const MAX_GROWTH = 200;
+    const MIN_GROWTH = -100;
+    
+    if (index > 0) {
+      const prevSale = arr[index - 1][1].saleValue || 0;
+      const currentSale = data.saleValue || 0;
+      
+      // Apply threshold logic
+      if (prevSale < MIN_THRESHOLD && currentSale > MIN_THRESHOLD) {
+        salesGrowth = 100;
+      } else if (prevSale >= MIN_THRESHOLD) {
+        salesGrowth = ((currentSale - prevSale) / prevSale) * 100;
+        salesGrowth = Math.max(MIN_GROWTH, Math.min(MAX_GROWTH, salesGrowth));
+      } else {
+        salesGrowth = 0;
+      }
+    }
+    
+    return {
+      month: new Date(date).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+      }),
+      salesGrowth: Math.round(salesGrowth * 10) / 10,
+      saleValue: data.saleValue,
+      orderValue: data.orderValue,
+    };
+  });
     // ============================================================
     // ALL Yearly Growth Data - Unfiltered (shows ALL years regardless of filters)
     // ============================================================
@@ -3052,45 +3076,43 @@ function Home() {
 
   // Inside Home component, replace the growthChartData section:
   // Smart growth data selection
-  const getGrowthData = () => {
-  // Yearly view
-  if (viewMode === "monthly") {
-    if (data.allGrowthData && data.allGrowthData.length >= 2) {
-      console.log("📊 Monthly Growth Data:", data.allGrowthData);
-      return data.allGrowthData;
-    }
-    return [];
-  }
-
-  // Monthly view - 
-   if (viewMode === "yearly") {
-    if (data.allYearlyGrowthData && data.allYearlyGrowthData.length >= 2) {
-      return data.allYearlyGrowthData;
-    }
-    return [];
-  }
-
+const getGrowthData = () => {
   // Weekly view
-   if (viewMode === "weekly") {
+  if (viewMode === "weekly") {
     if (data.allWeeklyGrowthData && data.allWeeklyGrowthData.length >= 2) {
       return data.allWeeklyGrowthData;
     }
     return [];
   }
 
-
   // Daily view
-   if (viewMode === "daily") {
-    if (data.allDailyGrowthData && data.allDailyGrowthData.length >= 3) {
+  if (viewMode === "daily") {
+    if (data.allDailyGrowthData && data.allDailyGrowthData.length >= 2) {
       return data.allDailyGrowthData;
     }
     return [];
   }
 
-  // Fallback
-   console.warn("⚠️ No growth data available for viewMode:", viewMode);
+  // Yearly view
+  if (viewMode === "yearly") {
+    if (data.allYearlyGrowthData && data.allYearlyGrowthData.length >= 2) {
+      return data.allYearlyGrowthData;
+    }
+    return [];
+  }
+
+  // Monthly view (default)
+  if (data.allGrowthData && data.allGrowthData.length >= 2) {
+    return data.allGrowthData;
+  }
+  
+  // Fallback to filtered growth data
+  if (data.growthData && data.growthData.length >= 2) {
+    return data.growthData;
+  }
+  
   return [];
-};  
+};
     
   const growthChartData = getGrowthData();
   const hasEnoughData = growthChartData.length >= 2;
@@ -4597,7 +4619,7 @@ useEffect(() => {
       <div className="flex items-center justify-between mb-4">
         <div>
           <h3 className="text-base font-semibold text-slate-800">
-            {getGrowthLabel()} Growth Rate
+            {getGrowthLabel()} Sales Growth Rate
           </h3>
           <p className="text-xs text-slate-400">
             {getGrowthLabel()} growth percentage
