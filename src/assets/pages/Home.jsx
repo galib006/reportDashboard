@@ -56,6 +56,7 @@ import {
   FaUserClock,
   FaUserMinus,
   FaUserPlus,
+  FaDownload,
 } from "react-icons/fa";
 import {
   RiMoneyDollarCircleFill,
@@ -3075,7 +3076,7 @@ function Home() {
     return ["All", ...Array.from(names)];
   }, [apiData]);
 
-  // In the Home component, update the getChartData function
+  // In the Home component
 const getChartData = () => {
   switch (viewMode) {
     case "yearly":
@@ -3086,7 +3087,6 @@ const getChartData = () => {
       return data.weeklyData || [];
     case "monthly":
     default:
-      // ✅ Ensure monthly data is sorted chronologically
       if (data.monthlyData && data.monthlyData.length > 0) {
         const monthOrder = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
         return [...data.monthlyData].sort((a, b) => {
@@ -4338,6 +4338,7 @@ useEffect(() => {
         >
           {[
             "overview",
+            "orderReport",
             "sales",
             "categories",
             "buyers",
@@ -4374,16 +4375,7 @@ useEffect(() => {
 
 
 
-
-
-
-
-
-
-
-
-
-            {/* Overview Tab */}
+       {/* Overview Tab */}
 {activeTab === "overview" && (
   <div className="space-y-6">
     {/* Performance Chart */}
@@ -4435,7 +4427,6 @@ useEffect(() => {
                 dataKey="name" 
                 tick={{ fontSize: 10 }}
                 tickFormatter={(value, index) => {
-                  // If data has year info, show it for clarity
                   const item = chartData[index];
                   if (item && item.year) {
                     return `${value} ${item.year}`;
@@ -4497,6 +4488,176 @@ useEffect(() => {
           No data available
         </div>
       )}
+    </div>
+
+    {/* Order vs Sales Comparison Chart - NEW */}
+    <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-slate-200/60 p-4 md:p-6">
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <h3 className="text-base font-semibold text-slate-800">
+            Order vs Sales Comparison
+          </h3>
+          <p className="text-xs text-slate-400">
+            {viewMode === "yearly" ? "Year-over-year" :
+             viewMode === "daily" ? "Day-by-day" :
+             viewMode === "weekly" ? "Week-by-week" :
+             "Month-over-month"} comparison with predictions
+          </p>
+        </div>
+        <div className="flex items-center gap-4 text-xs">
+          <span className="flex items-center gap-1">
+            <span className="w-3 h-0.5 bg-emerald-500"></span>
+            Actual Sales
+          </span>
+          <span className="flex items-center gap-1">
+            <span className="w-3 h-0.5 bg-indigo-500 border-t-2 border-dashed"></span>
+            Predicted Sales
+          </span>
+        </div>
+      </div>
+
+      {chartData && chartData.length > 0 ? (
+        <ResponsiveContainer width="100%" height={300}>
+          <ComposedChart
+            data={chartData}
+            margin={{ top: 10, right: 20, left: 10, bottom: 20 }}
+          >
+            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+            <XAxis 
+              dataKey="name" 
+              tick={{ fontSize: 10, fill: '#64748B' }}
+              tickLine={false}
+              axisLine={{ stroke: '#E2E8F0' }}
+            />
+            <YAxis
+              tick={{ fontSize: 10, fill: '#64748B' }}
+              tickLine={false}
+              axisLine={{ stroke: '#E2E8F0' }}
+              tickFormatter={(v) => formatCompactCurrency(v)}
+              domain={['auto', 'auto']}
+            />
+            <Tooltip
+              formatter={(v, name) => [formatCurrency(v), name]}
+              labelFormatter={(label) => `${label}`}
+              contentStyle={{
+                backgroundColor: "white",
+                border: "1px solid #e2e8f0",
+                borderRadius: "10px",
+                padding: "8px 12px",
+                boxShadow: "0 4px 6px -1px rgba(0,0,0,0.1)"
+              }}
+            />
+            <Legend 
+              wrapperStyle={{ fontSize: '10px', paddingTop: '8px' }}
+              iconType="circle"
+            />
+
+            {/* Actual Sales - Area with line */}
+            <Area
+              type="monotone"
+              dataKey="saleValue"
+              name="Actual Sales"
+              fill="#10B981"
+              fillOpacity={0.15}
+              stroke="#10B981"
+              strokeWidth={2.5}
+              dot={{ fill: '#10B981', r: 4 }}
+              activeDot={{ r: 6 }}
+            />
+
+            {/* Order Value - Line */}
+            <Line
+              type="monotone"
+              dataKey="orderValue"
+              name="Order Value"
+              stroke="#4F46E5"
+              strokeWidth={2}
+              dot={{ fill: '#4F46E5', r: 3 }}
+              activeDot={{ r: 5 }}
+            />
+
+            {/* Predicted Sales - Line with dashes */}
+            <Line
+              type="monotone"
+              dataKey={(item) => {
+                if (item.predicted !== undefined) return item.predicted;
+                const values = chartData.map(d => d.saleValue || 0);
+                const avg = values.reduce((a, b) => a + b, 0) / (values.length || 1);
+                return avg;
+              }}
+              name="Predicted Sales"
+              stroke="#8B5CF6"
+              strokeWidth={2}
+              strokeDasharray="6 4"
+              dot={{ fill: '#8B5CF6', r: 3 }}
+            />
+
+            {/* Reference line for average */}
+            {(() => {
+              const avg = chartData.reduce((sum, d) => sum + (d.saleValue || 0), 0) / (chartData.length || 1);
+              return (
+                <ReferenceLine
+                  y={avg}
+                  stroke="#94A3B8"
+                  strokeDasharray="3 3"
+                  label={{
+                    value: `Avg ${formatCompactCurrency(avg)}`,
+                    position: 'right',
+                    fill: '#94A3B8',
+                    fontSize: 9
+                  }}
+                />
+              );
+            })()}
+          </ComposedChart>
+        </ResponsiveContainer>
+      ) : (
+        <div className="h-[300px] flex items-center justify-center text-slate-400 flex-col gap-2">
+          <div className="text-4xl">📊</div>
+          <p>No data available for comparison</p>
+        </div>
+      )}
+
+      {/* Quick Stats for Overview */}
+      {(() => {
+        const salesValues = chartData.map(d => d.saleValue || 0);
+        const orderValues = chartData.map(d => d.orderValue || 0);
+        const totalSales = salesValues.reduce((a, b) => a + b, 0);
+        const totalOrders = orderValues.reduce((a, b) => a + b, 0);
+        const maxSales = Math.max(...salesValues);
+        const maxOrders = Math.max(...orderValues);
+        const avgDelivery = chartData.reduce((sum, d) => sum + (d.deliveryRate || 0), 0) / (chartData.length || 1);
+        const ratio = totalOrders > 0 ? (totalSales / totalOrders) * 100 : 0;
+
+        return (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4 pt-4 border-t border-slate-200">
+            <div className="text-center">
+              <p className="text-[10px] text-slate-400">Highest Sales</p>
+              <p className="text-base font-bold text-emerald-600">
+                {formatCompactCurrency(maxSales)}
+              </p>
+            </div>
+            <div className="text-center">
+              <p className="text-[10px] text-slate-400">Highest Orders</p>
+              <p className="text-base font-bold text-indigo-600">
+                {formatCompactCurrency(maxOrders)}
+              </p>
+            </div>
+            <div className="text-center">
+              <p className="text-[10px] text-slate-400">Delivery Rate</p>
+              <p className="text-base font-bold" style={{ color: getStatusColor(avgDelivery) }}>
+                {avgDelivery.toFixed(0)}%
+              </p>
+            </div>
+            <div className="text-center">
+              <p className="text-[10px] text-slate-400">Order-to-Sales Ratio</p>
+              <p className="text-base font-bold text-purple-600">
+                {ratio.toFixed(0)}%
+              </p>
+            </div>
+          </div>
+        );
+      })()}
     </div>
 
     {/* Quick Stats */}
@@ -4678,78 +4839,77 @@ useEffect(() => {
         </div>
       </div>
       {hasEnoughData ? (
-  <ResponsiveContainer width="100%" height={280}>
-    <BarChart
-      data={growthChartData}
-      margin={{ top: 30, right: 30, left: 20, bottom: 20 }}
-    >
-      <CartesianGrid strokeDasharray="3 3" />
-      <XAxis
-        dataKey="month"
-        tick={{ fontSize: 12, fontWeight: 500 }}
-      />
-      <YAxis
-        tickFormatter={(v) => `${v.toFixed(1)}%`}
-        // ✅ Y-Axis domain set to reasonable range
-        domain={[-50, 200]} 
-      />
-      <Tooltip
-        formatter={(v, name) => [`${v.toFixed(1)}%`, name]}
-        labelFormatter={(label, payload) => {
-          if (payload && payload.length > 0 && payload[0]?.payload) {
-            const data = payload[0].payload;
-            return data.fullName || data.month || label;
-          }
-          return label;
-        }}
-        contentStyle={{
-          backgroundColor: "white",
-          border: "1px solid #e2e8f0",
-          borderRadius: "8px",
-          padding: "8px 12px",
-        }}
-      />
-      <Legend />
-      <ReferenceLine
-        y={0}
-        stroke="#94A3B8"
-        strokeDasharray="3 3"
-      />
-      <Bar
-        dataKey="salesGrowth"
-        name="Sales Growth %"
-        radius={[4, 4, 0, 0]}
-      >
-        {growthChartData.map((entry, index) => (
-          <Cell
-            key={`cell-${index}`}
-            fill={
-              entry.salesGrowth >= 0
-                ? COLORS.success
-                : COLORS.danger
-            }
-          />
-        ))}
-      </Bar>
-      <Bar
-        dataKey="orderGrowth"
-        name="Order Growth %"
-        radius={[4, 4, 0, 0]}
-        fill={COLORS.primary}
-      >
-        {growthChartData.map((entry, index) => (
-          <Cell
-            key={`cell-order-${index}`}
-            fill={
-              entry.orderGrowth >= 0
-                ? COLORS.indigo
-                : COLORS.rose
-            }
-          />
-        ))}
-      </Bar>
-    </BarChart>
-  </ResponsiveContainer>
+        <ResponsiveContainer width="100%" height={280}>
+          <BarChart
+            data={growthChartData}
+            margin={{ top: 30, right: 30, left: 20, bottom: 20 }}
+          >
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis
+              dataKey="month"
+              tick={{ fontSize: 12, fontWeight: 500 }}
+            />
+            <YAxis
+              tickFormatter={(v) => `${v.toFixed(1)}%`}
+              domain={[-50, 200]} 
+            />
+            <Tooltip
+              formatter={(v, name) => [`${v.toFixed(1)}%`, name]}
+              labelFormatter={(label, payload) => {
+                if (payload && payload.length > 0 && payload[0]?.payload) {
+                  const data = payload[0].payload;
+                  return data.fullName || data.month || label;
+                }
+                return label;
+              }}
+              contentStyle={{
+                backgroundColor: "white",
+                border: "1px solid #e2e8f0",
+                borderRadius: "8px",
+                padding: "8px 12px",
+              }}
+            />
+            <Legend />
+            <ReferenceLine
+              y={0}
+              stroke="#94A3B8"
+              strokeDasharray="3 3"
+            />
+            <Bar
+              dataKey="salesGrowth"
+              name="Sales Growth %"
+              radius={[4, 4, 0, 0]}
+            >
+              {growthChartData.map((entry, index) => (
+                <Cell
+                  key={`cell-${index}`}
+                  fill={
+                    entry.salesGrowth >= 0
+                      ? COLORS.success
+                      : COLORS.danger
+                  }
+                />
+              ))}
+            </Bar>
+            <Bar
+              dataKey="orderGrowth"
+              name="Order Growth %"
+              radius={[4, 4, 0, 0]}
+              fill={COLORS.primary}
+            >
+              {growthChartData.map((entry, index) => (
+                <Cell
+                  key={`cell-order-${index}`}
+                  fill={
+                    entry.orderGrowth >= 0
+                      ? COLORS.indigo
+                      : COLORS.rose
+                  }
+                />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
       ) : (
         <div className="h-[280px] flex items-center justify-center text-slate-400 flex-col gap-2">
           <div className="text-4xl">📊</div>
@@ -4776,7 +4936,327 @@ useEffect(() => {
 
 
 
+{/* Order Report Tab - Order vs Sales Comparison */}
+{activeTab === "orderReport" && (
+  <div className="space-y-6">
+    {/* Header */}
+    <div className="flex items-center justify-between">
+      <div>
+        <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+          <FaFileInvoice className="text-indigo-500" />
+          Order vs Sales Comparison Report
+        </h2>
+        <p className="text-sm text-slate-400 mt-1">
+          Actual vs Predicted Revenue with trend analysis
+        </p>
+      </div>
+      <div className="flex items-center gap-3">
+        <span className="text-xs text-slate-400">
+          {chartData.length} periods analyzed
+        </span>
+        <button
+          onClick={() => toast.info("Exporting report...")}
+          className="px-4 py-2 text-sm font-medium bg-indigo-500 text-white rounded-xl hover:bg-indigo-600 transition-all duration-200 flex items-center gap-2"
+        >
+          <FaDownload className="w-3.5 h-3.5" />
+          Export Report
+        </button>
+      </div>
+    </div>
 
+    {/* Summary Stats */}
+    {(() => {
+      const salesValues = chartData.map(d => d.saleValue || 0);
+      const orderValues = chartData.map(d => d.orderValue || 0);
+      const totalSales = salesValues.reduce((a, b) => a + b, 0);
+      const totalOrders = orderValues.reduce((a, b) => a + b, 0);
+      const avgSales = totalSales / (salesValues.length || 1);
+      const lastSales = salesValues[salesValues.length - 1] || 0;
+      const firstSales = salesValues[0] || 0;
+      const salesGrowth = firstSales > 0 ? ((lastSales - firstSales) / firstSales) * 100 : 0;
+
+      return (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-slate-200/60 p-4">
+            <p className="text-xs text-slate-400 uppercase tracking-wider">Total Sales Revenue</p>
+            <p className="text-xl font-bold text-emerald-600">{formatCompactCurrency(totalSales)}</p>
+          </div>
+          <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-slate-200/60 p-4">
+            <p className="text-xs text-slate-400 uppercase tracking-wider">Total Order Value</p>
+            <p className="text-xl font-bold text-indigo-600">{formatCompactCurrency(totalOrders)}</p>
+          </div>
+          <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-slate-200/60 p-4">
+            <p className="text-xs text-slate-400 uppercase tracking-wider">Avg Sales Revenue</p>
+            <p className="text-xl font-bold text-emerald-600">{formatCompactCurrency(avgSales)}</p>
+          </div>
+          <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-slate-200/60 p-4">
+            <p className="text-xs text-slate-400 uppercase tracking-wider">Sales Growth</p>
+            <p className={`text-xl font-bold flex items-center gap-1 ${
+              salesGrowth > 0 ? 'text-emerald-600' : 
+              salesGrowth < 0 ? 'text-red-600' : 'text-slate-400'
+            }`}>
+              {salesGrowth > 0 ? <FaArrowUp className="w-3 h-3" /> :
+               salesGrowth < 0 ? <FaArrowDown className="w-3 h-3" /> :
+               <FaMinus className="w-3 h-3" />}
+              {salesGrowth.toFixed(1)}%
+            </p>
+          </div>
+        </div>
+      );
+    })()}
+
+    {/* Main Order vs Sales Comparison Chart - LINE CHART STYLE */}
+    <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-slate-200/60 p-4 md:p-6">
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <h3 className="text-base font-semibold text-slate-800">
+            Order vs Sales Comparison
+          </h3>
+          <p className="text-xs text-slate-400">
+            {viewMode === "yearly" ? "Year-over-year" :
+             viewMode === "daily" ? "Day-by-day" :
+             viewMode === "weekly" ? "Week-by-week" :
+             "Month-over-month"} comparison with predictions
+          </p>
+        </div>
+        <div className="flex items-center gap-4 text-xs">
+          <span className="flex items-center gap-1">
+            <span className="w-3 h-0.5 bg-emerald-500"></span>
+            Actual Sales
+          </span>
+          <span className="flex items-center gap-1">
+            <span className="w-3 h-0.5 bg-indigo-500 border-t-2 border-dashed"></span>
+            Predicted Sales
+          </span>
+        </div>
+      </div>
+
+      {chartData && chartData.length > 0 ? (
+        <ResponsiveContainer width="100%" height={400}>
+          <ComposedChart
+            data={chartData}
+            margin={{ top: 20, right: 30, left: 20, bottom: 30 }}
+          >
+            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+            <XAxis 
+              dataKey="name" 
+              tick={{ fontSize: 11, fill: '#64748B' }}
+              tickLine={false}
+              axisLine={{ stroke: '#E2E8F0' }}
+            />
+            <YAxis
+              tick={{ fontSize: 11, fill: '#64748B' }}
+              tickLine={false}
+              axisLine={{ stroke: '#E2E8F0' }}
+              tickFormatter={(v) => formatCompactCurrency(v)}
+              domain={['auto', 'auto']}
+            />
+            <Tooltip
+              formatter={(v, name) => [formatCurrency(v), name]}
+              labelFormatter={(label) => `${label}`}
+              contentStyle={{
+                backgroundColor: "white",
+                border: "1px solid #e2e8f0",
+                borderRadius: "10px",
+                padding: "10px 14px",
+                boxShadow: "0 4px 6px -1px rgba(0,0,0,0.1)"
+              }}
+            />
+            <Legend 
+              wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }}
+              iconType="circle"
+            />
+
+            {/* Actual Sales - Line with area */}
+            <Area
+              type="monotone"
+              dataKey="saleValue"
+              name="Actual Sales"
+              fill="#10B981"
+              fillOpacity={0.15}
+              stroke="#10B981"
+              strokeWidth={3}
+              dot={{ fill: '#10B981', r: 5 }}
+              activeDot={{ r: 7 }}
+            />
+
+            {/* Order Value - Line */}
+            <Line
+              type="monotone"
+              dataKey="orderValue"
+              name="Order Value"
+              stroke="#4F46E5"
+              strokeWidth={2}
+              dot={{ fill: '#4F46E5', r: 4 }}
+              activeDot={{ r: 6 }}
+            />
+
+            {/* Predicted Sales - Line with dashes */}
+            <Line
+              type="monotone"
+              dataKey={(item) => {
+                // Calculate predicted value using linear regression
+                if (item.predicted !== undefined) return item.predicted;
+                const values = chartData.map(d => d.saleValue || 0);
+                const avg = values.reduce((a, b) => a + b, 0) / (values.length || 1);
+                return avg;
+              }}
+              name="Predicted Sales"
+              stroke="#8B5CF6"
+              strokeWidth={2}
+              strokeDasharray="8 4"
+              dot={{ fill: '#8B5CF6', r: 4 }}
+            />
+
+            {/* Reference line for average */}
+            {(() => {
+              const avg = chartData.reduce((sum, d) => sum + (d.saleValue || 0), 0) / (chartData.length || 1);
+              return (
+                <ReferenceLine
+                  y={avg}
+                  stroke="#94A3B8"
+                  strokeDasharray="3 3"
+                  label={{
+                    value: `Avg ${formatCompactCurrency(avg)}`,
+                    position: 'right',
+                    fill: '#94A3B8',
+                    fontSize: 10
+                  }}
+                />
+              );
+            })()}
+          </ComposedChart>
+        </ResponsiveContainer>
+      ) : (
+        <div className="h-[400px] flex items-center justify-center text-slate-400 flex-col gap-2">
+          <div className="text-6xl">📊</div>
+          <p>No data available for comparison</p>
+        </div>
+      )}
+
+      {/* Bottom Metrics */}
+      {(() => {
+        const salesValues = chartData.map(d => d.saleValue || 0);
+        const orderValues = chartData.map(d => d.orderValue || 0);
+        const totalSales = salesValues.reduce((a, b) => a + b, 0);
+        const totalOrders = orderValues.reduce((a, b) => a + b, 0);
+        const maxSales = Math.max(...salesValues);
+        const maxOrders = Math.max(...orderValues);
+        const avgDelivery = chartData.reduce((sum, d) => sum + (d.deliveryRate || 0), 0) / (chartData.length || 1);
+        const ratio = totalOrders > 0 ? (totalSales / totalOrders) * 100 : 0;
+
+        return (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6 pt-6 border-t border-slate-200">
+            <div className="text-center">
+              <p className="text-xs text-slate-400">Highest Sales</p>
+              <p className="text-lg font-bold text-emerald-600">
+                {formatCompactCurrency(maxSales)}
+              </p>
+            </div>
+            <div className="text-center">
+              <p className="text-xs text-slate-400">Highest Orders</p>
+              <p className="text-lg font-bold text-indigo-600">
+                {formatCompactCurrency(maxOrders)}
+              </p>
+            </div>
+            <div className="text-center">
+              <p className="text-xs text-slate-400">Delivery Rate</p>
+              <p className="text-lg font-bold" style={{ color: getStatusColor(avgDelivery) }}>
+                {avgDelivery.toFixed(0)}%
+              </p>
+            </div>
+            <div className="text-center">
+              <p className="text-xs text-slate-400">Order-to-Sales Ratio</p>
+              <p className="text-lg font-bold text-purple-600">
+                {ratio.toFixed(0)}%
+              </p>
+            </div>
+          </div>
+        );
+      })()}
+    </div>
+
+    {/* Detailed Data Table */}
+    <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-slate-200/60 p-4 md:p-6">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-base font-semibold text-slate-800">
+          📋 Detailed Data
+        </h3>
+        <span className="text-xs text-slate-400">
+          {chartData.length} records
+        </span>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-slate-200">
+              <th className="text-left py-3 px-4 text-xs font-medium text-slate-400 uppercase tracking-wider">Period</th>
+              <th className="text-right py-3 px-4 text-xs font-medium text-slate-400 uppercase tracking-wider">Order Value</th>
+              <th className="text-right py-3 px-4 text-xs font-medium text-slate-400 uppercase tracking-wider">Sales Revenue</th>
+              <th className="text-right py-3 px-4 text-xs font-medium text-slate-400 uppercase tracking-wider">Balance</th>
+              <th className="text-right py-3 px-4 text-xs font-medium text-slate-400 uppercase tracking-wider">Delivery %</th>
+              <th className="text-center py-3 px-4 text-xs font-medium text-slate-400 uppercase tracking-wider">Trend</th>
+            </tr>
+          </thead>
+          <tbody>
+            {chartData.slice().reverse().map((item, index, arr) => {
+              const currentSales = item.saleValue || 0;
+              const prevSales = index < arr.length - 1 ? (arr[index + 1]?.saleValue || 0) : 0;
+              const trend = prevSales > 0 ? ((currentSales - prevSales) / prevSales) * 100 : 0;
+              
+              return (
+                <motion.tr
+                  key={item.name + index}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.03 }}
+                  className="border-b border-slate-100 hover:bg-slate-50 transition-colors"
+                >
+                  <td className="py-3 px-4 text-slate-700 font-medium">
+                    {item.fullName || item.name || `Period ${index + 1}`}
+                  </td>
+                  <td className="text-right py-3 px-4 text-indigo-600">
+                    {formatCurrency(item.orderValue || 0)}
+                  </td>
+                  <td className="text-right py-3 px-4 font-semibold text-emerald-600">
+                    {formatCurrency(item.saleValue || 0)}
+                  </td>
+                  <td className="text-right py-3 px-4 text-red-500">
+                    {formatCurrency((item.orderValue || 0) - (item.saleValue || 0))}
+                  </td>
+                  <td className="text-right py-3 px-4">
+                    <span className={`font-medium ${
+                      (item.deliveryRate || 0) >= 70 ? 'text-emerald-600' :
+                      (item.deliveryRate || 0) >= 50 ? 'text-amber-600' :
+                      'text-red-600'
+                    }`}>
+                      {(item.deliveryRate || 0).toFixed(0)}%
+                    </span>
+                  </td>
+                  <td className="text-center py-3 px-4">
+                    <span className={`text-xs font-medium ${
+                      trend > 5 ? 'text-emerald-600' :
+                      trend < -5 ? 'text-red-600' :
+                      'text-slate-400'
+                    }`}>
+                      {trend > 5 ? '↑' : trend < -5 ? '↓' : '→'}
+                      {' '}{trend.toFixed(1)}%
+                    </span>
+                  </td>
+                </motion.tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    {/* Footer */}
+    <div className="text-center text-xs text-slate-400">
+      Data updated: {new Date().toLocaleString()} • {apiData.length} records loaded
+    </div>
+  </div>
+)}
 
 
 
