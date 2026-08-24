@@ -581,7 +581,9 @@ const useComprehensiveData = (
       const orderNo = item.WorkOrderNo || item.workOrderNo || "N/A";
       const date = new Date(item.OrderReceiveDate);
       const dayKey = date.toISOString().split("T")[0];
-      const monthKey = date.toLocaleString("default", { month: "short" });
+      const monthKey = `${date.getFullYear()}-${date.toLocaleString("default", { month: "short" })}`;
+const monthDisplay = date.toLocaleString("default", { month: "short" });
+const yearValue = date.getFullYear();
       const weekKey = `${date.getFullYear()}-W${getWeekNumber(date)}`;
       const hourKey = date.getHours();
 
@@ -667,18 +669,20 @@ const useComprehensiveData = (
       weekly.uniqueOrders.add(orderNo);
 
       if (!monthlyMap.has(monthKey)) {
-        monthlyMap.set(monthKey, {
-          month: monthKey,
-          orderValue: 0,
-          saleValue: 0,
-          balanceValue: 0,
-          orderQty: 0,
-          saleQty: 0,
-          balanceQty: 0,
-          count: 0,
-          uniqueOrders: new Set(),
-        });
-      }
+  monthlyMap.set(monthKey, {
+    month: monthKey,           // "2025-Jan"
+    displayName: monthDisplay, // "Jan"
+    year: yearValue,           // 2025
+    orderValue: 0,
+    saleValue: 0,
+    balanceValue: 0,
+    orderQty: 0,
+    saleQty: 0,
+    balanceQty: 0,
+    count: 0,
+    uniqueOrders: new Set(),
+  });
+}
       const monthly = monthlyMap.get(monthKey);
       monthly.orderValue += value;
       monthly.saleValue += saleValue;
@@ -874,9 +878,11 @@ const useComprehensiveData = (
       "Dec",
     ];
     const monthlySalesData = Array.from(monthlyMap.entries())
-      .sort((a, b) => monthOrder.indexOf(a[0]) - monthOrder.indexOf(b[0]))
-      .map(([month, data]) => ({
-        name: month,
+  .sort((a, b) => a[0].localeCompare(b[0]))
+  .map(([key, data]) => ({
+        name: data.displayName,
+         fullName: key,
+          year: data.year,
         orderValue: Math.round(data.orderValue),
         saleValue: Math.round(data.saleValue),
         orderQty: Math.round(data.orderQty),
@@ -889,38 +895,37 @@ const useComprehensiveData = (
       }));
 
     // Growth Data - Shows ALL months (filtered)
-    // const growthData = monthlySalesData.map((d, i, arr) => {
-    //   let salesGrowth = 0;
-    //   let orderGrowth = 0;
+    const growthData = monthlySalesData.map((d, i, arr) => {
+      let salesGrowth = 0;
+      let orderGrowth = 0;
 
-    //   // In useComprehensiveData, update the growth calculation:
-    //   if (i > 0 && arr[i - 1].saleValue > 0) {
-    //     salesGrowth =
-    //       ((d.saleValue - arr[i - 1].saleValue) / arr[i - 1].saleValue) * 100;
-    //   } else if (i > 0 && arr[i - 1].saleValue === 0 && d.saleValue > 0) {
-    //     salesGrowth = 100; // If previous was 0 and current > 0, treat as 100% growth
-    //   } else if (i > 0 && arr[i - 1].saleValue === 0 && d.saleValue === 0) {
-    //     salesGrowth = 0; // Both are 0, no growth
-    //   }
+      // In useComprehensiveData, update the growth calculation:
+      if (i > 0 && arr[i - 1].saleValue > 0) {
+        salesGrowth =
+          ((d.saleValue - arr[i - 1].saleValue) / arr[i - 1].saleValue) * 100;
+      } else if (i > 0 && arr[i - 1].saleValue === 0 && d.saleValue > 0) {
+        salesGrowth = 100; // If previous was 0 and current > 0, treat as 100% growth
+      } else if (i > 0 && arr[i - 1].saleValue === 0 && d.saleValue === 0) {
+        salesGrowth = 0; // Both are 0, no growth
+      }
 
-    //   if (i > 0 && arr[i - 1].orderValue > 0) {
-    //     orderGrowth =
-    //       ((d.orderValue - arr[i - 1].orderValue) / arr[i - 1].orderValue) *
-    //       100;
-    //   } else if (i > 0 && arr[i - 1].orderValue === 0 && d.orderValue > 0) {
-    //     orderGrowth = 100;
-    //   }
+      if (i > 0 && arr[i - 1].orderValue > 0) {
+        orderGrowth =
+          ((d.orderValue - arr[i - 1].orderValue) / arr[i - 1].orderValue) *
+          100;
+      } else if (i > 0 && arr[i - 1].orderValue === 0 && d.orderValue > 0) {
+        orderGrowth = 100;
+      }
 
-    //   return {
-    //     month: d.name,
-    //     orderValue: Math.round(d.orderValue),
-    //     saleValue: Math.round(d.saleValue),
-    //     orderGrowth: orderGrowth,
-    //     salesGrowth: salesGrowth,
-    //     uniqueOrders: d.uniqueOrders,
-    //   };
-    // });
-    let growthData = [];
+      return {
+        month: d.name,
+        orderValue: Math.round(d.orderValue),
+        saleValue: Math.round(d.saleValue),
+        orderGrowth: orderGrowth,
+        salesGrowth: salesGrowth,
+        uniqueOrders: d.uniqueOrders,
+      };
+    });
 
     // ============================================================
     // ALL Growth Data - Unfiltered (shows ALL months regardless of filters)
@@ -4354,14 +4359,21 @@ function Home() {
                           tickFormatter={(v) => formatCompactCurrency(v)}
                         />
                         <Tooltip
-                          formatter={(v) => formatCurrency(v)}
-                          contentStyle={{
-                            backgroundColor: "white",
-                            border: "1px solid #e2e8f0",
-                            borderRadius: "10px",
-                            padding: "10px 14px",
-                          }}
-                        />
+  formatter={(v, name) => [formatCurrency(v), name]}
+  labelFormatter={(label, payload) => {
+    if (payload && payload.length > 0 && payload[0]?.payload) {
+      const data = payload[0].payload;
+      return data.fullName || data.name || label;
+    }
+    return label;
+  }}
+  contentStyle={{
+    backgroundColor: "white",
+    border: "1px solid #e2e8f0",
+    borderRadius: "10px",
+    padding: "10px 14px",
+  }}
+/>
                         <Legend />
                         <Bar
                           dataKey="orderValue"
@@ -4592,14 +4604,21 @@ function Home() {
                           domain={["auto", "auto"]}
                         />
                         <Tooltip
-                          formatter={(v) => `${v.toFixed(1)}%`}
-                          contentStyle={{
-                            backgroundColor: "white",
-                            border: "1px solid #e2e8f0",
-                            borderRadius: "8px",
-                            padding: "8px 12px",
-                          }}
-                        />
+  formatter={(v, name) => [`${v.toFixed(1)}%`, name]}
+  labelFormatter={(label, payload) => {
+    if (payload && payload.length > 0 && payload[0]?.payload) {
+      const data = payload[0].payload;
+      return data.fullName || data.month || label;
+    }
+    return label;
+  }}
+  contentStyle={{
+    backgroundColor: "white",
+    border: "1px solid #e2e8f0",
+    borderRadius: "8px",
+    padding: "8px 12px",
+  }}
+/>
                         <Legend />
                         <ReferenceLine
                           y={0}
