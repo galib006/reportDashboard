@@ -581,9 +581,10 @@ const useComprehensiveData = (
       const orderNo = item.WorkOrderNo || item.workOrderNo || "N/A";
       const date = new Date(item.OrderReceiveDate);
       const dayKey = date.toISOString().split("T")[0];
-      const monthKey = `${date.getFullYear()}-${date.toLocaleString("default", { month: "short" })}`;
-const monthDisplay = date.toLocaleString("default", { month: "short" });
+      const monthDisplay = date.toLocaleString("default", { month: "short" }); // "May", "Jun", etc.
 const yearValue = date.getFullYear();
+const monthKey = `${yearValue}-${monthDisplay}`; // "2026-May"
+
       const weekKey = `${date.getFullYear()}-W${getWeekNumber(date)}`;
       const hourKey = date.getHours();
 
@@ -671,7 +672,7 @@ const yearValue = date.getFullYear();
       if (!monthlyMap.has(monthKey)) {
   monthlyMap.set(monthKey, {
     month: monthKey,           // "2025-Jan"
-    displayName: monthDisplay, // "Jan"
+     displayName: monthDisplay, // "Jan"
     year: yearValue,           // 2025
     orderValue: 0,
     saleValue: 0,
@@ -900,21 +901,22 @@ const growthData = monthlySalesData.map((d, i, arr) => {
   let orderGrowth = 0;
 
   if (i > 0) {
-    const prevSale = arr[i - 1].saleValue;
-    const prevOrder = arr[i - 1].orderValue;
+    const prevSale = arr[i - 1]?.saleValue || 0;
+    const prevOrder = arr[i - 1]?.orderValue || 0;
+    const currentSale = d.saleValue || 0;
+    const currentOrder = d.orderValue || 0;
     
-    // Only calculate growth if previous value > 0
     if (prevSale > 0) {
-      salesGrowth = ((d.saleValue - prevSale) / prevSale) * 100;
-    } else if (d.saleValue > 0 && prevSale === 0) {
-      salesGrowth = 100; // Brand new sales from zero
+      salesGrowth = ((currentSale - prevSale) / prevSale) * 100;
+    } else if (prevSale === 0 && currentSale > 0) {
+      salesGrowth = 100;
     } else {
-      salesGrowth = 0; // Both are zero or no change
+      salesGrowth = 0;
     }
 
     if (prevOrder > 0) {
-      orderGrowth = ((d.orderValue - prevOrder) / prevOrder) * 100;
-    } else if (d.orderValue > 0 && prevOrder === 0) {
+      orderGrowth = ((currentOrder - prevOrder) / prevOrder) * 100;
+    } else if (prevOrder === 0 && currentOrder > 0) {
       orderGrowth = 100;
     } else {
       orderGrowth = 0;
@@ -922,13 +924,13 @@ const growthData = monthlySalesData.map((d, i, arr) => {
   }
 
   return {
-    month: d.name,
+    month: d.name, // "May", "Jun", etc.
     fullName: d.fullName || d.name,
-    orderValue: Math.round(d.orderValue),
-    saleValue: Math.round(d.saleValue),
-    orderGrowth: Math.round(orderGrowth * 10) / 10, // Round to 1 decimal
+    orderValue: Math.round(d.orderValue || 0),
+    saleValue: Math.round(d.saleValue || 0),
+    orderGrowth: Math.round(orderGrowth * 10) / 10,
     salesGrowth: Math.round(salesGrowth * 10) / 10,
-    uniqueOrders: d.uniqueOrders,
+    uniqueOrders: d.uniqueOrders || 0,
   };
 });
     // ============================================================
@@ -950,37 +952,49 @@ const growthData = monthlySalesData.map((d, i, arr) => {
       }));
 
     // ALL Growth Data - Shows ALL months regardless of filters
-    const allGrowthData = allMonthlySalesDataUnfiltered.map((d, i, arr) => {
-      let salesGrowth = 0;
-      let orderGrowth = 0;
+const allGrowthData = allMonthlySalesDataUnfiltered.map((d, i, arr) => {
+  let salesGrowth = 0;
+  let orderGrowth = 0;
 
-      // In useComprehensiveData, update the growth calculation:
-      if (i > 0 && arr[i - 1].saleValue > 0) {
-        salesGrowth =
-          ((d.saleValue - arr[i - 1].saleValue) / arr[i - 1].saleValue) * 100;
-      } else if (i > 0 && arr[i - 1].saleValue === 0 && d.saleValue > 0) {
-        salesGrowth = 100; // If previous was 0 and current > 0, treat as 100% growth
-      } else if (i > 0 && arr[i - 1].saleValue === 0 && d.saleValue === 0) {
-        salesGrowth = 0; // Both are 0, no growth
-      }
+  if (i > 0) {
+    const prevSale = arr[i - 1]?.saleValue || 0;
+    const prevOrder = arr[i - 1]?.orderValue || 0;
+    const currentSale = d.saleValue || 0;
+    const currentOrder = d.orderValue || 0;
+    
+    // Sales Growth Calculation
+    if (prevSale > 0) {
+      salesGrowth = ((currentSale - prevSale) / prevSale) * 100;
+    } else if (prevSale === 0 && currentSale > 0) {
+      salesGrowth = 100; // New sales from zero
+    } else {
+      salesGrowth = 0;
+    }
 
-      if (i > 0 && arr[i - 1].orderValue > 0) {
-        orderGrowth =
-          ((d.orderValue - arr[i - 1].orderValue) / arr[i - 1].orderValue) *
-          100;
-      } else if (i > 0 && arr[i - 1].orderValue === 0 && d.orderValue > 0) {
-        orderGrowth = 100;
-      }
+    // Order Growth Calculation
+    if (prevOrder > 0) {
+      orderGrowth = ((currentOrder - prevOrder) / prevOrder) * 100;
+    } else if (prevOrder === 0 && currentOrder > 0) {
+      orderGrowth = 100;
+    } else {
+      orderGrowth = 0;
+    }
+  }
 
-      return {
-        month: d.name,
-        orderValue: Math.round(d.orderValue),
-        saleValue: Math.round(d.saleValue),
-        orderGrowth: orderGrowth,
-        salesGrowth: salesGrowth,
-        uniqueOrders: d.uniqueOrders,
-      };
-    });
+  // Extract month name from "2026-May" format
+  const monthParts = d.name.split('-');
+  const monthName = monthParts.length > 1 ? monthParts[1] : d.name;
+
+  return {
+    month: monthName, // "May", "Jun", etc.
+    fullName: d.name, // "2026-May"
+    orderValue: Math.round(d.orderValue || 0),
+    saleValue: Math.round(d.saleValue || 0),
+    orderGrowth: Math.round(orderGrowth * 10) / 10,
+    salesGrowth: Math.round(salesGrowth * 10) / 10,
+    uniqueOrders: d.uniqueOrders || 0,
+  };
+});
 
     // ============================================================
     // ALL Weekly Growth Data - Unfiltered (shows ALL weeks regardless of filters)
@@ -3028,80 +3042,45 @@ function Home() {
   // Inside Home component, replace the growthChartData section:
   // Smart growth data selection
   const getGrowthData = () => {
-    // 1. EXACT VIEW MODE MATCH - ABSOLUTE HIGHEST PRIORITY
-    if (viewMode === "yearly") {
-      if (data.allYearlyGrowthData && data.allYearlyGrowthData.length >= 2) {
-        console.log("Using Yearly data");
-        return data.allYearlyGrowthData;
-      }
-      // If yearly data is not available, return empty array instead of falling back
-      console.log("Yearly data not available");
-      return [];
-    }
-
-    if (viewMode === "monthly") {
-      if (data.allGrowthData && data.allGrowthData.length >= 2) {
-        console.log("Using Monthly data");
-        return data.allGrowthData;
-      }
-      return [];
-    }
-
-    if (viewMode === "weekly") {
-      if (data.allWeeklyGrowthData && data.allWeeklyGrowthData.length >= 2) {
-        console.log("Using Weekly data");
-        return data.allWeeklyGrowthData;
-      }
-      return [];
-    }
-
-    if (viewMode === "daily") {
-      if (data.allDailyGrowthData && data.allDailyGrowthData.length >= 3) {
-        console.log("Using Daily data");
-        return data.allDailyGrowthData;
-      }
-      return [];
-    }
-
-    // 2. DATE RANGE OVERRIDE - only if no specific view mode is active
-    const hasDateRange = cndata?._lastFetch?.dateRange;
-    if (
-      hasDateRange &&
-      data.allDailyGrowthData &&
-      data.allDailyGrowthData.length >= 3
-    ) {
-      console.log("Using Daily data (date range)");
-      return data.allDailyGrowthData;
-    }
-
-    // 3. SMART FALLBACK - best available data
+  // Yearly view
+  if (viewMode === "yearly") {
     if (data.allYearlyGrowthData && data.allYearlyGrowthData.length >= 2) {
-      console.log("Fallback: Using Yearly data");
       return data.allYearlyGrowthData;
     }
+    return [];
+  }
 
+  // Monthly view - use allGrowthData (UNFILTERED)
+  if (viewMode === "monthly") {
     if (data.allGrowthData && data.allGrowthData.length >= 2) {
-      console.log("Fallback: Using Monthly data");
+      console.log("📊 Monthly Growth Data:", data.allGrowthData);
       return data.allGrowthData;
     }
+    // If no data, show empty array with message
+    return [];
+  }
 
+  // Weekly view
+  if (viewMode === "weekly") {
     if (data.allWeeklyGrowthData && data.allWeeklyGrowthData.length >= 2) {
-      console.log("Fallback: Using Weekly data");
       return data.allWeeklyGrowthData;
     }
+    return [];
+  }
 
+  // Daily view
+  if (viewMode === "daily") {
     if (data.allDailyGrowthData && data.allDailyGrowthData.length >= 3) {
-      console.log("Fallback: Using Daily data");
       return data.allDailyGrowthData;
     }
+    return [];
+  }
 
-    // 4. LAST RESORT
-    console.log("Using filtered fallback data");
-    return (
-      data.growthData || data.weeklyGrowthData || data.dailyGrowthData || []
-    );
-  };
-
+  // Fallback
+  console.warn("⚠️ No growth data available for viewMode:", viewMode);
+  return [];
+};  
+    
   const growthChartData = getGrowthData();
   const hasEnoughData = growthChartData.length >= 2;
 
