@@ -951,50 +951,61 @@ const growthData = monthlySalesData.map((d, i, arr) => {
           data.orderValue > 0 ? (data.saleValue / data.orderValue) * 100 : 0,
       }));
 
-    // ALL Growth Data - Shows ALL months regardless of filters
+   // ALL Growth Data - Shows ALL months regardless of filters
 const allGrowthData = allMonthlySalesDataUnfiltered.map((d, i, arr) => {
-  let salesGrowth = 0;
-  let orderGrowth = 0;
+    let salesGrowth = 0;
+    let orderGrowth = 0;
 
-  if (i > 0) {
-    const prevSale = arr[i - 1]?.saleValue || 0;
-    const prevOrder = arr[i - 1]?.orderValue || 0;
-    const currentSale = d.saleValue || 0;
-    const currentOrder = d.orderValue || 0;
-    
-    // Sales Growth Calculation
-    if (prevSale > 0) {
-      salesGrowth = ((currentSale - prevSale) / prevSale) * 100;
-    } else if (prevSale === 0 && currentSale > 0) {
-      salesGrowth = 100; // New sales from zero
-    } else {
-      salesGrowth = 0;
+    if (i > 0) {
+      const prevSale = arr[i - 1]?.saleValue || 0;
+      const prevOrder = arr[i - 1]?.orderValue || 0;
+      const currentSale = d.saleValue || 0;
+      const currentOrder = d.orderValue || 0;
+      
+      // ✅ Threshold + Cap Configuration
+      const MIN_THRESHOLD = 1000;  // 1000 টাকার কম হলে বিশেষ হ্যান্ডলিং
+      const MAX_GROWTH = 200;      // সর্বোচ্চ 200% গ্রোথ
+      const MIN_GROWTH = -100;     // সর্বনিম্ন -100% গ্রোথ
+      
+      // ✅ Sales Growth Calculation
+      if (prevSale < MIN_THRESHOLD && currentSale > MIN_THRESHOLD) {
+        // ছোট থেকে বড়ে লাফ - দেখাবেন 100%
+        salesGrowth = 100;
+      } else if (prevSale >= MIN_THRESHOLD) {
+        // স্বাভাবিক গ্রোথ ক্যালকুলেশন
+        salesGrowth = ((currentSale - prevSale) / prevSale) * 100;
+        // Cap at realistic range
+        salesGrowth = Math.max(MIN_GROWTH, Math.min(MAX_GROWTH, salesGrowth));
+      } else {
+        // উভয়ই ছোট - গ্রোথ 0
+        salesGrowth = 0;
+      }
+
+      // ✅ Order Growth Calculation
+      if (prevOrder < MIN_THRESHOLD && currentOrder > MIN_THRESHOLD) {
+        orderGrowth = 100;
+      } else if (prevOrder >= MIN_THRESHOLD) {
+        orderGrowth = ((currentOrder - prevOrder) / prevOrder) * 100;
+        orderGrowth = Math.max(MIN_GROWTH, Math.min(MAX_GROWTH, orderGrowth));
+      } else {
+        orderGrowth = 0;
+      }
     }
 
-    // Order Growth Calculation
-    if (prevOrder > 0) {
-      orderGrowth = ((currentOrder - prevOrder) / prevOrder) * 100;
-    } else if (prevOrder === 0 && currentOrder > 0) {
-      orderGrowth = 100;
-    } else {
-      orderGrowth = 0;
-    }
-  }
+    // Extract month name from "2026-May" format
+    const monthParts = d.name.split('-');
+    const monthName = monthParts.length > 1 ? monthParts[1] : d.name;
 
-  // Extract month name from "2026-May" format
-  const monthParts = d.name.split('-');
-  const monthName = monthParts.length > 1 ? monthParts[1] : d.name;
-
-  return {
-    month: monthName, // "May", "Jun", etc.
-    fullName: d.name, // "2026-May"
-    orderValue: Math.round(d.orderValue || 0),
-    saleValue: Math.round(d.saleValue || 0),
-    orderGrowth: Math.round(orderGrowth * 10) / 10,
-    salesGrowth: Math.round(salesGrowth * 10) / 10,
-    uniqueOrders: d.uniqueOrders || 0,
-  };
-});
+    return {
+      month: monthName,           // "May", "Jun", etc.
+      fullName: d.name,           // "2026-May"
+      orderValue: Math.round(d.orderValue || 0),
+      saleValue: Math.round(d.saleValue || 0),
+      orderGrowth: Math.round(orderGrowth * 10) / 10,
+      salesGrowth: Math.round(salesGrowth * 10) / 10,
+      uniqueOrders: d.uniqueOrders || 0,
+    };
+  });
 
     // ============================================================
     // ALL Weekly Growth Data - Unfiltered (shows ALL weeks regardless of filters)
@@ -3043,33 +3054,33 @@ function Home() {
   // Smart growth data selection
   const getGrowthData = () => {
   // Yearly view
-  if (viewMode === "yearly") {
+  if (viewMode === "monthly") {
+    if (data.allGrowthData && data.allGrowthData.length >= 2) {
+      console.log("📊 Monthly Growth Data:", data.allGrowthData);
+      return data.allGrowthData;
+    }
+    return [];
+  }
+
+  // Monthly view - 
+   if (viewMode === "yearly") {
     if (data.allYearlyGrowthData && data.allYearlyGrowthData.length >= 2) {
       return data.allYearlyGrowthData;
     }
     return [];
   }
 
-  // Monthly view - use allGrowthData (UNFILTERED)
-  if (viewMode === "monthly") {
-    if (data.allGrowthData && data.allGrowthData.length >= 2) {
-      console.log("📊 Monthly Growth Data:", data.allGrowthData);
-      return data.allGrowthData;
-    }
-    // If no data, show empty array with message
-    return [];
-  }
-
   // Weekly view
-  if (viewMode === "weekly") {
+   if (viewMode === "weekly") {
     if (data.allWeeklyGrowthData && data.allWeeklyGrowthData.length >= 2) {
       return data.allWeeklyGrowthData;
     }
     return [];
   }
 
+
   // Daily view
-  if (viewMode === "daily") {
+   if (viewMode === "daily") {
     if (data.allDailyGrowthData && data.allDailyGrowthData.length >= 3) {
       return data.allDailyGrowthData;
     }
@@ -3077,7 +3088,7 @@ function Home() {
   }
 
   // Fallback
-  console.warn("⚠️ No growth data available for viewMode:", viewMode);
+   console.warn("⚠️ No growth data available for viewMode:", viewMode);
   return [];
 };  
     
@@ -3320,7 +3331,17 @@ console.log('First 3 items:', growthChartData.slice(0, 3));
       setTimeout(() => fetchCurrentMonthData(false), 1000);
     }
   }, [apiKey, cndata, autoLoadAttempted]);
-
+// Home component's useEffect for growth data logging
+useEffect(() => {
+  console.log('=== 📊 AFTER FIX - GROWTH DATA ===');
+  console.log('allGrowthData:', data.allGrowthData);
+  
+  if (data.allGrowthData && data.allGrowthData.length > 0) {
+    data.allGrowthData.forEach(item => {
+      console.log(`${item.month}: Order Growth ${item.orderGrowth}%, Sales Growth ${item.salesGrowth}%`);
+    });
+  }
+}, [data.allGrowthData]);
   const handleRefresh = () => {
     setIsRefreshing(true);
     toast.info("Refreshing dashboard data...");
@@ -4594,77 +4615,78 @@ console.log('First 3 items:', growthChartData.slice(0, 3));
         </div>
       </div>
       {hasEnoughData ? (
-        <ResponsiveContainer width="100%" height={280}>
-          <BarChart
-            data={growthChartData}
-            margin={{ top: 30, right: 30, left: 20, bottom: 20 }}
-          >
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis
-              dataKey="month"
-              tick={{ fontSize: 12, fontWeight: 500 }}
-            />
-            <YAxis
-              tickFormatter={(v) => `${v.toFixed(1)}%`}
-              domain={["auto", "auto"]}
-            />
-            <Tooltip
-              formatter={(v, name) => [`${v.toFixed(1)}%`, name]}
-              labelFormatter={(label, payload) => {
-                if (payload && payload.length > 0 && payload[0]?.payload) {
-                  const data = payload[0].payload;
-                  return data.fullName || data.month || label;
-                }
-                return label;
-              }}
-              contentStyle={{
-                backgroundColor: "white",
-                border: "1px solid #e2e8f0",
-                borderRadius: "8px",
-                padding: "8px 12px",
-              }}
-            />
-            <Legend />
-            <ReferenceLine
-              y={0}
-              stroke="#94A3B8"
-              strokeDasharray="3 3"
-            />
-            <Bar
-              dataKey="salesGrowth"
-              name="Sales Growth %"
-              radius={[4, 4, 0, 0]}
-            >
-              {growthChartData.map((entry, index) => (
-                <Cell
-                  key={`cell-${index}`}
-                  fill={
-                    entry.salesGrowth >= 0
-                      ? COLORS.success
-                      : COLORS.danger
-                  }
-                />
-              ))}
-            </Bar>
-            <Bar
-              dataKey="orderGrowth"
-              name="Order Growth %"
-              radius={[4, 4, 0, 0]}
-              fill={COLORS.primary}
-            >
-              {growthChartData.map((entry, index) => (
-                <Cell
-                  key={`cell-order-${index}`}
-                  fill={
-                    entry.orderGrowth >= 0
-                      ? COLORS.indigo
-                      : COLORS.rose
-                  }
-                />
-              ))}
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
+  <ResponsiveContainer width="100%" height={280}>
+    <BarChart
+      data={growthChartData}
+      margin={{ top: 30, right: 30, left: 20, bottom: 20 }}
+    >
+      <CartesianGrid strokeDasharray="3 3" />
+      <XAxis
+        dataKey="month"
+        tick={{ fontSize: 12, fontWeight: 500 }}
+      />
+      <YAxis
+        tickFormatter={(v) => `${v.toFixed(1)}%`}
+        // ✅ Y-Axis domain set to reasonable range
+        domain={[-50, 200]} 
+      />
+      <Tooltip
+        formatter={(v, name) => [`${v.toFixed(1)}%`, name]}
+        labelFormatter={(label, payload) => {
+          if (payload && payload.length > 0 && payload[0]?.payload) {
+            const data = payload[0].payload;
+            return data.fullName || data.month || label;
+          }
+          return label;
+        }}
+        contentStyle={{
+          backgroundColor: "white",
+          border: "1px solid #e2e8f0",
+          borderRadius: "8px",
+          padding: "8px 12px",
+        }}
+      />
+      <Legend />
+      <ReferenceLine
+        y={0}
+        stroke="#94A3B8"
+        strokeDasharray="3 3"
+      />
+      <Bar
+        dataKey="salesGrowth"
+        name="Sales Growth %"
+        radius={[4, 4, 0, 0]}
+      >
+        {growthChartData.map((entry, index) => (
+          <Cell
+            key={`cell-${index}`}
+            fill={
+              entry.salesGrowth >= 0
+                ? COLORS.success
+                : COLORS.danger
+            }
+          />
+        ))}
+      </Bar>
+      <Bar
+        dataKey="orderGrowth"
+        name="Order Growth %"
+        radius={[4, 4, 0, 0]}
+        fill={COLORS.primary}
+      >
+        {growthChartData.map((entry, index) => (
+          <Cell
+            key={`cell-order-${index}`}
+            fill={
+              entry.orderGrowth >= 0
+                ? COLORS.indigo
+                : COLORS.rose
+            }
+          />
+        ))}
+      </Bar>
+    </BarChart>
+  </ResponsiveContainer>
       ) : (
         <div className="h-[280px] flex items-center justify-center text-slate-400 flex-col gap-2">
           <div className="text-4xl">📊</div>
