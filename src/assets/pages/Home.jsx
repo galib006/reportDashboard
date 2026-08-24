@@ -864,36 +864,43 @@ const monthKey = `${yearValue}-${monthDisplay}`; // "2026-May"
       pending: Math.round(pendingValue),
     };
 
-    const monthOrder = [
-      "Jan",
-      "Feb",
-      "Mar",
-      "Apr",
-      "May",
-      "Jun",
-      "Jul",
-      "Aug",
-      "Sep",
-      "Oct",
-      "Nov",
-      "Dec",
-    ];
-    const monthlySalesData = Array.from(monthlyMap.entries())
-  .sort((a, b) => a[0].localeCompare(b[0]))
-  .map(([key, data]) => ({
-        name: data.displayName,
-         fullName: key,
-          year: data.year,
-        orderValue: Math.round(data.orderValue),
-        saleValue: Math.round(data.saleValue),
-        orderQty: Math.round(data.orderQty),
-        saleQty: Math.round(data.saleQty),
-        balanceValue: Math.round(data.balanceValue),
-        count: data.count,
-        uniqueOrders: data.uniqueOrders.size,
-        deliveryRate:
-          data.orderValue > 0 ? (data.saleValue / data.orderValue) * 100 : 0,
-      }));
+   // Month order for correct chronological sorting
+const monthOrder = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+// ✅ FIXED: Sort months chronologically by year and month
+const monthlySalesData = Array.from(monthlyMap.entries())
+  .sort((a, b) => {
+    // Extract year and month from key (format: "2026-May")
+    const partsA = a[0].split('-');
+    const partsB = b[0].split('-');
+    const yearA = parseInt(partsA[0]) || 0;
+    const yearB = parseInt(partsB[0]) || 0;
+    const monthA = partsA[1] || partsA[0];
+    const monthB = partsB[1] || partsB[0];
+    
+    // First sort by year (ascending)
+    if (yearA !== yearB) return yearA - yearB;
+    // Then sort by month order (Jan, Feb, Mar...)
+    return monthOrder.indexOf(monthA) - monthOrder.indexOf(monthB);
+  })
+  .map(([key, data]) => {
+    const parts = key.split('-');
+    const monthDisplay = parts[1] || key;
+    const yearValue = parseInt(parts[0]) || new Date().getFullYear();
+    return {
+      name: monthDisplay,
+      fullName: key,
+      year: yearValue,
+      orderValue: Math.round(data.orderValue),
+      saleValue: Math.round(data.saleValue),
+      orderQty: Math.round(data.orderQty),
+      saleQty: Math.round(data.saleQty),
+      balanceValue: Math.round(data.balanceValue),
+      count: data.count,
+      uniqueOrders: data.uniqueOrders.size,
+      deliveryRate: data.orderValue > 0 ? (data.saleValue / data.orderValue) * 100 : 0,
+    };
+  });
 
     // ✅  growth calculation
 const growthData = monthlySalesData.map((d, i, arr) => {
@@ -933,55 +940,68 @@ const growthData = monthlySalesData.map((d, i, arr) => {
     uniqueOrders: d.uniqueOrders || 0,
   };
 });
-    // ============================================================
-    // ALL Growth Data - Unfiltered (shows ALL months regardless of filters)
-    // ============================================================
-    const allMonthlySalesDataUnfiltered = Array.from(monthlyMap.entries())
-      .sort((a, b) => monthOrder.indexOf(a[0]) - monthOrder.indexOf(b[0]))
-      .map(([month, data]) => ({
-        name: month,
-        orderValue: Math.round(data.orderValue),
-        saleValue: Math.round(data.saleValue),
-        orderQty: Math.round(data.orderQty),
-        saleQty: Math.round(data.saleQty),
-        balanceValue: Math.round(data.balanceValue),
-        count: data.count,
-        uniqueOrders: data.uniqueOrders.size,
-        deliveryRate:
-          data.orderValue > 0 ? (data.saleValue / data.orderValue) * 100 : 0,
-      }));
+    // ALL Monthly Sales Data - Unfiltered (shows ALL months)
+const allMonthlySalesDataUnfiltered = Array.from(monthlyMap.entries())
+  .sort((a, b) => {
+    const partsA = a[0].split('-');
+    const partsB = b[0].split('-');
+    const yearA = parseInt(partsA[0]) || 0;
+    const yearB = parseInt(partsB[0]) || 0;
+    const monthA = partsA[1] || partsA[0];
+    const monthB = partsB[1] || partsB[0];
+    
+    if (yearA !== yearB) return yearA - yearB;
+    return monthOrder.indexOf(monthA) - monthOrder.indexOf(monthB);
+  })
+  .map(([month, data]) => ({
+    name: month,
+    orderValue: Math.round(data.orderValue),
+    saleValue: Math.round(data.saleValue),
+    orderQty: Math.round(data.orderQty),
+    saleQty: Math.round(data.saleQty),
+    balanceValue: Math.round(data.balanceValue),
+    count: data.count,
+    uniqueOrders: data.uniqueOrders.size,
+    deliveryRate: data.orderValue > 0 ? (data.saleValue / data.orderValue) * 100 : 0,
+  }));
 
-   // ALL Growth Data - Shows ALL months regardless of filters
-const allGrowthData = allMonthlySalesDataUnfiltered.map((d, i, arr) => {
+// ALL Growth Data - Sorted chronologically
+const allGrowthData = allMonthlySalesDataUnfiltered
+  .sort((a, b) => {
+    const partsA = a.name.split('-');
+    const partsB = b.name.split('-');
+    const yearA = parseInt(partsA[0]) || 0;
+    const yearB = parseInt(partsB[0]) || 0;
+    const monthA = partsA[1] || partsA[0];
+    const monthB = partsB[1] || partsB[0];
+    
+    if (yearA !== yearB) return yearA - yearB;
+    return monthOrder.indexOf(monthA) - monthOrder.indexOf(monthB);
+  })
+  .map((d, i, arr) => {
     let salesGrowth = 0;
     let orderGrowth = 0;
+    const MIN_THRESHOLD = 1000;
+    const MAX_GROWTH = 200;
+    const MIN_GROWTH = -100;
 
     if (i > 0) {
       const prevSale = arr[i - 1]?.saleValue || 0;
       const prevOrder = arr[i - 1]?.orderValue || 0;
       const currentSale = d.saleValue || 0;
       const currentOrder = d.orderValue || 0;
-      
-      // ✅ Threshold + Cap Configuration
-      const MIN_THRESHOLD = 1000;  // 1000 টাকার কম হলে বিশেষ হ্যান্ডলিং
-      const MAX_GROWTH = 200;      // সর্বোচ্চ 200% গ্রোথ
-      const MIN_GROWTH = -100;     // সর্বনিম্ন -100% গ্রোথ
-      
-      // ✅ Sales Growth Calculation
+
+      // Sales Growth
       if (prevSale < MIN_THRESHOLD && currentSale > MIN_THRESHOLD) {
-        // ছোট থেকে বড়ে লাফ - দেখাবেন 100%
         salesGrowth = 100;
       } else if (prevSale >= MIN_THRESHOLD) {
-        // স্বাভাবিক গ্রোথ ক্যালকুলেশন
         salesGrowth = ((currentSale - prevSale) / prevSale) * 100;
-        // Cap at realistic range
         salesGrowth = Math.max(MIN_GROWTH, Math.min(MAX_GROWTH, salesGrowth));
       } else {
-        // উভয়ই ছোট - গ্রোথ 0
         salesGrowth = 0;
       }
 
-      // ✅ Order Growth Calculation
+      // Order Growth
       if (prevOrder < MIN_THRESHOLD && currentOrder > MIN_THRESHOLD) {
         orderGrowth = 100;
       } else if (prevOrder >= MIN_THRESHOLD) {
@@ -992,13 +1012,12 @@ const allGrowthData = allMonthlySalesDataUnfiltered.map((d, i, arr) => {
       }
     }
 
-    // Extract month name from "2026-May" format
     const monthParts = d.name.split('-');
     const monthName = monthParts.length > 1 ? monthParts[1] : d.name;
 
     return {
-      month: monthName,           // "May", "Jun", etc.
-      fullName: d.name,           // "2026-May"
+      month: monthName,
+      fullName: d.name,
       orderValue: Math.round(d.orderValue || 0),
       saleValue: Math.round(d.saleValue || 0),
       orderGrowth: Math.round(orderGrowth * 10) / 10,
@@ -1006,7 +1025,6 @@ const allGrowthData = allMonthlySalesDataUnfiltered.map((d, i, arr) => {
       uniqueOrders: d.uniqueOrders || 0,
     };
   });
-
 
    // ALL Weekly Growth Data - Unfiltered (shows ALL weeks regardless of filters)
 const allWeeklyGrowthData = Array.from(weeklyMap.entries())
@@ -3057,21 +3075,33 @@ function Home() {
     return ["All", ...Array.from(names)];
   }, [apiData]);
 
-  // In the chartData definition
-  const getChartData = () => {
-    switch (viewMode) {
-      case "yearly":
-        return data.yearlyData || [];
-      case "daily":
-        return data.dailyData || [];
-      case "weekly":
-        return data.weeklyData || [];
-      case "monthly":
-      default:
-        return data.monthlyData || [];
-    }
-  };
-
+  // In the Home component, update the getChartData function
+const getChartData = () => {
+  switch (viewMode) {
+    case "yearly":
+      return data.yearlyData || [];
+    case "daily":
+      return data.dailyData || [];
+    case "weekly":
+      return data.weeklyData || [];
+    case "monthly":
+    default:
+      // ✅ Ensure monthly data is sorted chronologically
+      if (data.monthlyData && data.monthlyData.length > 0) {
+        const monthOrder = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+        return [...data.monthlyData].sort((a, b) => {
+          const monthA = a.name || a.month || "";
+          const monthB = b.name || b.month || "";
+          const yearA = a.year || 0;
+          const yearB = b.year || 0;
+          
+          if (yearA !== yearB) return yearA - yearB;
+          return monthOrder.indexOf(monthA) - monthOrder.indexOf(monthB);
+        });
+      }
+      return data.monthlyData || [];
+  }
+};
   const chartData = getChartData();
 
   // Inside Home component, replace the growthChartData section:
@@ -4401,7 +4431,18 @@ useEffect(() => {
             margin={{ top: 10, right: 10, left: 0, bottom: 5 }}
           >
             <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-            <XAxis dataKey="name" tick={{ fontSize: 10 }} />
+            <XAxis 
+                dataKey="name" 
+                tick={{ fontSize: 10 }}
+                tickFormatter={(value, index) => {
+                  // If data has year info, show it for clarity
+                  const item = chartData[index];
+                  if (item && item.year) {
+                    return `${value} ${item.year}`;
+                  }
+                  return value;
+                }}
+              />
             <YAxis
               tick={{ fontSize: 10 }}
               tickFormatter={(v) => formatCompactCurrency(v)}
