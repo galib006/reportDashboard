@@ -894,39 +894,43 @@ const yearValue = date.getFullYear();
           data.orderValue > 0 ? (data.saleValue / data.orderValue) * 100 : 0,
       }));
 
-    // Growth Data - Shows ALL months (filtered)
-    const growthData = monthlySalesData.map((d, i, arr) => {
-      let salesGrowth = 0;
-      let orderGrowth = 0;
+    // ✅  growth calculation
+const growthData = monthlySalesData.map((d, i, arr) => {
+  let salesGrowth = 0;
+  let orderGrowth = 0;
 
-      // In useComprehensiveData, update the growth calculation:
-      if (i > 0 && arr[i - 1].saleValue > 0) {
-        salesGrowth =
-          ((d.saleValue - arr[i - 1].saleValue) / arr[i - 1].saleValue) * 100;
-      } else if (i > 0 && arr[i - 1].saleValue === 0 && d.saleValue > 0) {
-        salesGrowth = 100; // If previous was 0 and current > 0, treat as 100% growth
-      } else if (i > 0 && arr[i - 1].saleValue === 0 && d.saleValue === 0) {
-        salesGrowth = 0; // Both are 0, no growth
-      }
+  if (i > 0) {
+    const prevSale = arr[i - 1].saleValue;
+    const prevOrder = arr[i - 1].orderValue;
+    
+    // Only calculate growth if previous value > 0
+    if (prevSale > 0) {
+      salesGrowth = ((d.saleValue - prevSale) / prevSale) * 100;
+    } else if (d.saleValue > 0 && prevSale === 0) {
+      salesGrowth = 100; // Brand new sales from zero
+    } else {
+      salesGrowth = 0; // Both are zero or no change
+    }
 
-      if (i > 0 && arr[i - 1].orderValue > 0) {
-        orderGrowth =
-          ((d.orderValue - arr[i - 1].orderValue) / arr[i - 1].orderValue) *
-          100;
-      } else if (i > 0 && arr[i - 1].orderValue === 0 && d.orderValue > 0) {
-        orderGrowth = 100;
-      }
+    if (prevOrder > 0) {
+      orderGrowth = ((d.orderValue - prevOrder) / prevOrder) * 100;
+    } else if (d.orderValue > 0 && prevOrder === 0) {
+      orderGrowth = 100;
+    } else {
+      orderGrowth = 0;
+    }
+  }
 
-      return {
-        month: d.name,
-        orderValue: Math.round(d.orderValue),
-        saleValue: Math.round(d.saleValue),
-        orderGrowth: orderGrowth,
-        salesGrowth: salesGrowth,
-        uniqueOrders: d.uniqueOrders,
-      };
-    });
-
+  return {
+    month: d.name,
+    fullName: d.fullName || d.name,
+    orderValue: Math.round(d.orderValue),
+    saleValue: Math.round(d.saleValue),
+    orderGrowth: Math.round(orderGrowth * 10) / 10, // Round to 1 decimal
+    salesGrowth: Math.round(salesGrowth * 10) / 10,
+    uniqueOrders: d.uniqueOrders,
+  };
+});
     // ============================================================
     // ALL Growth Data - Unfiltered (shows ALL months regardless of filters)
     // ============================================================
@@ -3108,6 +3112,14 @@ function Home() {
     return "Month-over-month";
   };
 
+  // In Home component, right after data is computed:
+console.log('=== GROWTH DATA DEBUG ===');
+console.log('View Mode:', viewMode);
+console.log('allGrowthData length:', data.allGrowthData?.length);
+console.log('growthData length:', data.growthData?.length);
+console.log('Chart data length:', growthChartData.length);
+console.log('First 3 items:', growthChartData.slice(0, 3));
+
   // Fallback to filtered data
   //   if (viewMode === "monthly" && data.growthData && data.growthData.length >= 2) {
   //     return data.growthData;
@@ -4306,380 +4318,415 @@ function Home() {
             exit={{ opacity: 0, y: -20 }}
             transition={{ duration: 0.4 }}
           >
+
+
+
+
+
+
+
+
+
+
+
+
+
             {/* Overview Tab */}
-            {activeTab === "overview" && (
-              <div className="space-y-6">
-                <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-slate-200/60 p-4 md:p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <div>
-                      <h3 className="text-base font-semibold text-slate-800">
-                        {viewMode === "yearly"
-                          ? "Yearly Performance"
-                          : viewMode === "daily"
-                            ? "Daily Performance"
-                            : viewMode === "weekly"
-                              ? "Weekly Performance"
-                              : "Monthly Performance"}
-                      </h3>
-                      <p className="text-xs text-slate-400">
-                        {viewMode === "yearly"
-                          ? "Year-over-year trends"
-                          : viewMode === "daily"
-                            ? "Day-by-day trends"
-                            : viewMode === "weekly"
-                              ? "Week-by-week trends"
-                              : "Month-over-month trends"}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-3 text-xs">
-                      <span className="flex items-center gap-1">
-                        <span className="w-2 h-2 rounded-full bg-indigo-500"></span>
-                        Order
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                        Sales
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <span className="w-2 h-2 rounded-full bg-red-500"></span>
-                        Balance
-                      </span>
-                    </div>
-                  </div>
-                  {chartData && chartData.length > 0 ? (
-                    <ResponsiveContainer width="100%" height={320}>
-                      <ComposedChart
-                        data={chartData}
-                        margin={{ top: 10, right: 10, left: 0, bottom: 5 }}
-                      >
-                        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                        <XAxis dataKey="name" tick={{ fontSize: 10 }} />
-                        <YAxis
-                          tick={{ fontSize: 10 }}
-                          tickFormatter={(v) => formatCompactCurrency(v)}
-                        />
-                        <Tooltip
-  formatter={(v, name) => [formatCurrency(v), name]}
-  labelFormatter={(label, payload) => {
-    if (payload && payload.length > 0 && payload[0]?.payload) {
-      const data = payload[0].payload;
-      return data.fullName || data.name || label;
-    }
-    return label;
-  }}
-  contentStyle={{
-    backgroundColor: "white",
-    border: "1px solid #e2e8f0",
-    borderRadius: "10px",
-    padding: "10px 14px",
-  }}
-/>
-                        <Legend />
-                        <Bar
-                          dataKey="orderValue"
-                          fill={COLORS.primary}
-                          radius={[4, 4, 0, 0]}
-                          name="Order Value"
-                        />
-                        <Bar
-                          dataKey="saleValue"
-                          fill={COLORS.success}
-                          radius={[4, 4, 0, 0]}
-                          name="Sales Revenue"
-                        />
-                        <Bar
-                          dataKey="balanceValue"
-                          fill={COLORS.danger}
-                          radius={[4, 4, 0, 0]}
-                          name="Balance Value"
-                        />
-                        <Line
-                          type="monotone"
-                          dataKey="deliveryRate"
-                          stroke={COLORS.warning}
-                          strokeWidth={2}
-                          dot={{ r: 4 }}
-                          name="Delivery %"
-                        />
-                      </ComposedChart>
-                    </ResponsiveContainer>
-                  ) : (
-                    <div className="h-[320px] flex items-center justify-center text-slate-400">
-                      No data available
-                    </div>
-                  )}
-                </div>
+{activeTab === "overview" && (
+  <div className="space-y-6">
+    {/* Performance Chart */}
+    <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-slate-200/60 p-4 md:p-6">
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <h3 className="text-base font-semibold text-slate-800">
+            {viewMode === "yearly"
+              ? "Yearly Performance"
+              : viewMode === "daily"
+                ? "Daily Performance"
+                : viewMode === "weekly"
+                  ? "Weekly Performance"
+                  : "Monthly Performance"}
+          </h3>
+          <p className="text-xs text-slate-400">
+            {viewMode === "yearly"
+              ? "Year-over-year trends"
+              : viewMode === "daily"
+                ? "Day-by-day trends"
+                : viewMode === "weekly"
+                  ? "Week-by-week trends"
+                  : "Month-over-month trends"}
+          </p>
+        </div>
+        <div className="flex items-center gap-3 text-xs">
+          <span className="flex items-center gap-1">
+            <span className="w-2 h-2 rounded-full bg-indigo-500"></span>
+            Order
+          </span>
+          <span className="flex items-center gap-1">
+            <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+            Sales
+          </span>
+          <span className="flex items-center gap-1">
+            <span className="w-2 h-2 rounded-full bg-red-500"></span>
+            Balance
+          </span>
+        </div>
+      </div>
+      {chartData && chartData.length > 0 ? (
+        <ResponsiveContainer width="100%" height={320}>
+          <ComposedChart
+            data={chartData}
+            margin={{ top: 10, right: 10, left: 0, bottom: 5 }}
+          >
+            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+            <XAxis dataKey="name" tick={{ fontSize: 10 }} />
+            <YAxis
+              tick={{ fontSize: 10 }}
+              tickFormatter={(v) => formatCompactCurrency(v)}
+            />
+            <Tooltip
+              formatter={(v, name) => [formatCurrency(v), name]}
+              labelFormatter={(label, payload) => {
+                if (payload && payload.length > 0 && payload[0]?.payload) {
+                  const data = payload[0].payload;
+                  return data.fullName || data.name || label;
+                }
+                return label;
+              }}
+              contentStyle={{
+                backgroundColor: "white",
+                border: "1px solid #e2e8f0",
+                borderRadius: "10px",
+                padding: "10px 14px",
+              }}
+            />
+            <Legend />
+            <Bar
+              dataKey="orderValue"
+              fill={COLORS.primary}
+              radius={[4, 4, 0, 0]}
+              name="Order Value"
+            />
+            <Bar
+              dataKey="saleValue"
+              fill={COLORS.success}
+              radius={[4, 4, 0, 0]}
+              name="Sales Revenue"
+            />
+            <Bar
+              dataKey="balanceValue"
+              fill={COLORS.danger}
+              radius={[4, 4, 0, 0]}
+              name="Balance Value"
+            />
+            <Line
+              type="monotone"
+              dataKey="deliveryRate"
+              stroke={COLORS.warning}
+              strokeWidth={2}
+              dot={{ r: 4 }}
+              name="Delivery %"
+            />
+          </ComposedChart>
+        </ResponsiveContainer>
+      ) : (
+        <div className="h-[320px] flex items-center justify-center text-slate-400">
+          No data available
+        </div>
+      )}
+    </div>
 
-                {/* Quick Stats */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                  <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-slate-200/60 p-4">
-                    <div className="flex items-center gap-3">
-                      <div className="p-3 rounded-xl bg-indigo-50">
-                        <FaUsers className="w-5 h-5 text-indigo-500" />
-                      </div>
-                      <div>
-                        <p className="text-xs text-slate-400">
-                          Avg Order Value
-                        </p>
-                        <p className="text-lg font-bold text-slate-800">
-                          {formatCurrency(
-                            data.performanceMetrics?.avgOrderValue || 0,
-                          )}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-slate-200/60 p-4">
-                    <div className="flex items-center gap-3">
-                      <div className="p-3 rounded-xl bg-emerald-50">
-                        <FaChartLine className="w-5 h-5 text-emerald-500" />
-                      </div>
-                      <div>
-                        <p className="text-xs text-slate-400">Avg Sale Value</p>
-                        <p className="text-lg font-bold text-slate-800">
-                          {formatCurrency(
-                            data.performanceMetrics?.avgSaleValue || 0,
-                          )}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-slate-200/60 p-4">
-                    <div className="flex items-center gap-3">
-                      <div className="p-3 rounded-xl bg-purple-50">
-                        <RiUserStarFill className="w-5 h-5 text-purple-500" />
-                      </div>
-                      <div>
-                        <p className="text-xs text-slate-400">
-                          Avg Customer Value
-                        </p>
-                        <p className="text-lg font-bold text-slate-800">
-                          {formatCurrency(
-                            data.performanceMetrics?.avgCustomerValue || 0,
-                          )}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-slate-200/60 p-4">
-                    <div className="flex items-center gap-3">
-                      <div className="p-3 rounded-xl bg-orange-50">
-                        <FaBox className="w-5 h-5 text-orange-500" />
-                      </div>
-                      <div>
-                        <p className="text-xs text-slate-400">
-                          Order-to-Delivery
-                        </p>
-                        <p className="text-lg font-bold text-slate-800">
-                          {(
-                            (data.performanceMetrics?.orderToDeliveryRatio ||
-                              0) * 100
-                          ).toFixed(0)}
-                          %
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+    {/* Quick Stats */}
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-slate-200/60 p-4">
+        <div className="flex items-center gap-3">
+          <div className="p-3 rounded-xl bg-indigo-50">
+            <FaUsers className="w-5 h-5 text-indigo-500" />
+          </div>
+          <div>
+            <p className="text-xs text-slate-400">
+              Avg Order Value
+            </p>
+            <p className="text-lg font-bold text-slate-800">
+              {formatCurrency(
+                data.performanceMetrics?.avgOrderValue || 0,
+              )}
+            </p>
+          </div>
+        </div>
+      </div>
+      <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-slate-200/60 p-4">
+        <div className="flex items-center gap-3">
+          <div className="p-3 rounded-xl bg-emerald-50">
+            <FaChartLine className="w-5 h-5 text-emerald-500" />
+          </div>
+          <div>
+            <p className="text-xs text-slate-400">Avg Sale Value</p>
+            <p className="text-lg font-bold text-slate-800">
+              {formatCurrency(
+                data.performanceMetrics?.avgSaleValue || 0,
+              )}
+            </p>
+          </div>
+        </div>
+      </div>
+      <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-slate-200/60 p-4">
+        <div className="flex items-center gap-3">
+          <div className="p-3 rounded-xl bg-purple-50">
+            <RiUserStarFill className="w-5 h-5 text-purple-500" />
+          </div>
+          <div>
+            <p className="text-xs text-slate-400">
+              Avg Customer Value
+            </p>
+            <p className="text-lg font-bold text-slate-800">
+              {formatCurrency(
+                data.performanceMetrics?.avgCustomerValue || 0,
+              )}
+            </p>
+          </div>
+        </div>
+      </div>
+      <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-slate-200/60 p-4">
+        <div className="flex items-center gap-3">
+          <div className="p-3 rounded-xl bg-orange-50">
+            <FaBox className="w-5 h-5 text-orange-500" />
+          </div>
+          <div>
+            <p className="text-xs text-slate-400">
+              Order-to-Delivery
+            </p>
+            <p className="text-lg font-bold text-slate-800">
+              {(
+                (data.performanceMetrics?.orderToDeliveryRatio ||
+                  0) * 100
+              ).toFixed(0)}
+              %
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
 
-                {/* Top Performing Marketing & Category Performance - Sorted by TOTAL */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-slate-200/60 p-4">
-                    <h3 className="text-sm font-semibold text-slate-800 mb-3">
-                      🏆 Top Performing Sales Persons
-                    </h3>
-                    <div className="space-y-2">
-                      {data.topPerformingMarketing.slice(0, 5).map((m, i) => {
-                        const avgValue = parseFloat(
-                          m.avgOrderValue.replace(/[$,]/g, ""),
-                        );
-                        // ✅ Pass ALL parameters
-                        const tier = getPerformanceTier(
-                          avgValue,
-                          parseFloat(m.deliveryRate),
-                          m.orderValue, // Total Order Value
-                          m.orders, // Number of Orders
-                          selectedYear, // Time context
-                          selectedMonth, // Time context
-                        );
-                        const Icon = tier.icon;
-                        return (
-                          <div
-                            key={m.name}
-                            className={`flex items-center justify-between text-sm p-2 rounded-lg ${tier.bg}`}
-                          >
-                            <div className="flex items-center gap-2">
-                              <Icon
-                                className={`w-4 h-4`}
-                                style={{ color: tier.color }}
-                              />
-                              <span className="text-slate-700 font-medium">
-                                {m.name}
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-3">
-                              <span className="text-[10px] text-slate-400">
-                                {m.orders} orders
-                              </span>
-                              <span className="text-[10px] text-slate-400">
-                                {m.deliveryRate}
-                              </span>
-                              <span className="font-semibold text-emerald-600">
-                                {formatCompactCurrency(m.orderValue)}
-                              </span>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-slate-200/60 p-4">
-                    <h3 className="text-sm font-semibold text-slate-800 mb-3">
-                      📊 Top Categories by Sales
-                    </h3>
-                    <div className="space-y-2">
-                      {data.categoryPerformance.slice(0, 5).map((c, i) => (
-                        <div
-                          key={c.name}
-                          className="flex items-center justify-between text-sm p-2 rounded-lg hover:bg-slate-50"
-                        >
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-bold text-slate-400 w-5">
-                              #{i + 1}
-                            </span>
-                            <span className="text-slate-700">{c.name}</span>
-                          </div>
-                          <div className="flex items-center gap-3">
-                            <span className="text-[10px] text-slate-400">
-                              {c.orders} orders
-                            </span>
-                            <span className="text-[10px] text-slate-400">
-                              {c.deliveryRate}
-                            </span>
-                            <span className="font-semibold text-emerald-600">
-                              {formatCompactCurrency(c.orderValue)}
-                            </span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
+    {/* Top Performing Marketing & Category Performance - Sorted by TOTAL */}
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-slate-200/60 p-4">
+        <h3 className="text-sm font-semibold text-slate-800 mb-3">
+          🏆 Top Performing Sales Persons
+        </h3>
+        <div className="space-y-2">
+          {data.topPerformingMarketing.slice(0, 5).map((m, i) => {
+            const avgValue = parseFloat(
+              m.avgOrderValue.replace(/[$,]/g, ""),
+            );
+            const tier = getPerformanceTier(
+              avgValue,
+              parseFloat(m.deliveryRate),
+              m.orderValue,
+              m.orders,
+              selectedYear,
+              selectedMonth,
+            );
+            const Icon = tier.icon;
+            return (
+              <div
+                key={m.name}
+                className={`flex items-center justify-between text-sm p-2 rounded-lg ${tier.bg}`}
+              >
+                <div className="flex items-center gap-2">
+                  <Icon
+                    className={`w-4 h-4`}
+                    style={{ color: tier.color }}
+                  />
+                  <span className="text-slate-700 font-medium">
+                    {m.name}
+                  </span>
                 </div>
-                {/* Growth Rate Chart */}
-                <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-slate-200/60 p-4 md:p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <div>
-                      <h3 className="text-base font-semibold text-slate-800">
-                        {getGrowthLabel()} Growth Rate
-                      </h3>
-                      <p className="text-xs text-slate-400">
-                        {getGrowthLabel()} growth percentage
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-3 text-xs">
-                      <span className="flex items-center gap-1">
-                        <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                        Sales Growth
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <span className="w-2 h-2 rounded-full bg-indigo-500"></span>
-                        Order Growth
-                      </span>
-                    </div>
-                  </div>
-                  {hasEnoughData ? (
-                    <ResponsiveContainer width="100%" height={280}>
-                      <BarChart
-                        data={growthChartData}
-                        margin={{ top: 30, right: 30, left: 20, bottom: 20 }}
-                      >
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis
-                          dataKey="month"
-                          tick={{ fontSize: 12, fontWeight: 500 }}
-                        />
-                        <YAxis
-                          tickFormatter={(v) => `${v.toFixed(1)}%`}
-                          domain={["auto", "auto"]}
-                        />
-                        <Tooltip
-  formatter={(v, name) => [`${v.toFixed(1)}%`, name]}
-  labelFormatter={(label, payload) => {
-    if (payload && payload.length > 0 && payload[0]?.payload) {
-      const data = payload[0].payload;
-      return data.fullName || data.month || label;
-    }
-    return label;
-  }}
-  contentStyle={{
-    backgroundColor: "white",
-    border: "1px solid #e2e8f0",
-    borderRadius: "8px",
-    padding: "8px 12px",
-  }}
-/>
-                        <Legend />
-                        <ReferenceLine
-                          y={0}
-                          stroke="#94A3B8"
-                          strokeDasharray="3 3"
-                        />
-                        <Bar
-                          dataKey="salesGrowth"
-                          name="Sales Growth %"
-                          radius={[4, 4, 0, 0]}
-                        >
-                          {growthChartData.map((entry, index) => (
-                            <Cell
-                              key={`cell-${index}`}
-                              fill={
-                                entry.salesGrowth >= 0
-                                  ? COLORS.success
-                                  : COLORS.danger
-                              }
-                            />
-                          ))}
-                        </Bar>
-                        <Bar
-                          dataKey="orderGrowth"
-                          name="Order Growth %"
-                          radius={[4, 4, 0, 0]}
-                          fill={COLORS.primary}
-                        >
-                          {growthChartData.map((entry, index) => (
-                            <Cell
-                              key={`cell-order-${index}`}
-                              fill={
-                                entry.orderGrowth >= 0
-                                  ? COLORS.indigo
-                                  : COLORS.rose
-                              }
-                            />
-                          ))}
-                        </Bar>
-                      </BarChart>
-                    </ResponsiveContainer>
-                  ) : (
-                    <div className="h-[280px] flex items-center justify-center text-slate-400 flex-col gap-2">
-                      <div className="text-4xl">📊</div>
-                      <p>Not enough data for growth comparison</p>
-                      <p className="text-xs">
-                        Need at least 2{" "}
-                        {viewMode === "yearly"
-                          ? "years"
-                          : viewMode === "weekly"
-                            ? "weeks"
-                            : viewMode === "daily"
-                              ? "days"
-                              : "months"}{" "}
-                        of data
-                      </p>
-                    </div>
-                  )}
+                <div className="flex items-center gap-3">
+                  <span className="text-[10px] text-slate-400">
+                    {m.orders} orders
+                  </span>
+                  <span className="text-[10px] text-slate-400">
+                    {m.deliveryRate}
+                  </span>
+                  <span className="font-semibold text-emerald-600">
+                    {formatCompactCurrency(m.orderValue)}
+                  </span>
                 </div>
               </div>
-            )}
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-slate-200/60 p-4">
+        <h3 className="text-sm font-semibold text-slate-800 mb-3">
+          📊 Top Categories by Sales
+        </h3>
+        <div className="space-y-2">
+          {data.categoryPerformance.slice(0, 5).map((c, i) => (
+            <div
+              key={c.name}
+              className="flex items-center justify-between text-sm p-2 rounded-lg hover:bg-slate-50"
+            >
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-slate-400 w-5">
+                  #{i + 1}
+                </span>
+                <span className="text-slate-700">{c.name}</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="text-[10px] text-slate-400">
+                  {c.orders} orders
+                </span>
+                <span className="text-[10px] text-slate-400">
+                  {c.deliveryRate}
+                </span>
+                <span className="font-semibold text-emerald-600">
+                  {formatCompactCurrency(c.orderValue)}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+
+    {/* Growth Rate Chart */}
+    <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-slate-200/60 p-4 md:p-6">
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <h3 className="text-base font-semibold text-slate-800">
+            {getGrowthLabel()} Growth Rate
+          </h3>
+          <p className="text-xs text-slate-400">
+            {getGrowthLabel()} growth percentage
+          </p>
+        </div>
+        <div className="flex items-center gap-3 text-xs">
+          <span className="flex items-center gap-1">
+            <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+            Sales Growth
+          </span>
+          <span className="flex items-center gap-1">
+            <span className="w-2 h-2 rounded-full bg-indigo-500"></span>
+            Order Growth
+          </span>
+        </div>
+      </div>
+      {hasEnoughData ? (
+        <ResponsiveContainer width="100%" height={280}>
+          <BarChart
+            data={growthChartData}
+            margin={{ top: 30, right: 30, left: 20, bottom: 20 }}
+          >
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis
+              dataKey="month"
+              tick={{ fontSize: 12, fontWeight: 500 }}
+            />
+            <YAxis
+              tickFormatter={(v) => `${v.toFixed(1)}%`}
+              domain={["auto", "auto"]}
+            />
+            <Tooltip
+              formatter={(v, name) => [`${v.toFixed(1)}%`, name]}
+              labelFormatter={(label, payload) => {
+                if (payload && payload.length > 0 && payload[0]?.payload) {
+                  const data = payload[0].payload;
+                  return data.fullName || data.month || label;
+                }
+                return label;
+              }}
+              contentStyle={{
+                backgroundColor: "white",
+                border: "1px solid #e2e8f0",
+                borderRadius: "8px",
+                padding: "8px 12px",
+              }}
+            />
+            <Legend />
+            <ReferenceLine
+              y={0}
+              stroke="#94A3B8"
+              strokeDasharray="3 3"
+            />
+            <Bar
+              dataKey="salesGrowth"
+              name="Sales Growth %"
+              radius={[4, 4, 0, 0]}
+            >
+              {growthChartData.map((entry, index) => (
+                <Cell
+                  key={`cell-${index}`}
+                  fill={
+                    entry.salesGrowth >= 0
+                      ? COLORS.success
+                      : COLORS.danger
+                  }
+                />
+              ))}
+            </Bar>
+            <Bar
+              dataKey="orderGrowth"
+              name="Order Growth %"
+              radius={[4, 4, 0, 0]}
+              fill={COLORS.primary}
+            >
+              {growthChartData.map((entry, index) => (
+                <Cell
+                  key={`cell-order-${index}`}
+                  fill={
+                    entry.orderGrowth >= 0
+                      ? COLORS.indigo
+                      : COLORS.rose
+                  }
+                />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      ) : (
+        <div className="h-[280px] flex items-center justify-center text-slate-400 flex-col gap-2">
+          <div className="text-4xl">📊</div>
+          <p>Not enough data for growth comparison</p>
+          <p className="text-xs">
+            Need at least 2{" "}
+            {viewMode === "yearly"
+              ? "years"
+              : viewMode === "weekly"
+                ? "weeks"
+                : viewMode === "daily"
+                  ? "days"
+                  : "months"}{" "}
+            of data
+          </p>
+          <p className="text-xs text-slate-300">
+            Current data: {growthChartData.length} period(s)
+          </p>
+        </div>
+      )}
+    </div>
+  </div>
+)}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
             {/* Sales Tab */}
             {activeTab === "sales" && (
