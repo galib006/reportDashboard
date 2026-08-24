@@ -274,6 +274,8 @@ const getPerformanceTier = (
   orders = 0,
   selectedYear,
   selectedMonth,
+  viewMode = "monthly", // ← ADD THIS PARAMETER
+  apiData = []
 ) => {
   const numericAvg =
     typeof avgOrderValue === "string"
@@ -288,34 +290,121 @@ const getPerformanceTier = (
       ? parseFloat(totalOrderValue.replace(/[$,]/g, ""))
       : totalOrderValue;
 
-  // Determine the time period
+  // 🔥 Calculate time period based on viewMode
   let monthsCount = 1;
-  if (selectedYear !== "All" && selectedMonth !== "All") {
-    monthsCount = 1; // Single month
-  } else if (selectedYear !== "All" && selectedMonth === "All") {
-    monthsCount = 12; // Full year (or actual months in data)
-  } else if (selectedYear === "All" && selectedMonth === "All") {
-    monthsCount = 12; // Multiple years - use yearly average
+  let periodsCount = 1;
+  
+  // Determine the number of periods
+  if (viewMode === "daily") {
+    // Daily view - count days
+    if (selectedYear !== "All" && selectedMonth !== "All") {
+      periodsCount = 30; // Approximate days in a month
+    } else if (selectedYear !== "All" && selectedMonth === "All") {
+      periodsCount = 365; // Days in a year
+    } else {
+      periodsCount = Math.min(apiData?.length || 30, 365);
+    }
+    monthsCount = periodsCount / 30; // Convert days to months
+  } else if (viewMode === "weekly") {
+    // Weekly view - count weeks
+    if (selectedYear !== "All" && selectedMonth !== "All") {
+      periodsCount = 4; // Weeks in a month
+    } else if (selectedYear !== "All" && selectedMonth === "All") {
+      periodsCount = 52; // Weeks in a year
+    } else {
+      periodsCount = Math.min(Math.ceil((apiData?.length || 4) / 7), 52);
+    }
+    monthsCount = periodsCount / 4; // Convert weeks to months
+  } else if (viewMode === "yearly") {
+    // Yearly view - count years
+    if (selectedYear !== "All") {
+      periodsCount = 1;
+    } else {
+      // Count unique years
+      if (apiData && Array.isArray(apiData)) {
+        const years = new Set(apiData.map(item => 
+          new Date(item.OrderReceiveDate).getFullYear()
+        ));
+        periodsCount = years.size || 1;
+      } else {
+        periodsCount = 1;
+      }
+    }
+    monthsCount = periodsCount * 12;
+  } else {
+    // Monthly view (default)
+    if (selectedYear !== "All" && selectedMonth !== "All") {
+      monthsCount = 1;
+      periodsCount = 1;
+    } else if (selectedYear !== "All" && selectedMonth === "All") {
+      monthsCount = 12;
+      periodsCount = 12;
+    } else {
+      // Calculate actual months from data
+      if (apiData && Array.isArray(apiData) && apiData.length > 0) {
+        const dates = apiData.map(item => new Date(item.OrderReceiveDate));
+        const uniqueMonths = new Set();
+        dates.forEach(date => {
+          uniqueMonths.add(`${date.getFullYear()}-${date.getMonth()}`);
+        });
+        monthsCount = uniqueMonths.size || 12;
+        periodsCount = monthsCount;
+        monthsCount = Math.min(monthsCount, 36);
+      } else {
+        monthsCount = 12;
+        periodsCount = 12;
+      }
+    }
   }
 
-  // Calculate monthly average
+  // Calculate averages
   const monthlyAvg = numericTotal / monthsCount;
   const monthlyOrders = Math.round(orders / monthsCount);
-
-  // Dynamic thresholds based on time period
+  
+  // 🔥 DYNAMIC THRESHOLDS BASED ON VIEW MODE AND TIME PERIOD
   let thresholds;
-  if (monthsCount <= 1) {
-    // Single month: Higher thresholds
-    thresholds = { excellent: 15000, good: 8000, average: 3000 };
-  } else if (monthsCount <= 3) {
-    // Quarter: Medium thresholds
-    thresholds = { excellent: 12000, good: 6000, average: 2500 };
+  
+  if (viewMode === "daily") {
+    // Daily view - thresholds per day
+    if (periodsCount <= 30) {
+      thresholds = { excellent: 3000, good: 1500, average: 500 };
+    } else if (periodsCount <= 90) {
+      thresholds = { excellent: 2500, good: 1200, average: 400 };
+    } else {
+      thresholds = { excellent: 2000, good: 1000, average: 300 };
+    }
+  } else if (viewMode === "weekly") {
+    // Weekly view - thresholds per week
+    if (periodsCount <= 4) {
+      thresholds = { excellent: 20000, good: 10000, average: 4000 };
+    } else if (periodsCount <= 12) {
+      thresholds = { excellent: 15000, good: 7500, average: 3000 };
+    } else {
+      thresholds = { excellent: 12000, good: 6000, average: 2500 };
+    }
+  } else if (viewMode === "yearly") {
+    // Yearly view - thresholds per year
+    if (periodsCount <= 1) {
+      thresholds = { excellent: 500000, good: 250000, average: 100000 };
+    } else {
+      thresholds = { excellent: 400000, good: 200000, average: 80000 };
+    }
   } else {
-    // Yearly/Multiple: Lower thresholds (more consistent)
-    thresholds = { excellent: 10000, good: 5000, average: 2000 };
+    // Monthly view (default)
+    if (monthsCount <= 1) {
+      thresholds = { excellent: 100000, good: 50000, average: 20000 };
+    } else if (monthsCount <= 3) {
+      thresholds = { excellent: 80000, good: 40000, average: 15000 };
+    } else if (monthsCount <= 6) {
+      thresholds = { excellent: 70000, good: 35000, average: 12000 };
+    } else if (monthsCount <= 12) {
+      thresholds = { excellent: 60000, good: 30000, average: 10000 };
+    } else {
+      thresholds = { excellent: 50000, good: 25000, average: 8000 };
+    }
   }
 
-  // Apply rules with dynamic thresholds
+  // 🔥 STRICTER RULES with viewMode awareness
   if (monthlyAvg < thresholds.average) {
     return {
       tier: "⚠️ Needs Improvement",
@@ -326,10 +415,26 @@ const getPerformanceTier = (
     };
   }
 
+  // Requirements based on view mode
+  let orderRequirement = 10;
+  let rateRequirement = 70;
+  
+  if (viewMode === "daily") {
+    orderRequirement = 3;
+    rateRequirement = 50;
+  } else if (viewMode === "weekly") {
+    orderRequirement = 5;
+    rateRequirement = 60;
+  } else if (viewMode === "yearly") {
+    orderRequirement = 100;
+    rateRequirement = 70;
+  }
+
+  // Excellent
   if (
     monthlyAvg > thresholds.excellent &&
-    monthlyOrders > 5 &&
-    numericRate > 20
+    monthlyOrders > orderRequirement &&
+    numericRate > rateRequirement
   ) {
     return {
       tier: "🌟 Excellent",
@@ -340,7 +445,12 @@ const getPerformanceTier = (
     };
   }
 
-  if (monthlyAvg > thresholds.good && monthlyOrders > 3 && numericRate > 15) {
+  // Good
+  if (
+    monthlyAvg > thresholds.good &&
+    monthlyOrders > Math.round(orderRequirement / 2) &&
+    numericRate > Math.round(rateRequirement / 1.5)
+  ) {
     return {
       tier: "📊 Good",
       icon: FaMedal,
@@ -350,7 +460,8 @@ const getPerformanceTier = (
     };
   }
 
-  if (monthlyAvg > thresholds.average && monthlyOrders > 2) {
+  // Average
+  if (monthlyAvg > thresholds.average && monthlyOrders > Math.round(orderRequirement / 4)) {
     return {
       tier: "📊 Average",
       icon: FaMedal,
@@ -1419,6 +1530,8 @@ const allDailyGrowthData = Array.from(dailyMap.entries())
           orders,
           selectedYear,
           selectedMonth,
+           viewMode, 
+           apiData   
         );
         const Icon = tier.icon;
 
