@@ -187,6 +187,146 @@ function OfficeStaffList() {
       setLoading(false);
     }
   };
+  // ===== GENDER SUMMARY COMPONENT =====
+function GenderSummaryOffice({ data, filterStatus, employeeType }) {
+  // Calculate gender counts
+  const genderCounts = useMemo(() => {
+    const counts = { male: 0, female: 0, other: 0 };
+    
+    data.forEach(emp => {
+      const gender = (emp.Gender || "").toLowerCase().trim();
+      if (gender === "male" || gender === "m") {
+        counts.male++;
+      } else if (gender === "female" || gender === "f") {
+        counts.female++;
+      } else if (gender) {
+        counts.other++;
+      }
+    });
+    
+    return counts;
+  }, [data]);
+
+  const total = genderCounts.male + genderCounts.female + genderCounts.other;
+
+  if (total === 0) return null;
+
+  const malePercentage = total > 0 ? ((genderCounts.male / total) * 100).toFixed(1) : 0;
+  const femalePercentage = total > 0 ? ((genderCounts.female / total) * 100).toFixed(1) : 0;
+
+  const getTypeLabel = () => {
+    if (employeeType === 'factory') return 'Factory';
+    if (employeeType === 'office') return 'Office';
+    return 'All';
+  };
+
+  return (
+    <div className="bg-white rounded-2xl shadow-xl p-5 md:p-6 mb-6 border border-gray-100">
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div>
+          <h3 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+            <span>👥</span>
+            Gender Summary
+            <span className="text-xs font-normal text-gray-400">
+              ({getTypeLabel()} {filterStatus === 'discontinued' ? '· Discontinued' : '· Active'})
+            </span>
+          </h3>
+          <p className="text-xs text-gray-400 mt-0.5">
+            Total: {total} employees
+          </p>
+        </div>
+
+        <div className="flex flex-wrap gap-6 items-center w-full md:w-auto">
+          {/* Male */}
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              <span className="w-3 h-3 rounded-full" style={{ background: "#2563eb" }}></span>
+              <span className="text-sm font-medium text-gray-700">Male</span>
+            </div>
+            <div className="text-right">
+              <div className="text-lg font-bold text-gray-800">
+                {genderCounts.male}
+              </div>
+              <div className="text-xs text-gray-400">
+                {malePercentage}%
+              </div>
+            </div>
+          </div>
+
+          {/* Female */}
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              <span className="w-3 h-3 rounded-full" style={{ background: "#ec4899" }}></span>
+              <span className="text-sm font-medium text-gray-700">Female</span>
+            </div>
+            <div className="text-right">
+              <div className="text-lg font-bold text-gray-800">
+                {genderCounts.female}
+              </div>
+              <div className="text-xs text-gray-400">
+                {femalePercentage}%
+              </div>
+            </div>
+          </div>
+
+          {/* Other (if any) */}
+          {genderCounts.other > 0 && (
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
+                <span className="w-3 h-3 rounded-full" style={{ background: "#8b5cf6" }}></span>
+                <span className="text-sm font-medium text-gray-700">Other</span>
+              </div>
+              <div className="text-right">
+                <div className="text-lg font-bold text-gray-800">
+                  {genderCounts.other}
+                </div>
+                <div className="text-xs text-gray-400">
+                  {((genderCounts.other / total) * 100).toFixed(1)}%
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Progress bar */}
+          <div className="flex-1 min-w-[120px] h-2.5 rounded-full overflow-hidden bg-gray-200">
+            <div
+              className="h-full transition-all duration-500 ease-out"
+              style={{
+                width: `${malePercentage}%`,
+                background: "#2563eb",
+                float: "left"
+              }}
+            />
+            <div
+              className="h-full transition-all duration-500 ease-out"
+              style={{
+                width: `${femalePercentage}%`,
+                background: "#ec4899",
+                float: "left"
+              }}
+            />
+            {genderCounts.other > 0 && (
+              <div
+                className="h-full transition-all duration-500 ease-out"
+                style={{
+                  width: `${(genderCounts.other / total) * 100}%`,
+                  background: "#8b5cf6",
+                  float: "left"
+                }}
+              />
+            )}
+          </div>
+
+          {/* Gender ratio badge */}
+          <div className="text-xs px-3 py-1 rounded-full border border-gray-200 bg-gray-50 shrink-0">
+            {genderCounts.male}:{genderCounts.female}
+            <span className="text-gray-400 ml-1">M:F</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
   // ===== UPDATE DATA when employee type changes =====
   useEffect(() => {
@@ -604,7 +744,13 @@ function OfficeStaffList() {
             </div>
           </div>
         </div>
-
+        {!loading && hasData && getSearchedData.length > 0 && (
+        <GenderSummaryOffice 
+          data={getSearchedData} 
+          filterStatus={filterStatus}
+          employeeType={employeeType}
+        />
+      )}
         {/* ===== Controls ===== */}
         <div className="bg-white rounded-2xl shadow-xl p-6 mb-6 border border-gray-100">
           <form onSubmit={fetchEmployees}>

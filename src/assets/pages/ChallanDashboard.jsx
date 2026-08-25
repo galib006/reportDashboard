@@ -1,13 +1,13 @@
-// ChallanDashboard.js - Fixed with Dark Mode Support
+// ChallanDashboard.js - Manual Load with Date Range
 import React, { useContext, useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { GetDataContext } from "../components/DataContext";
 import axios from "axios";
 import { toast } from "react-toastify";
 import * as XLSX from "xlsx-js-style";
 import ReactPaginate from "react-paginate";
-import { format, parseISO, isWithinInterval, startOfDay, endOfDay } from "date-fns";
+import { format, parseISO, isWithinInterval, startOfDay, endOfDay, subDays } from "date-fns";
 import CryptoJS from 'crypto-js';
-import { FiCopy, FiCheck, FiDownload, FiRefreshCw, FiFilter, FiEye, FiFileText } from 'react-icons/fi';
+import { FiCopy, FiCheck, FiDownload, FiRefreshCw, FiFilter, FiEye, FiFileText, FiSearch } from 'react-icons/fi';
 import { MdOutlineAttachFile, MdOutlineDashboard, MdOutlineTableRows } from 'react-icons/md';
 
 // ============================================================
@@ -287,40 +287,47 @@ const ChallanDateFilter = ({
   onEndChange, 
   onApply, 
   onClear,
-  isRefreshing 
+  isRefreshing,
+  loading 
 }) => {
   return (
-    <div className="flex items-center gap-1.5 bg-blue-50 dark:bg-blue-900/20 rounded-lg px-2 py-1 border border-blue-200 dark:border-blue-700">
-      <span className="text-[10px] font-medium text-blue-700 dark:text-blue-400">📅 Challan:</span>
-      <input
-        type="date"
-        className="input input-bordered input-xs w-28 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600"
-        value={startDate}
-        onChange={(e) => onStartChange(e.target.value)}
-      />
-      <span className="text-[10px] text-gray-400 dark:text-gray-500">→</span>
-      <input
-        type="date"
-        className="input input-bordered input-xs w-28 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600"
-        value={endDate}
-        onChange={(e) => onEndChange(e.target.value)}
-      />
-      <button
-        className="btn btn-xs btn-primary text-white ml-1"
-        onClick={onApply}
-        disabled={isRefreshing}
-      >
-        {isRefreshing ? <span className="loading loading-spinner loading-xs"></span> : 'Apply'}
-      </button>
-      {(startDate || endDate) && (
+    <div className="flex flex-wrap items-center gap-2 bg-blue-50/50 dark:bg-blue-900/20 rounded-xl px-4 py-3 border border-blue-200 dark:border-blue-700">
+      <div className="flex items-center gap-2">
+        <span className="text-sm font-semibold text-blue-700 dark:text-blue-400">📅 Challan Date</span>
+      </div>
+      <div className="flex items-center gap-2 flex-wrap">
+        <input
+          type="date"
+          className="input input-bordered input-sm w-40 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600 focus:border-blue-500 dark:focus:border-blue-500"
+          value={startDate}
+          onChange={(e) => onStartChange(e.target.value)}
+        />
+        <span className="text-gray-400 dark:text-gray-500">→</span>
+        <input
+          type="date"
+          className="input input-bordered input-sm w-40 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600 focus:border-blue-500 dark:focus:border-blue-500"
+          value={endDate}
+          onChange={(e) => onEndChange(e.target.value)}
+        />
+      </div>
+      <div className="flex items-center gap-1.5">
         <button
-          className="text-[10px] text-red-500 hover:text-red-700 ml-0.5"
-          onClick={onClear}
-          title="Clear date filter"
+          className="btn btn-sm btn-primary text-white shadow-sm hover:shadow transition-all"
+          onClick={onApply}
+          disabled={isRefreshing || loading}
         >
-          ✕
+          {isRefreshing || loading ? <span className="loading loading-spinner loading-sm"></span> : <><FiSearch className="mr-1" /> Load Data</>}
         </button>
-      )}
+        {(startDate || endDate) && (
+          <button
+            className="btn btn-sm btn-ghost text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
+            onClick={onClear}
+            title="Clear date filter"
+          >
+            ✕
+          </button>
+        )}
+      </div>
     </div>
   );
 };
@@ -375,11 +382,20 @@ function ChallanDashboard() {
   const [loading, setLoading] = useState(false);
   const [fetchingAttachments, setFetchingAttachments] = useState({});
   const [attachmentCache, setAttachmentCache] = useState({});
+  const [isDataLoaded, setIsDataLoaded] = useState(false);
 
   // Filter States
   const [searchTerm, setSearchTerm] = useState("");
-  const [challanStartDate, setChallanStartDate] = useState("");
-  const [challanEndDate, setChallanEndDate] = useState("");
+  const [challanStartDate, setChallanStartDate] = useState(() => {
+    // Default: 1 month ago
+    const date = new Date();
+    date.setMonth(date.getMonth() - 1);
+    return date.toISOString().split('T')[0];
+  });
+  const [challanEndDate, setChallanEndDate] = useState(() => {
+    // Default: today
+    return new Date().toISOString().split('T')[0];
+  });
   const [receivedStartDate, setReceivedStartDate] = useState("");
   const [receivedEndDate, setReceivedEndDate] = useState("");
   const [selectedStatus, setSelectedStatus] = useState([]);
@@ -405,21 +421,23 @@ function ChallanDashboard() {
       return;
     }
 
-    const stDate = customStartDate || challanStartDate || 
-      (cndata?.startDate ? cndata.startDate.toISOString().split('T')[0] : 
-      new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
-      
-    const edDate = customEndDate || challanEndDate || 
-      (cndata?.endDate ? cndata.endDate.toISOString().split('T')[0] : 
-      new Date().toISOString().split('T')[0]);
+    const stDate = customStartDate || challanStartDate;
+    const edDate = customEndDate || challanEndDate;
+
+    if (!stDate || !edDate) {
+      toast.warning("Please select both start and end dates");
+      return;
+    }
+
+    if (new Date(stDate) > new Date(edDate)) {
+      toast.error("Start date cannot be after end date");
+      return;
+    }
 
     if (showLoading) setLoading(true);
     setIsRefreshing(true);
 
     try {
-      if (!challanStartDate) setChallanStartDate(stDate);
-      if (!challanEndDate) setChallanEndDate(edDate);
-
       const [challanRes, receiveRes] = await Promise.all([
         axios.get(
           `https://tpl-api.ebs365.info/api/Challan/GetDeliveryChalanDashboard?CompanyID=1&ProductCategoryID=0&CustomerID=0&MarkettingID=0&StatusID=7&StartDate=${stDate}&EndDate=${edDate}`,
@@ -455,6 +473,7 @@ function ChallanDashboard() {
       }));
 
       setChallanData(mergedData);
+      setIsDataLoaded(true);
       toast.success(`📊 ${mergedData.length} challans loaded`);
 
     } catch (error) {
@@ -464,22 +483,14 @@ function ChallanDashboard() {
       if (showLoading) setLoading(false);
       setIsRefreshing(false);
     }
-  }, [apiKey, cndata, challanStartDate, challanEndDate]);
+  }, [apiKey, challanStartDate, challanEndDate]);
 
   // ============================================================
   // APPLY DATE FILTER
   // ============================================================
-  const applyDateFilter = useCallback(() => {
-    if (challanStartDate && challanEndDate) {
-      if (new Date(challanStartDate) > new Date(challanEndDate)) {
-        toast.error("Start date cannot be after end date");
-        return;
-      }
-      fetchChallanData(true, challanStartDate, challanEndDate);
-    } else {
-      toast.warning("Please select both start and end dates");
-    }
-  }, [challanStartDate, challanEndDate, fetchChallanData]);
+  const loadData = useCallback(() => {
+    fetchChallanData(true);
+  }, [fetchChallanData]);
 
   // ============================================================
   // CHECK ATTACHMENTS
@@ -652,13 +663,6 @@ function ChallanDashboard() {
   }, [filteredData]);
 
   // ============================================================
-  // EFFECTS
-  // ============================================================
-  useEffect(() => {
-    fetchChallanData(true);
-  }, []);
-
-  // ============================================================
   // FILTER DROPDOWN
   // ============================================================
   const FilterDropdown = ({ label, options, selected, onChange, icon, color = "blue" }) => {
@@ -762,25 +766,13 @@ function ChallanDashboard() {
   const ActiveFilters = () => {
     const hasFilters = selectedStatus.length || selectedCustomer.length || 
       selectedDeliveryTo.length || selectedPI.length || selectedChallanNo.length ||
-      receivedStartDate || receivedEndDate || searchTerm || challanStartDate || challanEndDate;
+      receivedStartDate || receivedEndDate || searchTerm;
 
     if (!hasFilters) return null;
 
     return (
       <div className="flex flex-wrap gap-1.5 mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
         <span className="text-[10px] text-gray-400 dark:text-gray-500 mr-1">Active filters:</span>
-        
-        {(challanStartDate || challanEndDate) && (
-          <FilterChip 
-            label={`📅 Challan ${challanStartDate || 'Any'} → ${challanEndDate || 'Any'}`} 
-            onRemove={() => { 
-              setChallanStartDate(""); 
-              setChallanEndDate(""); 
-              setCurrentPage(0);
-              fetchChallanData(true);
-            }} 
-          />
-        )}
         
         {searchTerm && (
           <FilterChip label={`🔍 ${searchTerm}`} onRemove={() => { setSearchTerm(""); setCurrentPage(0); }} />
@@ -832,8 +824,6 @@ function ChallanDashboard() {
           className="text-[10px] text-red-500 hover:text-red-700 font-medium ml-1"
           onClick={() => {
             setSearchTerm("");
-            setChallanStartDate("");
-            setChallanEndDate("");
             setReceivedStartDate("");
             setReceivedEndDate("");
             setSelectedStatus([]);
@@ -842,7 +832,6 @@ function ChallanDashboard() {
             setSelectedPI([]);
             setSelectedChallanNo([]);
             setCurrentPage(0);
-            fetchChallanData(true);
             toast.info("All filters cleared");
           }}
         >
@@ -853,7 +842,7 @@ function ChallanDashboard() {
   };
 
   // ============================================================
-  // STATISTICS CARDS - Fixed with dark mode and no gradients
+  // STATISTICS CARDS
   // ============================================================
   const StatisticsCards = () => (
     <div className="grid grid-cols-2 md:grid-cols-6 gap-3 mb-4">
@@ -914,7 +903,7 @@ function ChallanDashboard() {
   );
 
   // ============================================================
-  // TABLE VIEW - Fixed with dark mode
+  // TABLE VIEW
   // ============================================================
   const TableView = () => (
     <div className="overflow-x-auto border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm bg-white dark:bg-gray-800 h-[470px]">
@@ -956,7 +945,7 @@ function ChallanDashboard() {
                 <td className="px-2 py-1.5 text-xs truncate max-w-[100px] text-gray-700 dark:text-gray-300" title={ch.deliveryToName}>
                   {ch.deliveryToName || '-'}
                 </td>
-                <td className="px-2 py-1.5 text-[10px] font-mono text-gray-600 dark:text-gray-400">{ch.workOrderNo || '-'}</td>
+                <td className="text-blue-600 dark:text-blue-400 font-medium text-xs">{ch.workOrderNo || '-'}</td>
                 <td className="px-2 py-1.5 text-right text-[11px] font-medium text-gray-700 dark:text-gray-300">{formatNumber(ch.challanQty)}</td>
                 <td className="px-2 py-1.5 text-right text-[11px] font-semibold text-blue-600 dark:text-blue-400">
                   {formatCurrency(ch.totalChallanValue)}
@@ -977,7 +966,7 @@ function ChallanDashboard() {
   );
 
   // ============================================================
-  // CARDS VIEW - Fixed with dark mode
+  // CARDS VIEW
   // ============================================================
   const CardsView = () => (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -1076,6 +1065,11 @@ function ChallanDashboard() {
   // EXPORT TO EXCEL
   // ============================================================
   const exportToExcel = useCallback(() => {
+    if (!isDataLoaded || challanData.length === 0) {
+      toast.warning("No data to export. Please load data first.");
+      return;
+    }
+    
     try {
       const data = filteredData.map(ch => ({
         'Challan No': ch.challanNo,
@@ -1108,17 +1102,78 @@ function ChallanDashboard() {
       console.error("Export error:", error);
       toast.error("Export failed: " + error.message);
     }
-  }, [filteredData]);
+  }, [filteredData, challanData, isDataLoaded]);
 
   // ============================================================
   // MAIN RENDER
   // ============================================================
-  if (loading && challanData.length === 0) {
+  // Initial Load Screen - Show only date filter and load button
+  if (!isDataLoaded) {
     return (
-      <div className="flex items-center justify-center min-h-[400px] bg-white dark:bg-gray-900">
-        <div className="text-center">
-          <div className="loading loading-spinner loading-lg text-primary"></div>
-          <p className="mt-4 text-gray-500 dark:text-gray-400">Loading challan data...</p>
+      <div className="container mx-auto px-3 py-8 max-w-7xl bg-white dark:bg-gray-900 min-h-screen">
+        <div className="flex flex-wrap justify-between items-center mb-6">
+          <div>
+            <h1 className="text-3xl font-bold text-blue-600 dark:text-blue-400 flex items-center gap-2">
+              🚚 Challan Dashboard
+            </h1>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+              Select date range and click Load Data to fetch challan information
+            </p>
+          </div>
+        </div>
+
+        <div className="flex flex-col items-center justify-center min-h-[450px] bg-gradient-to-br from-blue-50/50 to-white dark:from-gray-800/50 dark:to-gray-900 rounded-2xl border border-gray-200 dark:border-gray-700 p-8 shadow-sm">
+          <div className="text-7xl mb-6 opacity-20">📋</div>
+          <h3 className="text-2xl font-semibold text-gray-700 dark:text-gray-300 mb-2">Welcome to Challan Dashboard</h3>
+          <p className="text-gray-500 dark:text-gray-400 mb-8 text-center max-w-lg">
+            Select a date range below and click the <strong>Load Data</strong>
+          </p>
+          
+          <div className="w-full max-w-2xl">
+            <ChallanDateFilter
+              startDate={challanStartDate}
+              endDate={challanEndDate}
+              onStartChange={(value) => { setChallanStartDate(value); }}
+              onEndChange={(value) => { setChallanEndDate(value); }}
+              onApply={loadData}
+              onClear={() => { 
+                const today = new Date();
+                const monthAgo = new Date();
+                monthAgo.setMonth(monthAgo.getMonth() - 1);
+                setChallanStartDate(monthAgo.toISOString().split('T')[0]);
+                setChallanEndDate(today.toISOString().split('T')[0]);
+              }}
+              isRefreshing={isRefreshing}
+              loading={loading}
+            />
+            {/* <div className="text-center mt-4">
+              <button
+                className="btn btn-primary text-white px-8 py-3 shadow-lg hover:shadow-xl transition-all hover:scale-105 text-base"
+                onClick={loadData}
+                disabled={isRefreshing || loading}
+              >
+                {isRefreshing || loading ? (
+                  <span className="loading loading-spinner loading-md"></span>
+                ) : (
+                  '🚀 Load Data'
+                )}
+              </button>
+            </div> */}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show loading only during explicit loading
+  if (loading && isDataLoaded) {
+    return (
+      <div className="container mx-auto px-3 py-4 max-w-7xl bg-white dark:bg-gray-900 min-h-screen">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <div className="loading loading-spinner loading-lg text-primary"></div>
+            <p className="mt-4 text-gray-500 dark:text-gray-400">Loading challan data...</p>
+          </div>
         </div>
       </div>
     );
@@ -1129,12 +1184,14 @@ function ChallanDashboard() {
       {/* Header */}
       <div className="flex flex-wrap justify-between items-center mb-4 gap-2">
         <div>
-          <h1 className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+          <h1 className="text-2xl font-bold text-blue-600 dark:text-blue-400 flex items-center gap-2">
             🚚 Challan Dashboard
+            <span className="text-xs font-normal text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-full">
+              {challanStartDate} → {challanEndDate}
+            </span>
           </h1>
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
             {filteredData.length} of {challanData.length} challans shown
-            {challanStartDate && challanEndDate && ` · Challan: ${formatDate(challanStartDate)} - ${formatDate(challanEndDate)}`}
             {receivedStartDate && receivedEndDate && ` · Receive: ${formatDate(receivedStartDate)} - ${formatDate(receivedEndDate)}`}
           </p>
         </div>
@@ -1153,6 +1210,27 @@ function ChallanDashboard() {
             {isRefreshing ? <span className="loading loading-spinner loading-xs"></span> : <><FiRefreshCw className="mr-1" /> Refresh</>}
           </button>
         </div>
+      </div>
+
+      {/* Date Range Bar */}
+      <div className="mb-4">
+        <ChallanDateFilter
+          startDate={challanStartDate}
+          endDate={challanEndDate}
+          onStartChange={(value) => { setChallanStartDate(value); }}
+          onEndChange={(value) => { setChallanEndDate(value); }}
+          onApply={loadData}
+          onClear={() => { 
+            const today = new Date();
+            const monthAgo = new Date();
+            monthAgo.setMonth(monthAgo.getMonth() - 1);
+            setChallanStartDate(monthAgo.toISOString().split('T')[0]);
+            setChallanEndDate(today.toISOString().split('T')[0]);
+            loadData();
+          }}
+          isRefreshing={isRefreshing}
+          loading={loading}
+        />
       </div>
 
       {/* Stats */}
@@ -1201,22 +1279,6 @@ function ChallanDashboard() {
 
         {showFilters && (
           <div className="mt-3 flex flex-wrap gap-2 items-center">
-            {/* Challan Date Filter */}
-            <ChallanDateFilter
-              startDate={challanStartDate}
-              endDate={challanEndDate}
-              onStartChange={(value) => { setChallanStartDate(value); setCurrentPage(0); }}
-              onEndChange={(value) => { setChallanEndDate(value); setCurrentPage(0); }}
-              onApply={applyDateFilter}
-              onClear={() => { 
-                setChallanStartDate(""); 
-                setChallanEndDate(""); 
-                setCurrentPage(0);
-                fetchChallanData(true);
-              }}
-              isRefreshing={isRefreshing}
-            />
-
             {/* Receive Date Filter */}
             <ReceiveDateFilter
               startDate={receivedStartDate}
@@ -1279,10 +1341,14 @@ function ChallanDashboard() {
           <div className="text-6xl mb-3 opacity-30">📭</div>
           <div className="text-gray-500 dark:text-gray-400 text-lg">No challans found</div>
           <div className="text-gray-400 dark:text-gray-500 text-sm mt-1">
-            {challanStartDate && challanEndDate 
-              ? `No data for ${formatDate(challanStartDate)} - ${formatDate(challanEndDate)}` 
-              : 'Try adjusting your filters'}
+            Try adjusting your filters or change the date range
           </div>
+          <button
+            className="btn btn-primary text-white mt-4"
+            onClick={loadData}
+          >
+            🔄 Reload Data
+          </button>
         </div>
       ) : (
         <>

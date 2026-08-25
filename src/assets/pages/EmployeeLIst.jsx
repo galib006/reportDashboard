@@ -181,7 +181,114 @@ function Avatar({ name }) {
     </span>
   );
 }
+// Add this new component before the EmployeeListSingleSheet function
+function GenderSummary({ data, filterStatus }) {
+  // Calculate gender counts
+  const genderCounts = useMemo(() => {
+    const counts = { male: 0, female: 0, other: 0 };
+    
+    data.forEach(emp => {
+      const gender = (emp.Gender || "").toLowerCase().trim();
+      if (gender === "male" || gender === "m") {
+        counts.male++;
+      } else if (gender === "female" || gender === "f") {
+        counts.female++;
+      } else if (gender) {
+        counts.other++;
+      }
+    });
+    
+    return counts;
+  }, [data]);
 
+  const total = genderCounts.male + genderCounts.female + genderCounts.other;
+
+  if (total === 0) return null;
+
+  const malePercentage = total > 0 ? ((genderCounts.male / total) * 100).toFixed(1) : 0;
+  const femalePercentage = total > 0 ? ((genderCounts.female / total) * 100).toFixed(1) : 0;
+
+  return (
+    <div className="epr-no-print rounded-2xl border border-[var(--line)] bg-[var(--paper-raised)] p-5 md:p-6 mb-6">
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div>
+          <h3 className="text-sm font-semibold text-[var(--ink)] flex items-center gap-2">
+            <FiUsers className="text-[var(--ink-soft)]" />
+            Gender Summary
+            {filterStatus === "discontinued" && (
+              <span className="text-xs font-normal text-[var(--text-muted)]">
+                (Discontinued workers)
+              </span>
+            )}
+          </h3>
+          <p className="text-xs text-[var(--text-muted)] mt-0.5">
+            Total: {total} employees
+          </p>
+        </div>
+
+        <div className="flex flex-wrap gap-6 items-center w-full md:w-auto">
+          {/* Male */}
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              <span className="w-3 h-3 rounded-full" style={{ background: "#2F6B4A" }}></span>
+              <span className="text-sm font-medium text-[var(--text)]">Male</span>
+            </div>
+            <div className="text-right">
+              <div className="text-lg font-bold text-[var(--ink)]">
+                {genderCounts.male}
+              </div>
+              <div className="text-xs text-[var(--text-muted)]">
+                {malePercentage}%
+              </div>
+            </div>
+          </div>
+
+          {/* Female */}
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              <span className="w-3 h-3 rounded-full" style={{ background: "#A9812F" }}></span>
+              <span className="text-sm font-medium text-[var(--text)]">Female</span>
+            </div>
+            <div className="text-right">
+              <div className="text-lg font-bold text-[var(--ink)]">
+                {genderCounts.female}
+              </div>
+              <div className="text-xs text-[var(--text-muted)]">
+                {femalePercentage}%
+              </div>
+            </div>
+          </div>
+
+          {/* Progress bar */}
+          <div className="flex-1 min-w-[120px] h-2.5 rounded-full overflow-hidden bg-[var(--line)]">
+            <div
+              className="h-full transition-all duration-500 ease-out"
+              style={{
+                width: `${malePercentage}%`,
+                background: "#2F6B4A",
+                float: "left"
+              }}
+            />
+            <div
+              className="h-full transition-all duration-500 ease-out"
+              style={{
+                width: `${femalePercentage}%`,
+                background: "#A9812F",
+                float: "left"
+              }}
+            />
+          </div>
+
+          {/* Gender ratio badge */}
+          <div className="epr-mono text-xs px-3 py-1 rounded-full border border-[var(--line)] bg-white shrink-0">
+            {genderCounts.male}:{genderCounts.female}
+            <span className="text-[var(--text-muted)] ml-1">M:F</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 function EmployeeListSingleSheet() {
   // const { cndata, loading, setLoading } = useContext(GetDataContext);
   const { cndata, loading, apiKey, setLoading } = useContext(GetDataContext);
@@ -783,6 +890,9 @@ const DateFormat = (e) => {
             </div>
           </div>
         </div>
+
+         <GenderSummary data={displayData} filterStatus={filterStatus} />
+
 
         <div className="epr-no-print rounded-2xl border border-[var(--line)] bg-[var(--paper-raised)] p-5 md:p-6 mb-6">
           <form onSubmit={fetchEmployees} className="space-y-4">

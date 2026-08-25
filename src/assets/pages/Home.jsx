@@ -140,7 +140,49 @@ import {
 } from "lucide-react";
 import { toast } from "react-toastify";
 import axios from "axios";
+// ============================================================
+// DATE UTILITY FUNCTIONS - FIXES TIMEZONE ISSUE
+// ============================================================
+const parseAPIDate = (dateStr) => {
+  if (!dateStr) return new Date();
+  
+  if (typeof dateStr === 'string' && dateStr.includes('T')) {
+    const datePart = dateStr.split('T')[0]; // "2026-08-01"
+    const parts = datePart.split('-');
+    // year, month (0-ভিত্তিক), day
+    return new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+  }
+  
 
+  if (typeof dateStr === 'string' && dateStr.includes('-')) {
+    const parts = dateStr.split('-');
+    return new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+  }
+  
+  return new Date(dateStr);
+};
+
+
+const getDateKey = (dateStr) => {
+  if (!dateStr) return '';
+  if (typeof dateStr === 'string' && dateStr.includes('T')) {
+    return dateStr.split('T')[0];
+  }
+  if (typeof dateStr === 'string' && dateStr.includes('-')) {
+    return dateStr.split(' ')[0];
+  }
+  return dateStr;
+};
+
+
+const formatDisplayDate = (dateStr) => {
+  const date = parseAPIDate(dateStr);
+  return date.toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric'
+  });
+};
 // ============================================================
 // CONSTANTS & CONFIGURATION
 // ============================================================
@@ -303,7 +345,7 @@ const getPerformanceTier = (
     if (apiData && Array.isArray(apiData) && apiData.length > 0) {
       const uniqueMonths = new Set();
       apiData.forEach(item => {
-        const date = new Date(item.OrderReceiveDate);
+       const date = parseAPIDate(item.OrderReceiveDate);
         uniqueMonths.add(`${date.getFullYear()}-${date.getMonth()}`);
       });
       monthsCount = Math.max(uniqueMonths.size, 1);
@@ -642,35 +684,18 @@ const useComprehensiveData = (
       return emptyResult;
     }
 
-    const filtered = apiData.filter((item) => {
-      const date = new Date(item.OrderReceiveDate);
-      const yearMatch =
-        selectedYear === "All" || date.getFullYear() === Number(selectedYear);
+     const filtered = apiData.filter((item) => {
+      const date = parseAPIDate(item.OrderReceiveDate);
+      const yearMatch = selectedYear === "All" || date.getFullYear() === Number(selectedYear);
 
       let monthMatch = true;
       if (selectedMonth !== "All") {
-        const monthNames = [
-          "Jan",
-          "Feb",
-          "Mar",
-          "Apr",
-          "May",
-          "Jun",
-          "Jul",
-          "Aug",
-          "Sep",
-          "Oct",
-          "Nov",
-          "Dec",
-        ];
+        const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
         const selectedMonthIndex = monthNames.indexOf(selectedMonth);
         monthMatch = date.getMonth() === selectedMonthIndex;
       }
 
-      const marketingMatch =
-        selectedMarketing === "All" ||
-        (item.MarketingName || "").includes(selectedMarketing);
-
+      const marketingMatch = selectedMarketing === "All" || (item.MarketingName || "").includes(selectedMarketing);
       return yearMatch && monthMatch && marketingMatch;
     });
 
@@ -692,11 +717,13 @@ const useComprehensiveData = (
 
     filtered.forEach((item) => {
       const orderNo = item.WorkOrderNo || item.workOrderNo || "N/A";
-      const date = new Date(item.OrderReceiveDate);
-      const dayKey = date.toISOString().split("T")[0];
-      const monthDisplay = date.toLocaleString("default", { month: "short" }); // "May", "Jun", etc.
-const yearValue = date.getFullYear();
-const monthKey = `${yearValue}-${monthDisplay}`; // "2026-May"
+      const date = parseAPIDate(item.OrderReceiveDate);
+      const dayKey = getDateKey(item.OrderReceiveDate) || 
+                     `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+      
+      const monthDisplay = date.toLocaleString("default", { month: "short" });
+      const yearValue = date.getFullYear();
+      const monthKey = `${yearValue}-${monthDisplay}`;
 
       const weekKey = `${date.getFullYear()}-W${getWeekNumber(date)}`;
       const hourKey = date.getHours();
@@ -1216,7 +1243,7 @@ const allDailyGrowthData = Array.from(dailyMap.entries())
 
     // Use the ORIGINAL apiData, not filtered
     apiData.forEach((item) => {
-      const date = new Date(item.OrderReceiveDate);
+      const date = parseAPIDate(item.OrderReceiveDate);
       const yearKey = date.getFullYear().toString();
 
       if (!yearlyMap.has(yearKey)) {
@@ -1814,7 +1841,7 @@ const allDailyGrowthData = Array.from(dailyMap.entries())
       // Yearly efficiency - aggregate by year
       const yearlyEfficiencyMap = new Map();
       apiData.forEach((item) => {
-        const date = new Date(item.OrderReceiveDate);
+        const date = parseAPIDate(item.OrderReceiveDate);
         const yearKey = date.getFullYear().toString();
         if (!yearlyEfficiencyMap.has(yearKey)) {
           yearlyEfficiencyMap.set(yearKey, {
@@ -1838,7 +1865,7 @@ const allDailyGrowthData = Array.from(dailyMap.entries())
       // Weekly efficiency - aggregate by week
       const weeklyEfficiencyMap = new Map();
       apiData.forEach((item) => {
-        const date = new Date(item.OrderReceiveDate);
+        const date = parseAPIDate(item.OrderReceiveDate);
         const weekKey = `${date.getFullYear()}-W${getWeekNumber(date)}`;
         if (!weeklyEfficiencyMap.has(weekKey)) {
           weeklyEfficiencyMap.set(weekKey, {
@@ -1864,7 +1891,7 @@ const allDailyGrowthData = Array.from(dailyMap.entries())
       // Daily efficiency - aggregate by day (limit to last 30 days for readability)
       const dailyEfficiencyMap = new Map();
       apiData.forEach((item) => {
-        const date = new Date(item.OrderReceiveDate);
+       const date = parseAPIDate(item.OrderReceiveDate);
         const dayKey = date.toISOString().split("T")[0];
         if (!dailyEfficiencyMap.has(dayKey)) {
           dailyEfficiencyMap.set(dayKey, {
@@ -3297,18 +3324,19 @@ console.log('First 3 items:', growthChartData.slice(0, 3));
   // const hasEnoughData = growthChartData.length >= 2;
 
   const getCurrentMonthDates = () => {
-    const now = new Date();
-    const startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-    const endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-    return {
-      startDate,
-      endDate,
-      stDate: startDate.toISOString().split("T")[0],
-      edDate: endDate.toISOString().split("T")[0],
-      month: now.toLocaleString("default", { month: "short" }),
-      year: now.getFullYear(),
-    };
+  const now = new Date();
+  const bdNow = new Date(now.getTime() + (6 * 60 * 60 * 1000));
+  const startDate = new Date(bdNow.getFullYear(), bdNow.getMonth(), 1);
+  const endDate = new Date(bdNow.getFullYear(), bdNow.getMonth() + 1, 0);
+  return {
+    startDate,
+    endDate,
+    stDate: startDate.toISOString().split('T')[0],
+    edDate: endDate.toISOString().split('T')[0],
+    month: bdNow.toLocaleString("default", { month: "short" }),
+    year: bdNow.getFullYear(),
   };
+};
 
   const fetchCurrentMonthData = async (force = false) => {
     if (autoLoadRef.current && !force) return;
@@ -3831,6 +3859,7 @@ useEffect(() => {
                   month: "short",
                   day: "numeric",
                   year: "numeric",
+                  timeZone: "Asia/Dhaka" 
                 })}
               </span>
             </div>
