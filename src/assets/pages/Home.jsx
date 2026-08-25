@@ -3496,12 +3496,12 @@ const getChartData = () => {
   };
 
   // In Home component, right after data is computed:
-  console.log("=== GROWTH DATA DEBUG ===");
-  console.log("View Mode:", viewMode);
-  console.log("allGrowthData length:", data.allGrowthData?.length);
-  console.log("growthData length:", data.growthData?.length);
-  console.log("Chart data length:", growthChartData.length);
-  console.log("First 3 items:", growthChartData.slice(0, 3));
+  // console.log("=== GROWTH DATA DEBUG ===");
+  // console.log("View Mode:", viewMode);
+  // console.log("allGrowthData length:", data.allGrowthData?.length);
+  // console.log("growthData length:", data.growthData?.length);
+  // console.log("Chart data length:", growthChartData.length);
+  // console.log("First 3 items:", growthChartData.slice(0, 3));
 
   // Fallback to filtered data
   //   if (viewMode === "monthly" && data.growthData && data.growthData.length >= 2) {
@@ -3705,16 +3705,16 @@ const getChartData = () => {
     const timer = setTimeout(() => setIsLoading(false), 800);
     return () => clearTimeout(timer);
   }, []);
-  useEffect(() => {
-  console.log('📊 monthlyData with predicted:', data.monthlyData);
-  console.log('📊 chartData:', chartData);
-  console.log('📊 Predicted values:', data.monthlyData?.map(d => ({
-    month: d.name,
-    saleValue: d.saleValue,
-    predicted: d.predicted,
-    diff: d.predicted - d.saleValue
-  })));
-}, [data.monthlyData, chartData]);
+//   useEffect(() => {
+//   console.log('📊 monthlyData with predicted:', data.monthlyData);
+//   console.log('📊 chartData:', chartData);
+//   console.log('📊 Predicted values:', data.monthlyData?.map(d => ({
+//     month: d.name,
+//     saleValue: d.saleValue,
+//     predicted: d.predicted,
+//     diff: d.predicted - d.saleValue
+//   })));
+// }, [data.monthlyData, chartData]);
 
   useEffect(() => {
     const shouldAutoLoad = () => {
@@ -3737,14 +3737,14 @@ const getChartData = () => {
   }, [apiKey, cndata, autoLoadAttempted]);
   // Home component's useEffect for growth data logging
   useEffect(() => {
-    console.log("=== 📊 AFTER FIX - GROWTH DATA ===");
-    console.log("allGrowthData:", data.allGrowthData);
+    // console.log("=== 📊 AFTER FIX - GROWTH DATA ===");
+    // console.log("allGrowthData:", data.allGrowthData);
 
     if (data.allGrowthData && data.allGrowthData.length > 0) {
       data.allGrowthData.forEach((item) => {
-        console.log(
-          `${item.month}: Order Growth ${item.orderGrowth}%, Sales Growth ${item.salesGrowth}%`,
-        );
+        // console.log(
+        //   `${item.month}: Order Growth ${item.orderGrowth}%, Sales Growth ${item.salesGrowth}%`,
+        // );
       });
     }
   }, [data.allGrowthData]);
