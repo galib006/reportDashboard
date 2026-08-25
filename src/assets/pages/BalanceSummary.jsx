@@ -1326,7 +1326,7 @@ const useDataMaps = (cndata, piCompanyData) => {
       }
 
       else {
-        console.log("WARNING: cndata.grupChallan is empty or not an array!");
+        // console.log("WARNING: cndata.grupChallan is empty or not an array!");
       }
 
       // ... rest of the code (BBLC, Invoice, etc.)
@@ -1422,10 +1422,10 @@ const useSummarizedData = (cndata, maps) => {
       }
 
       // Debug logs
-      console.log('📊 mergedChallanMap built with keys:', Object.keys(mergedChallanMap).length);
+      // console.log('📊 mergedChallanMap built with keys:', Object.keys(mergedChallanMap).length);
       if (Object.keys(mergedChallanMap).length > 0) {
         const sampleKey = Object.keys(mergedChallanMap)[0];
-        console.log('📊 mergedChallanMap sample:', sampleKey, mergedChallanMap[sampleKey]);
+        // console.log('📊 mergedChallanMap sample:', sampleKey, mergedChallanMap[sampleKey]);
       }
 
       // ===== GROUP DATA BY ORDER =====
@@ -1664,7 +1664,7 @@ const useSummarizedData = (cndata, maps) => {
         });
       }
 
-      console.log('✅ useSummarizedData complete. Result count:', result.length);
+      // console.log('✅ useSummarizedData complete. Result count:', result.length);
       return result;
     } catch (e) {
       console.error("Summarize error:", e);
@@ -3853,7 +3853,7 @@ const EnhancedChallanCell = React.memo(({
       });
 
       if (attachments.length > 0) {
-        console.log('✅ Found ' + attachments.length + ' attachments for challan ' + challanId);
+        // console.log('✅ Found ' + attachments.length + ' attachments for challan ' + challanId);
       }
       return attachments;
     } catch (error) {
@@ -3873,8 +3873,8 @@ const EnhancedChallanCell = React.memo(({
     // ===== FIRST CHECK MERGED CHALLAN MAP =====
     const mergedChallanMap = cndata?.mergedChallanMap || {};
 
-    console.log('🔍 Looking for challan:', challanId);
-    console.log('📊 mergedChallanMap keys:', Object.keys(mergedChallanMap));
+    // console.log('🔍 Looking for challan:', challanId);
+    // console.log('📊 mergedChallanMap keys:', Object.keys(mergedChallanMap));
 
     let challanData = mergedChallanMap[challanId];
 
@@ -3886,7 +3886,7 @@ const EnhancedChallanCell = React.memo(({
       );
       if (matchedKey) {
         challanData = mergedChallanMap[matchedKey];
-        console.log('✅ Found challan data via case-insensitive match in mergedChallanMap:', challanData);
+        // console.log('✅ Found challan data via case-insensitive match in mergedChallanMap:', challanData);
       }
     }
 
@@ -3897,13 +3897,13 @@ const EnhancedChallanCell = React.memo(({
       );
       if (matchedKey) {
         challanData = mergedChallanMap[matchedKey];
-        console.log('✅ Found challan data via partial match in mergedChallanMap:', challanData);
+        // console.log('✅ Found challan data via partial match in mergedChallanMap:', challanData);
       }
     }
 
     // If found in merged map, return immediately
     if (challanData) {
-      console.log('✅ Found challan data in mergedChallanMap:', challanData);
+      // console.log('✅ Found challan data in mergedChallanMap:', challanData);
       return {
         qty: challanData?.challanQty || 0,
         value: challanData?.totalChallanValue || 0,
@@ -3913,7 +3913,7 @@ const EnhancedChallanCell = React.memo(({
 
     // ===== FALLBACK: Try challanReceiveMap =====
     const challanReceiveMap = cndata?.challanReceiveMap || {};
-    console.log('📊 challanReceiveMap keys:', Object.keys(challanReceiveMap));
+    // console.log('📊 challanReceiveMap keys:', Object.keys(challanReceiveMap));
 
     // Try direct match
     challanData = challanReceiveMap[challanId];
@@ -3926,7 +3926,7 @@ const EnhancedChallanCell = React.memo(({
       );
       if (matchedKey) {
         challanData = challanReceiveMap[matchedKey];
-        console.log('✅ Found challan data via case-insensitive match in challanReceiveMap:', challanData);
+        // console.log('✅ Found challan data via case-insensitive match in challanReceiveMap:', challanData);
       }
     }
 
@@ -3937,25 +3937,25 @@ const EnhancedChallanCell = React.memo(({
       );
       if (matchedKey) {
         challanData = challanReceiveMap[matchedKey];
-        console.log('✅ Found challan data via partial match in challanReceiveMap:', challanData);
+        // console.log('✅ Found challan data via partial match in challanReceiveMap:', challanData);
       }
     }
 
     // ===== FALLBACK: Try grupChallan =====
     if (!challanData && cndata?.grupChallan) {
-      console.log('📊 Checking grupChallan for:', challanId);
+      // console.log('📊 Checking grupChallan for:', challanId);
       const found = cndata.grupChallan.find(c =>
         c.challanNo === challanId || c.challanNo?.includes(challanId)
       );
       if (found) {
         challanData = found;
-        console.log('✅ Found challan data from grupChallan:', found);
+        // console.log('✅ Found challan data from grupChallan:', found);
       }
     }
 
     // ===== FINAL FALLBACK: Check if this challan exists in the order data =====
     if (!challanData) {
-      console.log('📊 Searching in apiData for challan:', challanId);
+      // console.log('📊 Searching in apiData for challan:', challanId);
       const apiData = cndata?.apiData || [];
       for (const item of apiData) {
         if (item.ChallanNo) {
@@ -3967,7 +3967,7 @@ const EnhancedChallanCell = React.memo(({
               totalChallanValue: Number(item.ChallanValue) || 0,
               statusDesc: 'Unknown'
             };
-            console.log('✅ Found challan data from apiData:', challanData);
+            // console.log('✅ Found challan data from apiData:', challanData);
             break;
           }
         }
@@ -5582,8 +5582,8 @@ function BalanceSummary() {
     const workOrderId = order.WorkOrderID;
     const encryptedId = encryptWorkOrderId(workOrderId);
     const url = `https://tpl.ebs365.info/#/report/work-order-information-report?WorkOrderID=${encryptedId}`;
-    console.log(`Opening work order: ${order.WorkOrderNo} (ID: ${workOrderId})`);
-    console.log(`URL: ${url}`);
+    // console.log(`Opening work order: ${order.WorkOrderNo} (ID: ${workOrderId})`);
+    // console.log(`URL: ${url}`);
     window.open(url, '_blank');
     logHistory('Opened work order in TPL', order.WorkOrderNo);
     toast.success(`Opening ${order.WorkOrderNo} in TPL...`);
@@ -5605,7 +5605,7 @@ function BalanceSummary() {
     // If no token, try apiKey
     if (!authToken || authToken === 'undefined' || authToken === 'null') {
       authToken = localStorage.getItem("apiKey");
-      console.log("Using apiKey as authentication token");
+      // console.log("Using apiKey as authentication token");
     }
 
     // If still no token, try other common keys
@@ -5615,7 +5615,7 @@ function BalanceSummary() {
         const value = localStorage.getItem(key);
         if (value && value !== 'undefined' && value !== 'null') {
           authToken = value;
-          console.log(`Found auth token in localStorage key: ${key}`);
+          // console.log(`Found auth token in localStorage key: ${key}`);
           break;
         }
       }
@@ -5631,8 +5631,8 @@ function BalanceSummary() {
       console.warn("⚠️ No authentication token found, opening without t parameter");
     }
 
-    console.log(`Opening challan: ${challan.challanNo} (ID: ${deliveryChallanId})`);
-    console.log(`URL: ${url}`);
+    // console.log(`Opening challan: ${challan.challanNo} (ID: ${deliveryChallanId})`);
+    // console.log(`URL: ${url}`);
 
     window.open(url, '_blank');
     logHistory('Opened delivery challan report', challan.challanNo);
@@ -5771,11 +5771,11 @@ function BalanceSummary() {
 // Add this to verify mergedChallanMap is available
 useEffect(() => {
   if (cndata && cndata.mergedChallanMap) {
-    console.log('✅ mergedChallanMap has', Object.keys(cndata.mergedChallanMap).length, 'entries');
+    // console.log('✅ mergedChallanMap has', Object.keys(cndata.mergedChallanMap).length, 'entries');
     // Log a sample to verify
     const sampleKey = Object.keys(cndata.mergedChallanMap)[0];
     if (sampleKey) {
-      console.log('✅ Sample mergedChallanMap entry:', sampleKey, cndata.mergedChallanMap[sampleKey]);
+      // console.log('✅ Sample mergedChallanMap entry:', sampleKey, cndata.mergedChallanMap[sampleKey]);
     }
   }
 }, [cndata]);
