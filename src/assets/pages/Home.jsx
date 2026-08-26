@@ -168,6 +168,141 @@ const parseAPIDate = (dateStr) => {
 
   return new Date(dateStr);
 };
+// ============================================================
+// COMMAND ID 15 - ONLY UPDATE OrderReceiveDate
+// ============================================================
+
+const fetchWorkOrderStatusData = async (apiKey, startDate, endDate) => {
+  try {
+    const response = await axios.get(
+      `https://tpl-api.ebs365.info/api/OrderReport/BI_OrderRelatedInformationReport?CompanyID=1&ProductCategoryID=0&ProductSubCategoryID=0&MarketingID=0&CustomerID=0&BuyerID=0&JobCardID=0&StartDate=${startDate}&EndDate=${endDate}&CommandID=15&EmpID=0`,
+      {
+        headers: { Authorization: `${apiKey}` },
+        timeout: 300000,
+      }
+    );
+    return response.data || [];
+  } catch (error) {
+    console.error("Error fetching work order status data:", error);
+    return [];
+  }
+};
+
+// Only update OrderReceiveDate, keep everything else unchanged
+const updateOrderReceiveDate = (mainOrderData, statusData) => {
+  if (!mainOrderData || !Array.isArray(mainOrderData) || mainOrderData.length === 0) {
+    return mainOrderData;
+  }
+
+  if (!statusData || !Array.isArray(statusData) || statusData.length === 0) {
+    return mainOrderData;
+  }
+
+  // Create map of WorkOrderNo to correct OrderReceiveDate
+  const dateMap = new Map();
+  statusData.forEach((item) => {
+    const workOrderNo = item.WorkOrderNo || item.workOrderNo || "";
+    if (workOrderNo && item.OrderReceiveDate) {
+      dateMap.set(workOrderNo, item.OrderReceiveDate);
+    }
+  });
+
+  // Only update OrderReceiveDate, keep all other data unchanged
+  const updatedData = mainOrderData.map((order) => {
+    const workOrderNo = order.WorkOrderNo || order.workOrderNo || "";
+    const correctDate = dateMap.get(workOrderNo);
+    
+    if (correctDate) {
+      // Only update OrderReceiveDate
+      return {
+        ...order,
+        OrderReceiveDate: correctDate,
+      };
+    }
+    return order; // Return unchanged if no match found
+  });
+
+  return updatedData;
+};
+
+
+const mergeWorkOrderStatusData = (mainOrderData, statusData) => {
+  if (!mainOrderData || !Array.isArray(mainOrderData) || mainOrderData.length === 0) {
+    return mainOrderData;
+  }
+
+  if (!statusData || !Array.isArray(statusData) || statusData.length === 0) {
+    return mainOrderData;
+  }
+
+  const statusMap = new Map();
+  statusData.forEach((item) => {
+    const workOrderNo = item.WorkOrderNo || item.workOrderNo || "";
+    if (workOrderNo) {
+      statusMap.set(workOrderNo, {
+        statusOrderReceiveDate: item.OrderReceiveDate || "",
+        statusBuyerName: item.BuyerName || "",
+        statusCName: item.CName || "",
+        statusMarketingName: item.MarketingName || "",
+        statusProductCategoryName: item.ProductCategoryName || "",
+        statusProductSubCategoryName: item.ProductSubCategoryName || "",
+        statusTotalOrderValue: item.TotalOrderValue || 0,
+        statusTotalBreakDownQTY: item.TotalBreakDownQTY || 0,
+        statusItemDescription: item.ItemDescription || "",
+        statusBrandName: item.BrandName || "",
+        statusDeliveryToAddress: item.DeliveryToAddress || "",
+        statusCustomerPONo: item.CustomerPONo || "",
+      });
+    }
+  });
+
+  const mergedData = mainOrderData.map((order) => {
+    const workOrderNo = order.WorkOrderNo || order.workOrderNo || "";
+    const statusInfo = statusMap.get(workOrderNo);
+
+    if (statusInfo) {
+      return {
+        ...order,
+         OrderReceiveDate: statusInfo.statusOrderReceiveDate || order.OrderReceiveDate,
+        BuyerName: order.BuyerName || statusInfo.statusBuyerName || order.BuyerName,
+        CName: order.CName || statusInfo.statusCName || order.CName,
+        MarketingName: order.MarketingName || statusInfo.statusMarketingName || order.MarketingName,
+        ProductCategoryName: order.ProductCategoryName || statusInfo.statusProductCategoryName || order.ProductCategoryName,
+        ProductSubCategoryName: order.ProductSubCategoryName || statusInfo.statusProductSubCategoryName || order.ProductSubCategoryName,
+        TotalOrderValue: order.TotalOrderValue || statusInfo.statusTotalOrderValue || order.TotalOrderValue,
+        TotalBreakDownQTY: order.TotalBreakDownQTY || statusInfo.statusTotalBreakDownQTY || order.TotalBreakDownQTY,
+        ItemDescription: order.ItemDescription || statusInfo.statusItemDescription || order.ItemDescription,
+        BrandName: order.BrandName || statusInfo.statusBrandName || order.BrandName,
+        DeliveryToAddress: order.DeliveryToAddress || statusInfo.statusDeliveryToAddress || order.DeliveryToAddress,
+        CustomerPONo: order.CustomerPONo || statusInfo.statusCustomerPONo || order.CustomerPONo,
+        _statusSource: "merged",
+        _statusData: statusInfo,
+      };
+    }
+    return {
+      ...order,
+      _statusSource: "original",
+    };
+  });
+
+  return mergedData;
+};
+
+const isDataMerged = (data) => {
+  if (!data || !Array.isArray(data) || data.length === 0) return false;
+  return data.some(item => item._statusSource === "merged");
+};
+
+const logMergedData = (data) => {
+  if (!data || !Array.isArray(data)) return;
+  const mergedItems = data.filter(item => item._statusSource === "merged");
+  if (mergedItems.length > 0) {
+    console.log(`✅ ${mergedItems.length} items merged with status data`);
+    console.log("Sample merged item:", mergedItems[0]);
+  } else {
+    console.log("ℹ️ No items were merged with status data");
+  }
+};
 
 const getDateKey = (dateStr) => {
   if (!dateStr) return "";
@@ -2133,6 +2268,7 @@ const weeklyData = Array.from(weeklyMap.values())
       dailyData,
       monthlyData,
       weeklyData,
+      allMarketingDataRanked,
       outliers: [],
       performanceMetrics,
       heatmapData: [],
@@ -3238,169 +3374,187 @@ function Home() {
   const [isFetchingRange, setIsFetchingRange] = useState(false);
   const [rangeFetchProgress, setRangeFetchProgress] = useState(0);
   const [rangeFetchStatus, setRangeFetchStatus] = useState("");
-  const fetchDataByDateRange = async (startDate, endDate) => {
-    if (!apiKey) {
-      toast.error("API key not available");
+ const fetchDataByDateRange = async (startDate, endDate) => {
+  if (!apiKey) {
+    toast.error("API key not available");
+    return;
+  }
+
+  setShowDatePicker(false);
+  setIsFetchingRange(true);
+  setRangeFetchProgress(0);
+  setRangeFetchStatus("Preparing to fetch data...");
+
+  const source = axios.CancelToken.source();
+  cancelTokenRef.current = source;
+
+  try {
+    const stDate = startDate.toISOString().split("T")[0];
+    const edDate = endDate.toISOString().split("T")[0];
+
+    setRangeFetchProgress(5);
+    setRangeFetchStatus(`Fetching orders from ${stDate} to ${edDate}...`);
+
+    if (!stDate || !edDate || stDate === edDate) {
+      toast.warning("Please select valid date range");
+      setIsFetchingRange(false);
+      setRangeFetchStatus("");
       return;
     }
 
-    // Close the date picker immediately
-    setShowDatePicker(false);
-
-    // Show loading state
-    setIsFetchingRange(true);
-    setRangeFetchProgress(0);
-    setRangeFetchStatus("Preparing to fetch data...");
-
-    const source = axios.CancelToken.source();
-    cancelTokenRef.current = source;
-
-    try {
-      const stDate = startDate.toISOString().split("T")[0];
-      const edDate = endDate.toISOString().split("T")[0];
-
-      setRangeFetchProgress(10);
-      setRangeFetchStatus(`Fetching orders from ${stDate} to ${edDate}...`);
-
-      // Check if dates are valid
-      if (!stDate || !edDate || stDate === edDate) {
-        toast.warning("Please select valid date range");
-        setIsFetchingRange(false);
-        setRangeFetchStatus("");
-        return;
-      }
-
-      // Fetch order data
-      const orderReportResponse = await axios.get(
-        `https://tpl-api.ebs365.info/api/OrderReport/BI_OrderRelatedInformationReport?CompanyID=1&ProductCategoryID=0&ProductSubCategoryID=0&MarketingID=0&CustomerID=0&BuyerID=0&JobCardID=0&StartDate=${stDate}&EndDate=${edDate}&CommandID=5&EmpID=0`,
-        {
-          headers: { Authorization: `${apiKey}` },
-          timeout: 300000,
-          cancelToken: source.token,
-        },
-      );
-
-      const orderData = orderReportResponse.data || [];
-      setRangeFetchProgress(30);
-
-      if (!Array.isArray(orderData) || orderData.length === 0) {
-        toast.warning(`No data found for the selected date range.`);
-        setIsFetchingRange(false);
-        setRangeFetchStatus("");
-        return;
-      }
-
-      setRangeFetchProgress(40);
-      setRangeFetchStatus(`Found ${orderData.length} orders...`);
-
-      setRangeFetchProgress(55);
-      setRangeFetchStatus("Fetching supporting data...");
-
-      const apiConfig = {
+    // CommandID=5 থেকে মূল ডেটা আনা
+    setRangeFetchProgress(10);
+    setRangeFetchStatus("Fetching main order data...");
+    
+     const orderReportResponse = await axios.get(
+      `https://tpl-api.ebs365.info/api/OrderReport/BI_OrderRelatedInformationReport?CompanyID=1&ProductCategoryID=0&ProductSubCategoryID=0&MarketingID=0&CustomerID=0&BuyerID=0&JobCardID=0&StartDate=${stDate}&EndDate=${edDate}&CommandID=5&EmpID=0`,
+      {
         headers: { Authorization: `${apiKey}` },
-        timeout: 90000,
+        timeout: 300000,
         cancelToken: source.token,
-      };
+      },
+    );
 
-      const [challanRes, bblcRes, invoiceRes, piRes, challanReceiveRes] =
-        await Promise.allSettled([
-          axios.get(
-            `https://tpl-api.ebs365.info/api/Challan/GetDeliveryChalanDashboard?CompanyID=1&ProductCategoryID=0&CustomerID=0&MarkettingID=0&StatusID=7&StartDate=${stDate}&EndDate=${edDate}`,
-            apiConfig,
-          ),
-          axios.get(
-            `https://tpl-api.ebs365.info/api/BBLC/GetBBLCDashboard?CustomerID=0&CompanyID=1&StartDate=${stDate}&EndDate=${edDate}`,
-            apiConfig,
-          ),
-          axios.get(
-            `https://tpl-api.ebs365.info/api/CommercialInvoice/GetInvoiceDashboard?CompanyID=1&CustomerID=0&StartDate=${stDate}&EndDate=${edDate}`,
-            apiConfig,
-          ),
-          axios.get(
-            `https://tpl-api.ebs365.info/api/CustomerPI/GetCustomerPIDashboard?CompanyID=1&CustomerID=0&MarketingID=0&StartDate=${stDate}&EndDate=${edDate}`,
-            apiConfig,
-          ),
-          axios.get(
-            `https://tpl-api.ebs365.info/api/Challan/GetDeliveryChalanReceiveDashboard?CompanyID=1&ProductCategoryID=0&CustomerID=0&MarkettingID=0&Status=Receive-Complete&StartDate=${stDate}&EndDate=${edDate}`,
-            apiConfig,
-          ),
-        ]);
+    let orderData = orderReportResponse.data || [];
+    setRangeFetchProgress(30);
 
-      setRangeFetchProgress(75);
-      setRangeFetchStatus("Processing data...");
-
-      const challanData =
-        challanRes.status === "fulfilled" && challanRes.value?.data
-          ? challanRes.value.data
-          : [];
-      const bblcData =
-        bblcRes.status === "fulfilled" && bblcRes.value?.data
-          ? bblcRes.value.data
-          : [];
-      const invoiceData =
-        invoiceRes.status === "fulfilled" && invoiceRes.value?.data
-          ? invoiceRes.value.data
-          : [];
-      const piCompanyData =
-        piRes.status === "fulfilled" && piRes.value?.data
-          ? piRes.value.data
-          : [];
-      const challanReceiveData =
-        challanReceiveRes.status === "fulfilled" &&
-        challanReceiveRes.value?.data
-          ? challanReceiveRes.value.data
-          : [];
-
-      setRangeFetchProgress(90);
-      setRangeFetchStatus("Updating dashboard...");
-
-      setcndata((prevState) => ({
-        ...prevState,
-        apiData: orderData,
-        groupedData: [],
-        grupChallan: challanData,
-        bblcData: bblcData,
-        invoiceData: invoiceData,
-        piCompanyData: piCompanyData,
-        workOrderIdMap: {},
-        challanReceiveMap: {},
-        rawChallanReceiveData: challanReceiveData,
-        workOrderStatus: "date-range-loaded",
-        _lastFetch: {
-          timestamp: new Date().toISOString(),
-          startDate: stDate,
-          endDate: edDate,
-          orderCount: orderData.length,
-          challanCount: challanData.length,
-          workOrderStatus: "date-range-loaded",
-          autoLoaded: false,
-          dateRange: true,
-        },
-      }));
-
-      setRangeFetchProgress(100);
-      setRangeFetchStatus(
-        `✅ Loaded ${orderData.length} orders for date range!`,
-      );
-      toast.success(
-        `✅ Loaded ${orderData.length} orders from ${stDate} to ${edDate}`,
-      );
-
-      // Auto-select year and month filters to "All" to show all data
-      setSelectedYear("All");
-      setSelectedMonth("All");
-    } catch (err) {
-      if (axios.isCancel(err)) return;
-      console.error("Date range fetch error:", err);
-      toast.error("Failed to fetch data for the selected date range.");
-      setRangeFetchStatus("❌ Error fetching data");
-    } finally {
+    if (!Array.isArray(orderData) || orderData.length === 0) {
+      toast.warning(`No data found for the selected date range.`);
       setIsFetchingRange(false);
-      setRangeFetchProgress(0);
-      cancelTokenRef.current = null;
-      setTimeout(() => setRangeFetchStatus(""), 3000);
+      setRangeFetchStatus("");
+      return;
     }
-  };
+
+    setRangeFetchProgress(35);
+    setRangeFetchStatus(`Found ${orderData.length} orders...`);
+
+    // CommandID=15 থেকে সঠিক তারিখের ডেটা আনা
+    setRangeFetchProgress(40);
+    setRangeFetchStatus("Fetching correct order receive dates...");
+    
+    const statusData = await fetchWorkOrderStatusData(apiKey, stDate, edDate);
+    
+    setRangeFetchProgress(50);
+    setRangeFetchStatus(`Found ${statusData.length} date records...`);
+
+    // OrderReceiveDate আপডেট করা
+    setRangeFetchProgress(55);
+    setRangeFetchStatus("Updating order receive dates...");
+    
+    const updatedOrderData = updateOrderReceiveDate(orderData, statusData);
+    
+    setRangeFetchProgress(60);
+    setRangeFetchStatus(`Processing ${updatedOrderData.length} records...`);
+
+    // বাকি supporting ডেটা আনা (challan, bblc, invoice ইত্যাদি)
+    setRangeFetchProgress(65);
+    setRangeFetchStatus("Fetching supporting data...");
+
+    const apiConfig = {
+      headers: { Authorization: `${apiKey}` },
+      timeout: 90000,
+      cancelToken: source.token,
+    };
+
+    const [challanRes, bblcRes, invoiceRes, piRes, challanReceiveRes] =
+      await Promise.allSettled([
+        axios.get(
+          `https://tpl-api.ebs365.info/api/Challan/GetDeliveryChalanDashboard?CompanyID=1&ProductCategoryID=0&CustomerID=0&MarkettingID=0&StatusID=7&StartDate=${stDate}&EndDate=${edDate}`,
+          apiConfig,
+        ),
+        axios.get(
+          `https://tpl-api.ebs365.info/api/BBLC/GetBBLCDashboard?CustomerID=0&CompanyID=1&StartDate=${stDate}&EndDate=${edDate}`,
+          apiConfig,
+        ),
+        axios.get(
+          `https://tpl-api.ebs365.info/api/CommercialInvoice/GetInvoiceDashboard?CompanyID=1&CustomerID=0&StartDate=${stDate}&EndDate=${edDate}`,
+          apiConfig,
+        ),
+        axios.get(
+          `https://tpl-api.ebs365.info/api/CustomerPI/GetCustomerPIDashboard?CompanyID=1&CustomerID=0&MarketingID=0&StartDate=${stDate}&EndDate=${edDate}`,
+          apiConfig,
+        ),
+        axios.get(
+          `https://tpl-api.ebs365.info/api/Challan/GetDeliveryChalanReceiveDashboard?CompanyID=1&ProductCategoryID=0&CustomerID=0&MarkettingID=0&Status=Receive-Complete&StartDate=${stDate}&EndDate=${edDate}`,
+          apiConfig,
+        ),
+      ]);
+
+    setRangeFetchProgress(80);
+    setRangeFetchStatus("Processing supporting data...");
+
+    const challanData =
+      challanRes.status === "fulfilled" && challanRes.value?.data
+        ? challanRes.value.data
+        : [];
+    const bblcData =
+      bblcRes.status === "fulfilled" && bblcRes.value?.data
+        ? bblcRes.value.data
+        : [];
+    const invoiceData =
+      invoiceRes.status === "fulfilled" && invoiceRes.value?.data
+        ? invoiceRes.value.data
+        : [];
+    const piCompanyData =
+      piRes.status === "fulfilled" && piRes.value?.data
+        ? piRes.value.data
+        : [];
+    const challanReceiveData =
+      challanReceiveRes.status === "fulfilled" &&
+      challanReceiveRes.value?.data
+        ? challanReceiveRes.value.data
+        : [];
+
+    setRangeFetchProgress(90);
+    setRangeFetchStatus("Updating dashboard...");
+
+    // আপডেটেড ডেটা সেট করা
+    setcndata((prevState) => ({
+      ...prevState,
+      apiData: updatedOrderData,
+      groupedData: [],
+      grupChallan: challanData,
+      bblcData: bblcData,
+      invoiceData: invoiceData,
+      piCompanyData: piCompanyData,
+      workOrderIdMap: {},
+      challanReceiveMap: {},
+      rawChallanReceiveData: challanReceiveData,
+      workOrderStatus: "date-range-loaded",
+      _lastFetch: {
+        timestamp: new Date().toISOString(),
+        startDate: stDate,
+        endDate: edDate,
+        orderCount: updatedOrderData.length,
+        challanCount: challanData.length,
+        workOrderStatus: "date-range-loaded",
+        autoLoaded: false,
+        dateRange: true,
+      },
+    }));
+
+    setRangeFetchProgress(100);
+    setRangeFetchStatus(
+      `✅ Loaded ${updatedOrderData.length} orders with corrected dates!`,
+    );
+    toast.success(
+      `✅ Loaded ${updatedOrderData.length} orders from ${stDate} to ${edDate}`,
+    );
+
+    setSelectedYear("All");
+    setSelectedMonth("All");
+  } catch (err) {
+    if (axios.isCancel(err)) return;
+    console.error("Date range fetch error:", err);
+    toast.error("Failed to fetch data for the selected date range.");
+    setRangeFetchStatus("❌ Error fetching data");
+  } finally {
+    setIsFetchingRange(false);
+    setRangeFetchProgress(0);
+    cancelTokenRef.current = null;
+    setTimeout(() => setRangeFetchStatus(""), 3000);
+  }
+};
   const data = useComprehensiveData(
     apiData,
     selectedYear,
@@ -3522,184 +3676,214 @@ const getChartData = () => {
   //   [];
   // const hasEnoughData = growthChartData.length >= 2;
 
-  const getCurrentMonthDates = () => {
-    const now = new Date();
-    const bdNow = new Date(now.getTime() + 6 * 60 * 60 * 1000);
-    const startDate = new Date(bdNow.getFullYear(), bdNow.getMonth(), 1);
-    const endDate = new Date(bdNow.getFullYear(), bdNow.getMonth() + 1, 0);
-    return {
-      startDate,
-      endDate,
-      stDate: startDate.toISOString().split("T")[0],
-      edDate: endDate.toISOString().split("T")[0],
-      month: bdNow.toLocaleString("default", { month: "short" }),
-      year: bdNow.getFullYear(),
-    };
-  };
+const getCurrentMonthDates = () => {
+  const now = new Date();
+  const bdNow = new Date(now.getTime() + 6 * 60 * 60 * 1000);
+  
+  const year = bdNow.getFullYear();
+  const month = bdNow.getMonth();
+  
 
-  const fetchCurrentMonthData = async (force = false) => {
-    if (autoLoadRef.current && !force) return;
-    if (
-      !force &&
-      cndata?.apiData &&
-      cndata.apiData.length > 0 &&
-      cndata?._lastFetch
-    ) {
-      const lastFetchTime = new Date(cndata._lastFetch.timestamp);
-      const now = new Date();
-      const hoursSinceLastFetch = (now - lastFetchTime) / (1000 * 60 * 60);
-      if (hoursSinceLastFetch < 1) {
-        setAutoLoadAttempted(true);
-        return;
-      }
+  const firstDay = new Date(year, month, 1);
+
+  const lastDay = new Date(year, month + 1, 0);
+  
+ 
+  const stDate = `${year}-${String(month + 1).padStart(2, '0')}-01`;
+  const edDate = `${year}-${String(month + 1).padStart(2, '0')}-${String(lastDay.getDate()).padStart(2, '0')}`;
+  
+  return {
+    startDate: firstDay,
+    endDate: lastDay,
+    stDate, 
+    edDate, 
+    month: bdNow.toLocaleString('default', { month: 'short' }),
+    year: year,
+  };
+};
+
+const fetchCurrentMonthData = async (force = false) => {
+  if (autoLoadRef.current && !force) return;
+  if (
+    !force &&
+    cndata?.apiData &&
+    cndata.apiData.length > 0 &&
+    cndata?._lastFetch
+  ) {
+    const lastFetchTime = new Date(cndata._lastFetch.timestamp);
+    const now = new Date();
+    const hoursSinceLastFetch = (now - lastFetchTime) / (1000 * 60 * 60);
+    if (hoursSinceLastFetch < 1) {
+      setAutoLoadAttempted(true);
+      return;
     }
-    if (!apiKey) {
+  }
+  if (!apiKey) {
+    setAutoLoadAttempted(true);
+    return;
+  }
+
+  autoLoadRef.current = true;
+  setIsAutoLoading(true);
+  setAutoLoadProgress(0);
+  setAutoLoadStatus("Loading current month data...");
+
+  const source = axios.CancelToken.source();
+  cancelTokenRef.current = source;
+
+  try {
+    const { stDate, edDate, month, year } = getCurrentMonthDates();
+    setAutoLoadProgress(5);
+    setAutoLoadStatus(`Fetching orders for ${month} ${year}...`);
+
+    // CommandID=5 থেকে মূল ডেটা আনা
+    const orderReportResponse = await axios.get(
+      `https://tpl-api.ebs365.info/api/OrderReport/BI_OrderRelatedInformationReport?CompanyID=1&ProductCategoryID=0&ProductSubCategoryID=0&MarketingID=0&CustomerID=0&BuyerID=0&JobCardID=0&StartDate=${stDate}&EndDate=${edDate}&CommandID=5&EmpID=0`,
+      {
+        headers: { Authorization: `${apiKey}` },
+        timeout: 300000,
+        cancelToken: source.token,
+      },
+    );
+
+    let orderData = orderReportResponse.data || [];
+    setAutoLoadProgress(30);
+
+    if (!Array.isArray(orderData) || orderData.length === 0) {
+      toast.warning(`No data found for ${month} ${year}.`);
+      setIsAutoLoading(false);
+      autoLoadRef.current = false;
       setAutoLoadAttempted(true);
       return;
     }
 
-    autoLoadRef.current = true;
-    setIsAutoLoading(true);
-    setAutoLoadProgress(0);
-    setAutoLoadStatus("Loading current month data...");
+    setAutoLoadProgress(35);
+    setAutoLoadStatus(`Found ${orderData.length} orders...`);
 
-    const source = axios.CancelToken.source();
-    cancelTokenRef.current = source;
+    // CommandID=15 থেকে সঠিক তারিখের ডেটা আনা
+    setAutoLoadProgress(40);
+    setAutoLoadStatus("Fetching correct order receive dates...");
+    
+    const statusData = await fetchWorkOrderStatusData(apiKey, stDate, edDate);
+    
+    setAutoLoadProgress(45);
+    setAutoLoadStatus(`Found ${statusData.length} date records...`);
 
-    try {
-      const { stDate, edDate, month, year } = getCurrentMonthDates();
-      setAutoLoadProgress(5);
-      setAutoLoadStatus(`Fetching orders for ${month} ${year}...`);
+    // OrderReceiveDate আপডেট করা
+    setAutoLoadProgress(50);
+    setAutoLoadStatus("Updating order receive dates...");
+    
+    const updatedOrderData = updateOrderReceiveDate(orderData, statusData);
+    
+    setAutoLoadProgress(55);
+    setAutoLoadStatus(`Processing ${updatedOrderData.length} records...`);
 
-      const orderReportResponse = await axios.get(
-        `https://tpl-api.ebs365.info/api/OrderReport/BI_OrderRelatedInformationReport?CompanyID=1&ProductCategoryID=0&ProductSubCategoryID=0&MarketingID=0&CustomerID=0&BuyerID=0&JobCardID=0&StartDate=${stDate}&EndDate=${edDate}&CommandID=5&EmpID=0`,
-        {
-          headers: { Authorization: `${apiKey}` },
-          timeout: 300000,
-          cancelToken: source.token,
-        },
-      );
+    setAutoLoadProgress(60);
+    setAutoLoadStatus("Fetching supporting data...");
 
-      const orderData = orderReportResponse.data || [];
-      setAutoLoadProgress(30);
+    const apiConfig = {
+      headers: { Authorization: `${apiKey}` },
+      timeout: 90000,
+      cancelToken: source.token,
+    };
 
-      if (!Array.isArray(orderData) || orderData.length === 0) {
-        toast.warning(`No data found for ${month} ${year}.`);
-        setIsAutoLoading(false);
-        autoLoadRef.current = false;
-        setAutoLoadAttempted(true);
-        return;
-      }
+    const [challanRes, bblcRes, invoiceRes, piRes, challanReceiveRes] =
+      await Promise.allSettled([
+        axios.get(
+          `https://tpl-api.ebs365.info/api/Challan/GetDeliveryChalanDashboard?CompanyID=1&ProductCategoryID=0&CustomerID=0&MarkettingID=0&StatusID=7&StartDate=${stDate}&EndDate=${edDate}`,
+          apiConfig,
+        ),
+        axios.get(
+          `https://tpl-api.ebs365.info/api/BBLC/GetBBLCDashboard?CustomerID=0&CompanyID=1&StartDate=${stDate}&EndDate=${edDate}`,
+          apiConfig,
+        ),
+        axios.get(
+          `https://tpl-api.ebs365.info/api/CommercialInvoice/GetInvoiceDashboard?CompanyID=1&CustomerID=0&StartDate=${stDate}&EndDate=${edDate}`,
+          apiConfig,
+        ),
+        axios.get(
+          `https://tpl-api.ebs365.info/api/CustomerPI/GetCustomerPIDashboard?CompanyID=1&CustomerID=0&MarketingID=0&StartDate=${stDate}&EndDate=${edDate}`,
+          apiConfig,
+        ),
+        axios.get(
+          `https://tpl-api.ebs365.info/api/Challan/GetDeliveryChalanReceiveDashboard?CompanyID=1&ProductCategoryID=0&CustomerID=0&MarkettingID=0&Status=Receive-Complete&StartDate=${stDate}&EndDate=${edDate}`,
+          apiConfig,
+        ),
+      ]);
 
-      setAutoLoadProgress(40);
-      setAutoLoadStatus(`Found ${orderData.length} orders...`);
+    setAutoLoadProgress(75);
+    setAutoLoadStatus("Processing supporting data...");
 
-      setAutoLoadProgress(55);
-      setAutoLoadStatus("Fetching supporting data...");
+    const challanData =
+      challanRes.status === "fulfilled" && challanRes.value?.data
+        ? challanRes.value.data
+        : [];
+    const bblcData =
+      bblcRes.status === "fulfilled" && bblcRes.value?.data
+        ? bblcRes.value.data
+        : [];
+    const invoiceData =
+      invoiceRes.status === "fulfilled" && invoiceRes.value?.data
+        ? invoiceRes.value.data
+        : [];
+    const piCompanyData =
+      piRes.status === "fulfilled" && piRes.value?.data
+        ? piRes.value.data
+        : [];
+    const challanReceiveData =
+      challanReceiveRes.status === "fulfilled" &&
+      challanReceiveRes.value?.data
+        ? challanReceiveRes.value.data
+        : [];
 
-      const apiConfig = {
-        headers: { Authorization: `${apiKey}` },
-        timeout: 90000,
-        cancelToken: source.token,
-      };
+    setAutoLoadProgress(90);
+    setAutoLoadStatus("Updating dashboard...");
 
-      const [challanRes, bblcRes, invoiceRes, piRes, challanReceiveRes] =
-        await Promise.allSettled([
-          axios.get(
-            `https://tpl-api.ebs365.info/api/Challan/GetDeliveryChalanDashboard?CompanyID=1&ProductCategoryID=0&CustomerID=0&MarkettingID=0&StatusID=7&StartDate=${stDate}&EndDate=${edDate}`,
-            apiConfig,
-          ),
-          axios.get(
-            `https://tpl-api.ebs365.info/api/BBLC/GetBBLCDashboard?CustomerID=0&CompanyID=1&StartDate=${stDate}&EndDate=${edDate}`,
-            apiConfig,
-          ),
-          axios.get(
-            `https://tpl-api.ebs365.info/api/CommercialInvoice/GetInvoiceDashboard?CompanyID=1&CustomerID=0&StartDate=${stDate}&EndDate=${edDate}`,
-            apiConfig,
-          ),
-          axios.get(
-            `https://tpl-api.ebs365.info/api/CustomerPI/GetCustomerPIDashboard?CompanyID=1&CustomerID=0&MarketingID=0&StartDate=${stDate}&EndDate=${edDate}`,
-            apiConfig,
-          ),
-          axios.get(
-            `https://tpl-api.ebs365.info/api/Challan/GetDeliveryChalanReceiveDashboard?CompanyID=1&ProductCategoryID=0&CustomerID=0&MarkettingID=0&Status=Receive-Complete&StartDate=${stDate}&EndDate=${edDate}`,
-            apiConfig,
-          ),
-        ]);
-
-      setAutoLoadProgress(75);
-      setAutoLoadStatus("Processing data...");
-
-      const challanData =
-        challanRes.status === "fulfilled" && challanRes.value?.data
-          ? challanRes.value.data
-          : [];
-      const bblcData =
-        bblcRes.status === "fulfilled" && bblcRes.value?.data
-          ? bblcRes.value.data
-          : [];
-      const invoiceData =
-        invoiceRes.status === "fulfilled" && invoiceRes.value?.data
-          ? invoiceRes.value.data
-          : [];
-      const piCompanyData =
-        piRes.status === "fulfilled" && piRes.value?.data
-          ? piRes.value.data
-          : [];
-      const challanReceiveData =
-        challanReceiveRes.status === "fulfilled" &&
-        challanReceiveRes.value?.data
-          ? challanReceiveRes.value.data
-          : [];
-
-      setAutoLoadProgress(90);
-      setAutoLoadStatus("Updating dashboard...");
-
-      setcndata((prevState) => ({
-        ...prevState,
-        apiData: orderData,
-        groupedData: [],
-        grupChallan: challanData,
-        bblcData: bblcData,
-        invoiceData: invoiceData,
-        piCompanyData: piCompanyData,
-        workOrderIdMap: {},
-        challanReceiveMap: {},
-        rawChallanReceiveData: challanReceiveData,
+    setcndata((prevState) => ({
+      ...prevState,
+      apiData: updatedOrderData, // আপডেটেড ডেটা
+      groupedData: [],
+      grupChallan: challanData,
+      bblcData: bblcData,
+      invoiceData: invoiceData,
+      piCompanyData: piCompanyData,
+      workOrderIdMap: {},
+      challanReceiveMap: {},
+      rawChallanReceiveData: challanReceiveData,
+      workOrderStatus: "auto-loaded",
+      _lastFetch: {
+        timestamp: new Date().toISOString(),
+        startDate: stDate,
+        endDate: edDate,
+        month: month,
+        year: year,
+        orderCount: updatedOrderData.length,
+        challanCount: challanData.length,
         workOrderStatus: "auto-loaded",
-        _lastFetch: {
-          timestamp: new Date().toISOString(),
-          startDate: stDate,
-          endDate: edDate,
-          month: month,
-          year: year,
-          orderCount: orderData.length,
-          challanCount: challanData.length,
-          workOrderStatus: "auto-loaded",
-          autoLoaded: true,
-        },
-      }));
+        autoLoaded: true,
+      },
+    }));
 
-      setAutoLoadProgress(100);
-      setAutoLoadStatus(
-        `✅ Loaded ${orderData.length} orders for ${month} ${year}!`,
-      );
-      setAutoLoadAttempted(true);
-      toast.success(
-        `✅ Auto-loaded ${orderData.length} orders for ${month} ${year}`,
-      );
-    } catch (err) {
-      if (axios.isCancel(err)) return;
-      console.error("Auto-load error:", err);
-      toast.error("Failed to auto-load data.");
-      setAutoLoadAttempted(true);
-    } finally {
-      setIsAutoLoading(false);
-      setAutoLoadProgress(0);
-      autoLoadRef.current = false;
-      cancelTokenRef.current = null;
-    }
-  };
+    setAutoLoadProgress(100);
+    setAutoLoadStatus(
+      `✅ Loaded ${updatedOrderData.length} orders with corrected dates for ${month} ${year}!`,
+    );
+    setAutoLoadAttempted(true);
+    toast.success(
+      `✅ Auto-loaded ${updatedOrderData.length} orders for ${month} ${year}`,
+    );
+  } catch (err) {
+    if (axios.isCancel(err)) return;
+    console.error("Auto-load error:", err);
+    toast.error("Failed to auto-load data.");
+    setAutoLoadAttempted(true);
+  } finally {
+    setIsAutoLoading(false);
+    setAutoLoadProgress(0);
+    autoLoadRef.current = false;
+    cancelTokenRef.current = null;
+  }
+};
 
   useEffect(() => {
     const timer = setTimeout(() => setIsLoading(false), 800);
@@ -4566,15 +4750,27 @@ const getChartData = () => {
                   </div>
 
                   <div className="text-xs text-slate-400 flex items-center gap-2">
-                    <span>{apiData.length} records</span>
-                    {cndata?._lastFetch?.autoLoaded && (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-50 text-emerald-600 rounded-full text-[10px] font-medium border border-emerald-200">
-                        <FaCircle className="w-1.5 h-1.5 text-emerald-400" />
-                        {cndata._lastFetch.month} {cndata._lastFetch.year}
-                      </span>
-                    )}
+                   <span>
+  {apiData.length} records
+  {isDataMerged(apiData) && (
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-purple-50 text-purple-600 rounded-full text-[10px] font-medium border border-purple-200 ml-1">
+      <FaCircle className="w-1.5 h-1.5 text-purple-400" />
+      Merged
+    </span>
+  )}
+</span>
                   </div>
                 </div>
+                {isDataMerged(apiData) && (
+  <div className="mt-2 px-4 py-2 bg-purple-50 rounded-xl border border-purple-200 text-xs text-purple-700 flex items-center gap-2 flex-wrap">
+    <FaCircle className="w-2 h-2 text-purple-500" />
+    <span>Data merged with CommandID=15 (Work Order Status)</span>
+    <span className="text-purple-400">|</span>
+    <span className="text-purple-600">
+      {apiData.filter(item => item._statusSource === "merged").length} orders updated
+    </span>
+  </div>
+)}
               </div>
             </motion.div>
           )}
@@ -7412,9 +7608,13 @@ const getChartData = () => {
 
         <div className="text-center">
           <p className="text-[10px] text-slate-400">
-            Last updated: {new Date().toLocaleString()} • {apiData.length}{" "}
-            records loaded
-          </p>
+  Last updated: {new Date().toLocaleString()} • {apiData.length} records loaded
+  {isDataMerged(apiData) && (
+    <span className="ml-2 text-purple-500">
+      • {apiData.filter(item => item._statusSource === "merged").length} merged
+    </span>
+  )}
+</p>
         </div>
       </div>
     </div>
