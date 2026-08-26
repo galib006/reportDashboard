@@ -3242,20 +3242,20 @@ const OrderVsSalesChart = ({ data }) => {
 // ============================================================
 
 function Home() {
+  
   const { cndata, setcndata, loading, contextLoading, apiKey } =
     useContext(GetDataContext);
   const apiData = useMemo(() => cndata?.apiData || [], [cndata]);
-
+const [isLoading, setIsLoading] = useState(false);
   // ============================================================
   // ALL STATE DECLARATIONS
   // ============================================================
-  const [selectedYear, setSelectedYear] = useState("All");
+   const [selectedYear, setSelectedYear] = useState("All");
   const [selectedMonth, setSelectedMonth] = useState("All");
   const [selectedMarketing, setSelectedMarketing] = useState("All");
   const [viewMode, setViewMode] = useState("monthly");
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showFilters, setShowFilters] = useState(true);
-  const [isLoading, setIsLoading] = useState(true);
   const [isAutoLoading, setIsAutoLoading] = useState(false);
   const [autoLoadProgress, setAutoLoadProgress] = useState(0);
   const [autoLoadStatus, setAutoLoadStatus] = useState("");
@@ -3272,7 +3272,6 @@ function Home() {
   const [isFetchingRange, setIsFetchingRange] = useState(false);
   const [rangeFetchProgress, setRangeFetchProgress] = useState(0);
   const [rangeFetchStatus, setRangeFetchStatus] = useState("");
-
   // ============================================================
   // API CONFIGURATION - INSIDE Home COMPONENT
   // ============================================================
@@ -4139,14 +4138,17 @@ const fetchDataByDateRange = async (startDate, endDate) => {
 // 9. ALL useEffect
 // ============================================================
 useEffect(() => {
-  const timer = setTimeout(() => setIsLoading(false), 800);
+  const timer = setTimeout(() => {
+    setIsLoading(false);
+    console.log("⏰ Timer: Loading turned off");
+  }, 2000);
   return () => clearTimeout(timer);
 }, []);
 
-// ✅ নতুন useEffect - ডেটা লোড হওয়ার পর isLoading false করবে
 useEffect(() => {
   if (apiData && apiData.length > 0) {
     setIsLoading(false);
+    console.log("📦 Data loaded, loading turned off");
   }
 }, [apiData]);
 
@@ -4169,14 +4171,15 @@ useEffect(() => {
     setTimeout(() => fetchCurrentMonthData(false), 1000);
   }
 }, [apiKey, cndata, autoLoadAttempted]);
+
   // growth data logging useEffect
-  useEffect(() => {
-    if (data.allGrowthData && data.allGrowthData.length > 0) {
-      data.allGrowthData.forEach((item) => {
-        // console.log(`${item.month}: Order Growth ${item.orderGrowth}%, Sales Growth ${item.salesGrowth}%`);
-      });
-    }
-  }, [data.allGrowthData]);
+ useEffect(() => {
+  if (data.allGrowthData && data.allGrowthData.length > 0) {
+    data.allGrowthData.forEach((item) => {
+      // console.log(`${item.month}: Order Growth ${item.orderGrowth}%, Sales Growth ${item.salesGrowth}%`);
+    });
+  }
+}, [data.allGrowthData]);
 
   // ============================================================
   // 10. ALL HANDLER FUNCTIONS
@@ -4461,6 +4464,31 @@ const generateUniqueDataArray = (apiData) => {
 
   console.log("📂 Group by Category:", Object.keys(groupByCategory));
 
+
+  // KPI Config এর আগে loading check
+if (isLoading || contextLoading || loading) {
+  console.log("⏳ Loading:", { isLoading, contextLoading, loading });
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 flex items-center justify-center">
+      <div className="text-center">
+        <div className="relative w-20 h-20 mx-auto mb-6">
+          <div className="absolute inset-0 border-4 border-slate-200 rounded-full" />
+          <div className="absolute inset-0 border-4 border-indigo-500 rounded-full border-t-transparent animate-spin" />
+          <div className="absolute inset-2 border-4 border-emerald-500 rounded-full border-b-transparent animate-spin" />
+        </div>
+        <h2 className="text-xl font-semibold text-slate-700">
+          Loading Dashboard
+        </h2>
+        <p className="text-sm text-slate-400 mt-1">
+          Preparing your analytics...
+        </p>
+        <p className="text-xs text-slate-300 mt-2">
+          {apiData.length} records loaded
+        </p>
+      </div>
+    </div>
+  );
+}
   // KPI Config
   const kpiConfig = [
     {
@@ -4570,26 +4598,29 @@ const generateUniqueDataArray = (apiData) => {
     },
   ];
 
-  if (isLoading || contextLoading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 flex items-center justify-center">
-        <div className="text-center">
-          <div className="relative w-20 h-20 mx-auto mb-6">
-            <div className="absolute inset-0 border-4 border-slate-200 rounded-full" />
-            <div className="absolute inset-0 border-4 border-indigo-500 rounded-full border-t-transparent animate-spin" />
-            <div className="absolute inset-2 border-4 border-emerald-500 rounded-full border-b-transparent animate-spin" />
-          </div>
-          <h2 className="text-xl font-semibold text-slate-700">
-            Loading Dashboard
-          </h2>
-          <p className="text-sm text-slate-400 mt-1">
-            Preparing your analytics...
-          </p>
+  if (isLoading || contextLoading || loading) {
+  console.log("⏳ Loading:", { isLoading, contextLoading, loading });
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 flex items-center justify-center">
+      <div className="text-center">
+        <div className="relative w-20 h-20 mx-auto mb-6">
+          <div className="absolute inset-0 border-4 border-slate-200 rounded-full" />
+          <div className="absolute inset-0 border-4 border-indigo-500 rounded-full border-t-transparent animate-spin" />
+          <div className="absolute inset-2 border-4 border-emerald-500 rounded-full border-b-transparent animate-spin" />
         </div>
+        <h2 className="text-xl font-semibold text-slate-700">
+          Loading Dashboard
+        </h2>
+        <p className="text-sm text-slate-400 mt-1">
+          Preparing your analytics...
+        </p>
+        <p className="text-xs text-slate-300 mt-2">
+          {apiData.length} records loaded
+        </p>
       </div>
-    );
-  }
-
+    </div>
+  );
+}
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 p-4 md:p-6">
       <div className="max-w-7xl mx-auto space-y-6">
