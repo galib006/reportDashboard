@@ -21,6 +21,7 @@
     "chartjs-plugin-datalabels": "^2.2.0",
     "crypto-js": "^4.2.0",
     "date-fns": "^4.4.0",
+    "dayjs": "^1.11.23",
     "exceljs": "^4.4.0",
     "file-saver": "^2.0.5",
     "framer-motion": "^12.40.0",

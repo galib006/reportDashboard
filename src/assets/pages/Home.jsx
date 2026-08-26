@@ -3,6 +3,7 @@ import { GetDataContext } from "../components/DataContext";
 import { Calendar as CalendarIcon, CalendarRange } from "lucide-react";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
+import dayjs from "dayjs";
 import {
   FaTruck,
   FaBoxOpen,
@@ -140,6 +141,7 @@ import {
 } from "lucide-react";
 import { toast } from "react-toastify";
 import axios from "axios";
+
 // ============================================================
 // DATE UTILITY FUNCTIONS - FIXES TIMEZONE ISSUE
 // ============================================================
@@ -167,141 +169,6 @@ const parseAPIDate = (dateStr) => {
   }
 
   return new Date(dateStr);
-};
-// ============================================================
-// COMMAND ID 15 - ONLY UPDATE OrderReceiveDate
-// ============================================================
-
-const fetchWorkOrderStatusData = async (apiKey, startDate, endDate) => {
-  try {
-    const response = await axios.get(
-      `https://tpl-api.ebs365.info/api/OrderReport/BI_OrderRelatedInformationReport?CompanyID=1&ProductCategoryID=0&ProductSubCategoryID=0&MarketingID=0&CustomerID=0&BuyerID=0&JobCardID=0&StartDate=${startDate}&EndDate=${endDate}&CommandID=15&EmpID=0`,
-      {
-        headers: { Authorization: `${apiKey}` },
-        timeout: 300000,
-      }
-    );
-    return response.data || [];
-  } catch (error) {
-    console.error("Error fetching work order status data:", error);
-    return [];
-  }
-};
-
-// Only update OrderReceiveDate, keep everything else unchanged
-const updateOrderReceiveDate = (mainOrderData, statusData) => {
-  if (!mainOrderData || !Array.isArray(mainOrderData) || mainOrderData.length === 0) {
-    return mainOrderData;
-  }
-
-  if (!statusData || !Array.isArray(statusData) || statusData.length === 0) {
-    return mainOrderData;
-  }
-
-  // Create map of WorkOrderNo to correct OrderReceiveDate
-  const dateMap = new Map();
-  statusData.forEach((item) => {
-    const workOrderNo = item.WorkOrderNo || item.workOrderNo || "";
-    if (workOrderNo && item.OrderReceiveDate) {
-      dateMap.set(workOrderNo, item.OrderReceiveDate);
-    }
-  });
-
-  // Only update OrderReceiveDate, keep all other data unchanged
-  const updatedData = mainOrderData.map((order) => {
-    const workOrderNo = order.WorkOrderNo || order.workOrderNo || "";
-    const correctDate = dateMap.get(workOrderNo);
-    
-    if (correctDate) {
-      // Only update OrderReceiveDate
-      return {
-        ...order,
-        OrderReceiveDate: correctDate,
-      };
-    }
-    return order; // Return unchanged if no match found
-  });
-
-  return updatedData;
-};
-
-
-const mergeWorkOrderStatusData = (mainOrderData, statusData) => {
-  if (!mainOrderData || !Array.isArray(mainOrderData) || mainOrderData.length === 0) {
-    return mainOrderData;
-  }
-
-  if (!statusData || !Array.isArray(statusData) || statusData.length === 0) {
-    return mainOrderData;
-  }
-
-  const statusMap = new Map();
-  statusData.forEach((item) => {
-    const workOrderNo = item.WorkOrderNo || item.workOrderNo || "";
-    if (workOrderNo) {
-      statusMap.set(workOrderNo, {
-        statusOrderReceiveDate: item.OrderReceiveDate || "",
-        statusBuyerName: item.BuyerName || "",
-        statusCName: item.CName || "",
-        statusMarketingName: item.MarketingName || "",
-        statusProductCategoryName: item.ProductCategoryName || "",
-        statusProductSubCategoryName: item.ProductSubCategoryName || "",
-        statusTotalOrderValue: item.TotalOrderValue || 0,
-        statusTotalBreakDownQTY: item.TotalBreakDownQTY || 0,
-        statusItemDescription: item.ItemDescription || "",
-        statusBrandName: item.BrandName || "",
-        statusDeliveryToAddress: item.DeliveryToAddress || "",
-        statusCustomerPONo: item.CustomerPONo || "",
-      });
-    }
-  });
-
-  const mergedData = mainOrderData.map((order) => {
-    const workOrderNo = order.WorkOrderNo || order.workOrderNo || "";
-    const statusInfo = statusMap.get(workOrderNo);
-
-    if (statusInfo) {
-      return {
-        ...order,
-         OrderReceiveDate: statusInfo.statusOrderReceiveDate || order.OrderReceiveDate,
-        BuyerName: order.BuyerName || statusInfo.statusBuyerName || order.BuyerName,
-        CName: order.CName || statusInfo.statusCName || order.CName,
-        MarketingName: order.MarketingName || statusInfo.statusMarketingName || order.MarketingName,
-        ProductCategoryName: order.ProductCategoryName || statusInfo.statusProductCategoryName || order.ProductCategoryName,
-        ProductSubCategoryName: order.ProductSubCategoryName || statusInfo.statusProductSubCategoryName || order.ProductSubCategoryName,
-        TotalOrderValue: order.TotalOrderValue || statusInfo.statusTotalOrderValue || order.TotalOrderValue,
-        TotalBreakDownQTY: order.TotalBreakDownQTY || statusInfo.statusTotalBreakDownQTY || order.TotalBreakDownQTY,
-        ItemDescription: order.ItemDescription || statusInfo.statusItemDescription || order.ItemDescription,
-        BrandName: order.BrandName || statusInfo.statusBrandName || order.BrandName,
-        DeliveryToAddress: order.DeliveryToAddress || statusInfo.statusDeliveryToAddress || order.DeliveryToAddress,
-        CustomerPONo: order.CustomerPONo || statusInfo.statusCustomerPONo || order.CustomerPONo,
-        _statusSource: "merged",
-        _statusData: statusInfo,
-      };
-    }
-    return {
-      ...order,
-      _statusSource: "original",
-    };
-  });
-
-  return mergedData;
-};
-
-const isDataMerged = (data) => {
-  if (!data || !Array.isArray(data) || data.length === 0) return false;
-  return data.some(item => item._statusSource === "merged");
-};
-
-const logMergedData = (data) => {
-  if (!data || !Array.isArray(data)) return;
-  const mergedItems = data.filter(item => item._statusSource === "merged");
-  if (mergedItems.length > 0) {
-    console.log(`✅ ${mergedItems.length} items merged with status data`);
-    console.log("Sample merged item:", mergedItems[0]);
-  } else {
-    console.log("ℹ️ No items were merged with status data");
-  }
 };
 
 const getDateKey = (dateStr) => {
@@ -785,64 +652,55 @@ const useComprehensiveData = (
   viewMode = "monthly",
 ) => {
   return useMemo(() => {
+    const calculatePrediction = (dataArray, currentIndex, viewMode) => {
+      if (!dataArray || dataArray.length === 0) return 0;
 
-const calculatePrediction = (dataArray, currentIndex, viewMode) => {
-  if (!dataArray || dataArray.length === 0) return 0;
-  
-  const currentValue = dataArray[currentIndex]?.saleValue || 0;
-  const totalPoints = dataArray.length;
-  
+      const currentValue = dataArray[currentIndex]?.saleValue || 0;
+      const totalPoints = dataArray.length;
 
-  if (totalPoints === 1) {
+      if (totalPoints === 1) {
+        const defaultFactors = {
+          daily: 1.02,
+          weekly: 1.05,
+          monthly: 1.08,
+          yearly: 1.1,
+        };
+        const factor = defaultFactors[viewMode] || 1.05;
+        return Math.round(currentValue * factor);
+      }
 
-    const defaultFactors = {
-      daily: 1.02,    
-      weekly: 1.05,   
-      monthly: 1.08,  
-      yearly: 1.10   
+      const points = dataArray.slice(-Math.min(6, totalPoints)); // সর্বোচ্চ ৬ পয়েন্ট
+      const xValues = points.map((_, idx) => idx);
+      const yValues = points.map((item) => item.saleValue || 0);
+
+      const n = xValues.length;
+      const sumX = xValues.reduce((a, b) => a + b, 0);
+      const sumY = yValues.reduce((a, b) => a + b, 0);
+      const sumXY = xValues.reduce((a, b, idx) => a + b * yValues[idx], 0);
+      const sumX2 = xValues.reduce((a, b) => a + b * b, 0);
+
+      const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+      const intercept = (sumY - slope * sumX) / n;
+
+      let predicted = Math.round(slope * currentIndex + intercept);
+
+      if (predicted < 0) {
+        const avg = yValues.reduce((a, b) => a + b, 0) / yValues.length;
+        predicted = Math.round(avg * 0.95);
+      }
+
+      const maxValue = Math.max(...yValues);
+      const minValue = Math.min(...yValues);
+      const range = maxValue - minValue;
+
+      if (range > 0) {
+        const maxPrediction = maxValue * 1.3;
+        const minPrediction = minValue * 0.7;
+        predicted = Math.max(minPrediction, Math.min(maxPrediction, predicted));
+      }
+
+      return Math.max(0, Math.round(predicted));
     };
-    const factor = defaultFactors[viewMode] || 1.05;
-    return Math.round(currentValue * factor);
-  }
-  
-
-  const points = dataArray.slice(-Math.min(6, totalPoints)); // সর্বোচ্চ ৬ পয়েন্ট
-  const xValues = points.map((_, idx) => idx);
-  const yValues = points.map(item => item.saleValue || 0);
-  
-  const n = xValues.length;
-  const sumX = xValues.reduce((a, b) => a + b, 0);
-  const sumY = yValues.reduce((a, b) => a + b, 0);
-  const sumXY = xValues.reduce((a, b, idx) => a + b * yValues[idx], 0);
-  const sumX2 = xValues.reduce((a, b) => a + b * b, 0);
-  
-
-  const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
-  const intercept = (sumY - slope * sumX) / n;
-  
-  let predicted = Math.round(slope * currentIndex + intercept);
-  
-
-  if (predicted < 0) {
-
-    const avg = yValues.reduce((a, b) => a + b, 0) / yValues.length;
-    predicted = Math.round(avg * 0.95);
-  }
-  
-
-  const maxValue = Math.max(...yValues);
-  const minValue = Math.min(...yValues);
-  const range = maxValue - minValue;
-  
-  if (range > 0) {
-
-    const maxPrediction = maxValue * 1.3;
-    const minPrediction = minValue * 0.7;
-    predicted = Math.max(minPrediction, Math.min(maxPrediction, predicted));
-  }
-  
-  return Math.max(0, Math.round(predicted));
-};
     const emptyResult = {
       totals: {
         orderQty: 0,
@@ -931,18 +789,34 @@ const calculatePrediction = (dataArray, currentIndex, viewMode) => {
     if (!apiData || !Array.isArray(apiData) || apiData.length === 0) {
       return emptyResult;
     }
-     const filtered = apiData.filter((item) => {
+    const filtered = apiData.filter((item) => {
       const date = parseAPIDate(item.OrderReceiveDate);
-      const yearMatch = selectedYear === "All" || date.getFullYear() === Number(selectedYear);
-      
+      const yearMatch =
+        selectedYear === "All" || date.getFullYear() === Number(selectedYear);
+
       let monthMatch = true;
       if (selectedMonth !== "All") {
-        const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+        const monthNames = [
+          "Jan",
+          "Feb",
+          "Mar",
+          "Apr",
+          "May",
+          "Jun",
+          "Jul",
+          "Aug",
+          "Sep",
+          "Oct",
+          "Nov",
+          "Dec",
+        ];
         const selectedMonthIndex = monthNames.indexOf(selectedMonth);
         monthMatch = date.getMonth() === selectedMonthIndex;
       }
-      
-      const marketingMatch = selectedMarketing === "All" || (item.MarketingName || "").includes(selectedMarketing);
+
+      const marketingMatch =
+        selectedMarketing === "All" ||
+        (item.MarketingName || "").includes(selectedMarketing);
       return yearMatch && monthMatch && marketingMatch;
     });
 
@@ -1596,96 +1470,108 @@ const calculatePrediction = (dataArray, currentIndex, viewMode) => {
       },
     );
 
-   // Yearly Data
-const yearlyData = allYearlySalesDataUnfiltered.map((d, i, arr) => {
-  const predicted = calculatePrediction(
-    allYearlySalesDataUnfiltered.map(item => ({ saleValue: item.saleValue })), 
-    i, 
-    'yearly'
-  );
-  return {
-    ...d,
-    name: d.name,
-    orderValue: d.orderValue,
-    saleValue: d.saleValue,
-    balanceValue: d.orderValue - d.saleValue,
-    deliveryRate: d.orderValue > 0 ? (d.saleValue / d.orderValue) * 100 : 0,
-    predicted: predicted,
-    period: 'yearly'
-  };
-});
+    // Yearly Data
+    const yearlyData = allYearlySalesDataUnfiltered.map((d, i, arr) => {
+      const predicted = calculatePrediction(
+        allYearlySalesDataUnfiltered.map((item) => ({
+          saleValue: item.saleValue,
+        })),
+        i,
+        "yearly",
+      );
+      return {
+        ...d,
+        name: d.name,
+        orderValue: d.orderValue,
+        saleValue: d.saleValue,
+        balanceValue: d.orderValue - d.saleValue,
+        deliveryRate: d.orderValue > 0 ? (d.saleValue / d.orderValue) * 100 : 0,
+        predicted: predicted,
+        period: "yearly",
+      };
+    });
 
     // Monthly Data
-const monthlyData = monthlySalesData.map((d, i, arr) => {
-  const predicted = calculatePrediction(monthlySalesData, i, 'monthly');
-  return {
-    ...d,
-    name: d.name,
-    orderValue: d.orderValue,
-    saleValue: d.saleValue,
-    balanceValue: d.balanceValue,
-    deliveryRate: d.deliveryRate || 0,
-    predicted: predicted,
-    period: 'monthly'
-  };
-});
-   // Daily Data
-const dailyData = Array.from(dailyMap.values())
-  .sort((a, b) => a.date.localeCompare(b.date))
-  .map((d, i, arr) => {
-    const dailyArray = Array.from(dailyMap.values()).sort((a, b) => a.date.localeCompare(b.date));
-    const predicted = calculatePrediction(
-      dailyArray.map(item => ({ saleValue: item.saleValue })), 
-      i, 
-      'daily'
-    );
-    return {
-      ...d,
-      name: new Date(d.date).toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-      }),
-      date: new Date(d.date).toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-      }),
-      orderValue: d.orderValue,
-      saleValue: d.saleValue,
-      balanceValue: d.balanceValue,
-      deliveryRate: d.orderQty > 0 ? (d.saleQty / d.orderQty) * 100 : 0,
-      uniqueOrderCount: d.uniqueOrders.size,
-      predicted: predicted,
-      period: 'daily'
-    };
-  });
+    const monthlyData = monthlySalesData.map((d, i, arr) => {
+      const predicted = calculatePrediction(monthlySalesData, i, "monthly");
+      return {
+        ...d,
+        name: d.name,
+        orderValue: d.orderValue,
+        saleValue: d.saleValue,
+        balanceValue: d.balanceValue,
+        deliveryRate: d.deliveryRate || 0,
+        predicted: predicted,
+        period: "monthly",
+      };
+    });
+    // Daily Data
+    const dailyData = Array.from(dailyMap.values())
+      .sort((a, b) => a.date.localeCompare(b.date))
+      .map((d, i, arr) => {
+        const dailyArray = Array.from(dailyMap.values()).sort((a, b) =>
+          a.date.localeCompare(b.date),
+        );
+        const predicted = calculatePrediction(
+          dailyArray.map((item) => ({ saleValue: item.saleValue })),
+          i,
+          "daily",
+        );
+        return {
+          ...d,
+          name: new Date(d.date).toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
+          }),
+          date: new Date(d.date).toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
+          }),
+          orderValue: d.orderValue,
+          saleValue: d.saleValue,
+          balanceValue: d.balanceValue,
+          deliveryRate: d.orderQty > 0 ? (d.saleQty / d.orderQty) * 100 : 0,
+          uniqueOrderCount: d.uniqueOrders.size,
+          predicted: predicted,
+          period: "daily",
+        };
+      });
     // Weekly Data
-const weeklyData = Array.from(weeklyMap.values())
-  .sort((a, b) => a.week.localeCompare(b.week))
-  .map((w, i, arr) => {
-    const weeklyArray = Array.from(weeklyMap.values()).sort((a, b) => a.week.localeCompare(b.week));
-    const predicted = calculatePrediction(
-      weeklyArray.map(item => ({ saleValue: item.saleValue })), 
-      i, 
-      'weekly'
-    );
-    return {
-      ...w,
-      name: w.week,
-      orderValue: w.orderValue,
-      saleValue: w.saleValue,
-      balanceValue: w.orderValue - w.saleValue,
-      deliveryRate: w.orderValue > 0 ? (w.saleValue / w.orderValue) * 100 : 0,
-      predicted: predicted,
-      period: 'weekly',
-      growth: i > 0 && arr[i - 1].orderValue > 0
-        ? ((w.orderValue - arr[i - 1].orderValue) / arr[i - 1].orderValue) * 100
-        : 0,
-      salesGrowth: i > 0 && arr[i - 1].saleValue > 0
-        ? ((w.saleValue - arr[i - 1].saleValue) / arr[i - 1].saleValue) * 100
-        : 0,
-      uniqueOrderCount: w.uniqueOrders.size,
-    };
-  });
+    const weeklyData = Array.from(weeklyMap.values())
+      .sort((a, b) => a.week.localeCompare(b.week))
+      .map((w, i, arr) => {
+        const weeklyArray = Array.from(weeklyMap.values()).sort((a, b) =>
+          a.week.localeCompare(b.week),
+        );
+        const predicted = calculatePrediction(
+          weeklyArray.map((item) => ({ saleValue: item.saleValue })),
+          i,
+          "weekly",
+        );
+        return {
+          ...w,
+          name: w.week,
+          orderValue: w.orderValue,
+          saleValue: w.saleValue,
+          balanceValue: w.orderValue - w.saleValue,
+          deliveryRate:
+            w.orderValue > 0 ? (w.saleValue / w.orderValue) * 100 : 0,
+          predicted: predicted,
+          period: "weekly",
+          growth:
+            i > 0 && arr[i - 1].orderValue > 0
+              ? ((w.orderValue - arr[i - 1].orderValue) /
+                  arr[i - 1].orderValue) *
+                100
+              : 0,
+          salesGrowth:
+            i > 0 && arr[i - 1].saleValue > 0
+              ? ((w.saleValue - arr[i - 1].saleValue) / arr[i - 1].saleValue) *
+                100
+              : 0,
+          uniqueOrderCount: w.uniqueOrders.size,
+        };
+      });
     // NOW calculate performanceMetrics
     const performanceMetrics = {
       avgDailyOrder: Math.round(
@@ -3242,7 +3128,7 @@ const RevenueDistributionPie = ({ data }) => {
 };
 
 // ============================================================
-//  Order vs Sales Comparison Chart 
+//  Order vs Sales Comparison Chart
 // ============================================================
 
 const OrderVsSalesChart = ({ data }) => {
@@ -3257,17 +3143,20 @@ const OrderVsSalesChart = ({ data }) => {
 
   const chartData = data.map((item) => ({
     name: item.channel || item.name || "Unknown",
-    orderValue: typeof item.orderValue === "string"
-      ? parseFloat(item.orderValue.replace(/[$,]/g, "")) || 0
-      : item.orderValue || 0,
-    saleValue: typeof item.revenue === "string"
-      ? parseFloat(item.revenue.replace(/[$,]/g, "")) || 0
-      : item.revenue || 0,
-    saleValueAlt: typeof item.saleValue === "string"
-      ? parseFloat(item.saleValue.replace(/[$,]/g, "")) || 0
-      : item.saleValue || 0,
+    orderValue:
+      typeof item.orderValue === "string"
+        ? parseFloat(item.orderValue.replace(/[$,]/g, "")) || 0
+        : item.orderValue || 0,
+    saleValue:
+      typeof item.revenue === "string"
+        ? parseFloat(item.revenue.replace(/[$,]/g, "")) || 0
+        : item.revenue || 0,
+    saleValueAlt:
+      typeof item.saleValue === "string"
+        ? parseFloat(item.saleValue.replace(/[$,]/g, "")) || 0
+        : item.saleValue || 0,
     predicted: item.predicted || 0,
-    period: item.period || 'monthly'
+    period: item.period || "monthly",
   }));
 
   const finalData = chartData.map((item) => ({
@@ -3277,12 +3166,17 @@ const OrderVsSalesChart = ({ data }) => {
 
   // চার্টে period অনুযায়ী লেবেল দেখান
   const getPeriodLabel = (period) => {
-    switch(period) {
-      case 'daily': return 'Day';
-      case 'weekly': return 'Week';
-      case 'monthly': return 'Month';
-      case 'yearly': return 'Year';
-      default: return 'Period';
+    switch (period) {
+      case "daily":
+        return "Day";
+      case "weekly":
+        return "Week";
+      case "monthly":
+        return "Month";
+      case "yearly":
+        return "Year";
+      default:
+        return "Period";
     }
   };
 
@@ -3314,21 +3208,21 @@ const OrderVsSalesChart = ({ data }) => {
           }}
         />
         <Legend />
-        
+
         <Bar
           dataKey="orderValue"
           fill={COLORS.indigo}
           name="Order Value"
           radius={[4, 4, 0, 0]}
         />
-        
+
         <Bar
           dataKey="saleValue"
           fill={COLORS.emerald}
           name="Sales Revenue"
           radius={[4, 4, 0, 0]}
         />
-        
+
         <Line
           type="monotone"
           dataKey="predicted"
@@ -3346,11 +3240,15 @@ const OrderVsSalesChart = ({ data }) => {
 // ============================================================
 // MAIN HOME COMPONENT
 // ============================================================
+
 function Home() {
   const { cndata, setcndata, loading, contextLoading, apiKey } =
     useContext(GetDataContext);
   const apiData = useMemo(() => cndata?.apiData || [], [cndata]);
 
+  // ============================================================
+  // ALL STATE DECLARATIONS
+  // ============================================================
   const [selectedYear, setSelectedYear] = useState("All");
   const [selectedMonth, setSelectedMonth] = useState("All");
   const [selectedMarketing, setSelectedMarketing] = useState("All");
@@ -3374,7 +3272,353 @@ function Home() {
   const [isFetchingRange, setIsFetchingRange] = useState(false);
   const [rangeFetchProgress, setRangeFetchProgress] = useState(0);
   const [rangeFetchStatus, setRangeFetchStatus] = useState("");
- const fetchDataByDateRange = async (startDate, endDate) => {
+
+  // ============================================================
+  // API CONFIGURATION - INSIDE Home COMPONENT
+  // ============================================================
+const API_ENDPOINTS = {
+  primary: {
+    url: 'https://tpl-api.ebs365.info/api/OrderReport/BI_ORDERGetOrderReleatedInformationReport',
+    commandId: 1,
+  },
+  secondary: {
+    url: 'https://tpl-api.ebs365.info/api/OrderReport/BI_OrderRelatedInformationReport',
+    commandId: 5,
+  }
+};
+  // ============================================================
+  // getCurrentMonthDates - INSIDE Home COMPONENT
+  // ============================================================
+  const getCurrentMonthDates = () => {
+    const now = new Date();
+    const bdNow = new Date(now.getTime() + 6 * 60 * 60 * 1000);
+    const startDate = new Date(bdNow.getFullYear(), bdNow.getMonth(), 1);
+    const endDate = new Date(bdNow.getFullYear(), bdNow.getMonth() + 1, 0);
+    return {
+      startDate,
+      endDate,
+      stDate: startDate.toISOString().split("T")[0],
+      edDate: endDate.toISOString().split("T")[0],
+      month: bdNow.toLocaleString("default", { month: "short" }),
+      year: bdNow.getFullYear(),
+    };
+  };
+
+  // ============================================================
+  // fetchCurrentMonthData - INSIDE Home COMPONENT
+  // ============================================================
+  const fetchCurrentMonthData = async (force = false) => {
+  if (autoLoadRef.current && !force) return;
+  if (
+    !force &&
+    cndata?.apiData &&
+    cndata.apiData.length > 0 &&
+    cndata?._lastFetch
+  ) {
+    const lastFetchTime = new Date(cndata._lastFetch.timestamp);
+    const now = new Date();
+    const hoursSinceLastFetch = (now - lastFetchTime) / (1000 * 60 * 60);
+    if (hoursSinceLastFetch < 1) {
+      setAutoLoadAttempted(true);
+      return;
+    }
+  }
+  if (!apiKey) {
+    setAutoLoadAttempted(true);
+    return;
+  }
+
+  autoLoadRef.current = true;
+  setIsAutoLoading(true);
+  setAutoLoadProgress(0);
+  setAutoLoadStatus("Loading current month data...");
+
+  // ✅ Loading শুরুতে isLoading true
+  setIsLoading(true);
+
+  const source = axios.CancelToken.source();
+  cancelTokenRef.current = source;
+
+  try {
+    const { stDate, edDate, month, year } = getCurrentMonthDates();
+    setAutoLoadProgress(5);
+    setAutoLoadStatus(`Fetching orders for ${month} ${year}...`);
+
+      // 1. FETCH PRIMARY API (CommandID=1)
+      const primaryResponse = await axios.get(
+        `${API_ENDPOINTS.primary.url}?CompanyID=1&ProductCategoryID=0&ProductSubCategoryID=0&MarketingID=0&CustomerID=0&BuyerID=0&StartDate=${stDate}&EndDate=${edDate}&CommandID=${API_ENDPOINTS.primary.commandId}&EmpID=0`,
+        {
+          headers: { Authorization: `${apiKey}` },
+          timeout: 300000,
+          cancelToken: source.token,
+        },
+      );
+
+      const primaryData = primaryResponse.data || [];
+      console.log("📦 Primary API Data Sample:", primaryData[0]);
+
+      // primaryData তে যদি ডেটা থাকে কিন্তু uniqueMap এ না সেট হয়, তাহলে:
+      primaryData.forEach((item) => {
+        console.log("🔍 Processing Order:", item.WorkOrderNo);
+        console.log("   TotalOrderValue:", item.TotalOrderValue);
+        console.log("   MarketingName:", item.MarketingName);
+        console.log("   CName:", item.CName);
+      });
+      setAutoLoadProgress(30);
+
+      if (!Array.isArray(primaryData) || primaryData.length === 0) {
+        toast.warning(`No data found for ${month} ${year}.`);
+        setIsAutoLoading(false);
+        autoLoadRef.current = false;
+        setAutoLoadAttempted(true);
+        return;
+      }
+
+      setAutoLoadProgress(40);
+      setAutoLoadStatus(
+        `Found ${primaryData.length} orders from primary API...`,
+      );
+
+      // 2. FETCH SECONDARY API (CommandID=5)
+      setAutoLoadProgress(50);
+      setAutoLoadStatus("Fetching supporting data from secondary API...");
+
+      let secondaryData = [];
+      try {
+        const secondaryResponse = await axios.get(
+          `${API_ENDPOINTS.secondary.url}?CompanyID=1&ProductCategoryID=0&ProductSubCategoryID=0&MarketingID=0&CustomerID=0&BuyerID=0&JobCardID=0&StartDate=${stDate}&EndDate=${edDate}&CommandID=${API_ENDPOINTS.secondary.commandId}&EmpID=0`,
+          {
+            headers: { Authorization: `${apiKey}` },
+            timeout: 300000,
+            cancelToken: source.token,
+          },
+        );
+        secondaryData = secondaryResponse.data || [];
+      } catch (secondaryErr) {
+        console.warn(
+          "Secondary API fetch failed, using primary data only:",
+          secondaryErr,
+        );
+      }
+
+      setAutoLoadProgress(55);
+      setAutoLoadStatus(
+        `Found ${secondaryData.length} orders from secondary API...`,
+      );
+
+      // 3. MERGE DATA
+      setAutoLoadProgress(60);
+      setAutoLoadStatus("Merging data from both APIs...");
+
+      const primaryMap = new Map();
+      primaryData.forEach((item) => {
+        const orderNo = item.WorkOrderNo || item.workOrderNo || "";
+        if (orderNo) {
+          primaryMap.set(orderNo, {
+            ...item,
+            BreakDownQTY: item.TotalBreakDownQTY || 0,
+            ChallanQTY: item.ChallanQTY || 0,
+            ChallanValue: item.ChallanValue || 0,
+            BalanceQTY: item.BalanceQTY || 0,
+            BalanceValue: item.BalanceValue || 0,
+          });
+        }
+      });
+
+      let mergedCount = 0;
+      secondaryData.forEach((item) => {
+        const orderNo = item.WorkOrderNo || item.workOrderNo || "";
+        if (orderNo) {
+          if (primaryMap.has(orderNo)) {
+            const existing = primaryMap.get(orderNo);
+            if (!existing.ChallanQTY && item.ChallanQTY) {
+              existing.ChallanQTY = item.ChallanQTY || 0;
+            }
+            if (!existing.ChallanValue && item.ChallanValue) {
+              existing.ChallanValue = item.ChallanValue || 0;
+            }
+            if (!existing.BalanceQTY && item.BalanceQTY) {
+              existing.BalanceQTY = item.BalanceQTY || 0;
+            }
+            if (!existing.BalanceValue && item.BalanceValue) {
+              existing.BalanceValue = item.BalanceValue || 0;
+            }
+            mergedCount++;
+          } else {
+            primaryMap.set(orderNo, {
+              ...item,
+              BreakDownQTY: item.TotalBreakDownQTY || 0,
+              ChallanQTY: item.ChallanQTY || 0,
+              ChallanValue: item.ChallanValue || 0,
+              BalanceQTY: item.BalanceQTY || 0,
+              BalanceValue: item.BalanceValue || 0,
+            });
+          }
+        }
+      });
+
+      const mergedData = Array.from(primaryMap.values());
+
+      setAutoLoadProgress(75);
+      setAutoLoadStatus(
+        `Merged ${mergedData.length} unique orders (${mergedCount} enriched from secondary)...`,
+      );
+
+      // 4. FETCH SUPPORTING DATA
+      setAutoLoadProgress(80);
+      setAutoLoadStatus("Fetching supporting data...");
+
+      const apiConfig = {
+        headers: { Authorization: `${apiKey}` },
+        timeout: 90000,
+        cancelToken: source.token,
+      };
+
+      const [challanRes, bblcRes, invoiceRes, piRes, challanReceiveRes] =
+        await Promise.allSettled([
+          axios.get(
+            `https://tpl-api.ebs365.info/api/Challan/GetDeliveryChalanDashboard?CompanyID=1&ProductCategoryID=0&CustomerID=0&MarkettingID=0&StatusID=7&StartDate=${stDate}&EndDate=${edDate}`,
+            apiConfig,
+          ),
+          axios.get(
+            `https://tpl-api.ebs365.info/api/BBLC/GetBBLCDashboard?CustomerID=0&CompanyID=1&StartDate=${stDate}&EndDate=${edDate}`,
+            apiConfig,
+          ),
+          axios.get(
+            `https://tpl-api.ebs365.info/api/CommercialInvoice/GetInvoiceDashboard?CompanyID=1&CustomerID=0&StartDate=${stDate}&EndDate=${edDate}`,
+            apiConfig,
+          ),
+          axios.get(
+            `https://tpl-api.ebs365.info/api/CustomerPI/GetCustomerPIDashboard?CompanyID=1&CustomerID=0&MarketingID=0&StartDate=${stDate}&EndDate=${edDate}`,
+            apiConfig,
+          ),
+          axios.get(
+            `https://tpl-api.ebs365.info/api/Challan/GetDeliveryChalanReceiveDashboard?CompanyID=1&ProductCategoryID=0&CustomerID=0&MarkettingID=0&Status=Receive-Complete&StartDate=${stDate}&EndDate=${edDate}`,
+            apiConfig,
+          ),
+        ]);
+
+      setAutoLoadProgress(90);
+      setAutoLoadStatus("Processing data...");
+
+      const challanData =
+        challanRes.status === "fulfilled" && challanRes.value?.data
+          ? challanRes.value.data
+          : [];
+      const bblcData =
+        bblcRes.status === "fulfilled" && bblcRes.value?.data
+          ? bblcRes.value.data
+          : [];
+      const invoiceData =
+        invoiceRes.status === "fulfilled" && invoiceRes.value?.data
+          ? invoiceRes.value.data
+          : [];
+      const piCompanyData =
+        piRes.status === "fulfilled" && piRes.value?.data
+          ? piRes.value.data
+          : [];
+      const challanReceiveData =
+        challanReceiveRes.status === "fulfilled" &&
+        challanReceiveRes.value?.data
+          ? challanReceiveRes.value.data
+          : [];
+
+      setAutoLoadProgress(95);
+      setAutoLoadStatus("Updating dashboard...");
+
+      setcndata((prevState) => ({
+        ...prevState,
+        apiData: mergedData,
+        groupedData: [],
+        grupChallan: challanData,
+        bblcData: bblcData,
+        invoiceData: invoiceData,
+        piCompanyData: piCompanyData,
+        workOrderIdMap: {},
+        challanReceiveMap: {},
+        rawChallanReceiveData: challanReceiveData,
+        workOrderStatus: "auto-loaded",
+        _lastFetch: {
+          timestamp: new Date().toISOString(),
+          startDate: stDate,
+          endDate: edDate,
+          month: month,
+          year: year,
+          orderCount: mergedData.length,
+          primaryCount: primaryData.length,
+          secondaryCount: secondaryData.length,
+          mergedCount: mergedCount,
+          challanCount: challanData.length,
+          workOrderStatus: "auto-loaded",
+          autoLoaded: true,
+          apiUsed: "merged-primary-secondary",
+        },
+      }));
+setIsLoading(false);
+      setAutoLoadProgress(100);
+    setAutoLoadStatus(
+      `✅ Loaded ${mergedData.length} unique orders (${primaryData.length} primary + ${secondaryData.length} secondary) for ${month} ${year}!`,
+    );
+    setAutoLoadAttempted(true);
+    toast.success(
+      `✅ Loaded ${mergedData.length} unique orders for ${month} ${year}`,
+    );
+
+    // ✅ ✅ ✅ LOADING COMPLETE - isLoading false করি
+    setIsLoading(false);
+
+  } catch (err) {
+    if (axios.isCancel(err)) return;
+    console.error("Date range fetch error:", err);
+    toast.error("Failed to fetch data for the selected date range.");
+    setRangeFetchStatus("❌ Error fetching data");
+    // ✅ Error হলেও isLoading false
+    setIsLoading(false);
+  } finally {
+    setIsFetchingRange(false);
+    setRangeFetchProgress(0);
+    cancelTokenRef.current = null;
+    setTimeout(() => setRangeFetchStatus(""), 3000);
+  }
+};
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  // ============================================================
+// FIXED: fetchDataByDateRange - সঠিক Date Format
+// ============================================================
+const fetchDataByDateRange = async (startDate, endDate) => {
+  setIsLoading(true);
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  
+  // ✅ Local Timezone এ Date সেট করুন
+  const stDate = start.toISOString().split('T')[0]; // "2026-08-26"
+  const edDate = end.toISOString().split('T')[0];   // "2026-08-26"
+
+  console.log("📅 Selected Dates:", { stDate, edDate });
+
   if (!apiKey) {
     toast.error("API key not available");
     return;
@@ -3389,25 +3633,24 @@ function Home() {
   cancelTokenRef.current = source;
 
   try {
-    const stDate = startDate.toISOString().split("T")[0];
-    const edDate = endDate.toISOString().split("T")[0];
-
-    setRangeFetchProgress(5);
+    setRangeFetchProgress(10);
     setRangeFetchStatus(`Fetching orders from ${stDate} to ${edDate}...`);
 
-    if (!stDate || !edDate || stDate === edDate) {
-      toast.warning("Please select valid date range");
+    if (!stDate || !edDate) {
+      toast.warning("Please select a valid date range");
       setIsFetchingRange(false);
       setRangeFetchStatus("");
       return;
     }
 
-    // CommandID=5 থেকে মূল ডেটা আনা
-    setRangeFetchProgress(10);
-    setRangeFetchStatus("Fetching main order data...");
-    
-     const orderReportResponse = await axios.get(
-      `https://tpl-api.ebs365.info/api/OrderReport/BI_OrderRelatedInformationReport?CompanyID=1&ProductCategoryID=0&ProductSubCategoryID=0&MarketingID=0&CustomerID=0&BuyerID=0&JobCardID=0&StartDate=${stDate}&EndDate=${edDate}&CommandID=5&EmpID=0`,
+    // 1. FETCH PRIMARY API (CommandID=1)
+    setRangeFetchProgress(15);
+    setRangeFetchStatus("Fetching primary order data...");
+
+    console.log(`🔍 Calling Primary API: ${stDate} to ${edDate}`);
+
+    const primaryResponse = await axios.get(
+      `${API_ENDPOINTS.primary.url}?CompanyID=1&ProductCategoryID=0&ProductSubCategoryID=0&MarketingID=0&CustomerID=0&BuyerID=0&StartDate=${stDate}&EndDate=${edDate}&CommandID=${API_ENDPOINTS.primary.commandId}&EmpID=0`,
       {
         headers: { Authorization: `${apiKey}` },
         timeout: 300000,
@@ -3415,39 +3658,270 @@ function Home() {
       },
     );
 
-    let orderData = orderReportResponse.data || [];
+    const primaryData = primaryResponse.data || [];
+    console.log("📦 Primary API Data Count:", primaryData.length);
+    console.log("📦 Primary API Sample:", primaryData[0]);
+
     setRangeFetchProgress(30);
 
-    if (!Array.isArray(orderData) || orderData.length === 0) {
-      toast.warning(`No data found for the selected date range.`);
+    if (!Array.isArray(primaryData) || primaryData.length === 0) {
+      toast.warning(`No data found for ${stDate} to ${edDate}.`);
       setIsFetchingRange(false);
       setRangeFetchStatus("");
       return;
     }
 
-    setRangeFetchProgress(35);
-    setRangeFetchStatus(`Found ${orderData.length} orders...`);
-
-    // CommandID=15 থেকে সঠিক তারিখের ডেটা আনা
     setRangeFetchProgress(40);
-    setRangeFetchStatus("Fetching correct order receive dates...");
-    
-    const statusData = await fetchWorkOrderStatusData(apiKey, stDate, edDate);
-    
-    setRangeFetchProgress(50);
-    setRangeFetchStatus(`Found ${statusData.length} date records...`);
+    setRangeFetchStatus(`Found ${primaryData.length} primary orders...`);
 
-    // OrderReceiveDate আপডেট করা
+    // ============================================================
+    // 2. FETCH SECONDARY API (CommandID=5)
+    // ============================================================
+    setRangeFetchProgress(45);
+    setRangeFetchStatus("Fetching secondary order data...");
+
+    console.log(`🔍 Calling Secondary API: ${stDate} to ${edDate}`);
+
+    let secondaryData = [];
+    try {
+      const secondaryResponse = await axios.get(
+        `${API_ENDPOINTS.secondary.url}?CompanyID=1&ProductCategoryID=0&ProductSubCategoryID=0&MarketingID=0&CustomerID=0&BuyerID=0&JobCardID=0&StartDate=${stDate}&EndDate=${edDate}&CommandID=${API_ENDPOINTS.secondary.commandId}&EmpID=0`,
+        {
+          headers: { Authorization: `${apiKey}` },
+          timeout: 300000,
+          cancelToken: source.token,
+        },
+      );
+      secondaryData = secondaryResponse.data || [];
+    } catch (secondaryErr) {
+      console.warn("Secondary API fetch failed:", secondaryErr);
+    }
+
     setRangeFetchProgress(55);
-    setRangeFetchStatus("Updating order receive dates...");
-    
-    const updatedOrderData = updateOrderReceiveDate(orderData, statusData);
-    
-    setRangeFetchProgress(60);
-    setRangeFetchStatus(`Processing ${updatedOrderData.length} records...`);
+    console.log("📦 Secondary API Raw Data Count:", secondaryData.length);
+    console.log("📦 Secondary API Raw Sample:", secondaryData[0]);
 
-    // বাকি supporting ডেটা আনা (challan, bblc, invoice ইত্যাদি)
-    setRangeFetchProgress(65);
+    // ============================================================
+    // 3. SECONDARY DATA SUMMARIZE (Same WorkOrderNo এর Data যোগ)
+    // ============================================================
+    setRangeFetchProgress(60);
+    setRangeFetchStatus("Summarizing secondary data...");
+
+    const secondarySumMap = new Map();
+
+    secondaryData.forEach((item) => {
+      const orderNo = item.WorkOrderNo || item.workOrderNo || "";
+      if (!orderNo) return;
+
+      if (secondarySumMap.has(orderNo)) {
+        const existing = secondarySumMap.get(orderNo);
+        existing.TotalOrderValue += Math.round(
+          parseFloat(item.TotalOrderValue || item.totalOrderValue || 0),
+        );
+        existing.BreakDownQTY += Math.round(
+          parseFloat(item.BreakDownQTY || item.breakDownQTY || 0),
+        );
+        existing.BalanceQTY += Math.round(
+          parseFloat(item.BalanceQTY || item.balanceQTY || 0),
+        );
+        existing.BalanceValue += Math.round(
+          parseFloat(item.BalanceValue || item.balanceValue || 0),
+        );
+        existing.ChallanQTY += Math.round(
+          parseFloat(item.ChallanQTY || item.challanQTY || 0),
+        );
+        existing.ChallanValue += Math.round(
+          parseFloat(item.ChallanValue || item.challanValue || 0),
+        );
+        existing._count += 1;
+      } else {
+        secondarySumMap.set(orderNo, {
+          WorkOrderNo: orderNo,
+          TotalOrderValue: Math.round(
+            parseFloat(item.TotalOrderValue || item.totalOrderValue || 0),
+          ),
+          BreakDownQTY: Math.round(
+            parseFloat(item.BreakDownQTY || item.breakDownQTY || 0),
+          ),
+          BalanceQTY: Math.round(
+            parseFloat(item.BalanceQTY || item.balanceQTY || 0),
+          ),
+          BalanceValue: Math.round(
+            parseFloat(item.BalanceValue || item.balanceValue || 0),
+          ),
+          ChallanQTY: Math.round(
+            parseFloat(item.ChallanQTY || item.challanQTY || 0),
+          ),
+          ChallanValue: Math.round(
+            parseFloat(item.ChallanValue || item.challanValue || 0),
+          ),
+          ProductCategoryName:
+            item.ProductCategoryName || item.productCategoryName || "Uncategorized",
+          ProductSubCategoryName:
+            item.ProductSubCategoryName || item.productSubCategoryName || "",
+          MarketingName: item.MarketingName || item.marketingName || "Unknown",
+          CName: item.CName || item.customerName || "Unknown",
+          BuyerName: item.BuyerName || item.buyerName || "Unknown",
+          BrandName: item.BrandName || item.brandName || "",
+          ItemDescription: item.ItemDescription || item.itemDescription || "",
+          CustomerPONo: item.CustomerPONo || item.customerPONo || "",
+          DeliveryToAddress: item.DeliveryToAddress || item.deliveryToAddress || "",
+          CompanyID: item.CompanyID || item.companyID || 1,
+          ProductCategoryID: item.ProductCategoryID || item.productCategoryID || 0,
+          MarketingID: item.MarketingID || item.marketingID || 0,
+          TeamLeaderID: item.TeamLeaderID || item.teamLeaderID || 0,
+          SequenceNo: item.SequenceNo || item.sequenceNo || 0,
+          SL: item.SL || item.sl || 0,
+          CustomerID: item.CustomerID || item.customerID || 0,
+          Unit: item.Unit || item.unit || "",
+          UnitPrice: Math.round(
+            parseFloat(item.UnitPrice || item.unitPrice || 0) * 100,
+          ) / 100,
+          ChallanDate: item.ChallanDate || item.challanDate || null,
+          ChallanNo: item.ChallanNo || item.challanNo || null,
+          CustomerPINo: item.CustomerPINo || item.customerPINo || "",
+          JobCardNo: item.JobCardNo || item.jobCardNo || "",
+          FName: item.FName || item.fName || "",
+          KeyEntry1: item.KeyEntry1 || "",
+          KeyEntry1Value: item.KeyEntry1Value || "",
+          KeyEntry2: item.KeyEntry2 || "",
+          KeyEntry2Value: item.KeyEntry2Value || "",
+          KeyEntry3: item.KeyEntry3 || "",
+          KeyEntry3Value: item.KeyEntry3Value || "",
+          KeyEntry4: item.KeyEntry4 || "",
+          KeyEntry4Value: item.KeyEntry4Value || "",
+          KeyEntry5: item.KeyEntry5 || "",
+          KeyEntry5Value: item.KeyEntry5Value || "",
+          KeyEntry6: item.KeyEntry6 || "",
+          KeyEntry6Value: item.KeyEntry6Value || "",
+          KeyEntry7: item.KeyEntry7 || "",
+          KeyEntry7Value: item.KeyEntry7Value || "",
+          KeyEntry8: item.KeyEntry8 || "",
+          KeyEntry8Value: item.KeyEntry8Value || "",
+          KeyEntry9: item.KeyEntry9 || "",
+          KeyEntry9Value: item.KeyEntry9Value || "",
+          _source: "secondary",
+          _merged: false,
+          _count: 1,
+        });
+      }
+    });
+
+    const summarizedSecondaryData = Array.from(secondarySumMap.values());
+    console.log("📦 Secondary Summarized Data Count:", summarizedSecondaryData.length);
+
+    // ============================================================
+    // 4. MERGE: Primary থেকে WorkOrderNo+Date, Secondary থেকে Data
+    // ============================================================
+    setRangeFetchProgress(70);
+    setRangeFetchStatus("Merging data...");
+
+    const mergedMap = new Map();
+
+    // Secondary Summarized Data যোগ করি
+    summarizedSecondaryData.forEach((item) => {
+      const orderNo = item.WorkOrderNo;
+      if (orderNo) {
+        mergedMap.set(orderNo, {
+          ...item,
+          OrderReceiveDate: "",
+          _merged: false,
+        });
+      }
+    });
+
+    // Primary থেকে Date যোগ করি
+    let mergedCount = 0;
+    let primaryOnlyCount = 0;
+
+    primaryData.forEach((item) => {
+      const orderNo = item.WorkOrderNo || item.workOrderNo || "";
+      if (!orderNo) return;
+
+      // ✅ ApprovedDate কে OrderReceiveDate হিসেবে ব্যবহার
+      const approvedDate =
+        item.ApprovedDate ||
+        item.approvedDate ||
+        item.OrderReceiveDate ||
+        item.orderReceiveDate ||
+        "";
+
+      if (mergedMap.has(orderNo)) {
+        const existing = mergedMap.get(orderNo);
+        existing.OrderReceiveDate = approvedDate;
+        existing._merged = true;
+        existing._source = "merged";
+        mergedCount++;
+      } else {
+        mergedMap.set(orderNo, {
+          WorkOrderNo: orderNo,
+          OrderReceiveDate: approvedDate,
+          TotalOrderValue: 0,
+          BreakDownQTY: 0,
+          BalanceQTY: 0,
+          BalanceValue: 0,
+          ChallanQTY: 0,
+          ChallanValue: 0,
+          ProductCategoryName: "Uncategorized",
+          ProductSubCategoryName: "",
+          MarketingName: "Unknown",
+          CName: "Unknown",
+          BuyerName: "Unknown",
+          BrandName: "",
+          ItemDescription: "",
+          CustomerPONo: "",
+          DeliveryToAddress: "",
+          CompanyID: 1,
+          ProductCategoryID: 0,
+          MarketingID: 0,
+          TeamLeaderID: 0,
+          SequenceNo: 0,
+          SL: 0,
+          CustomerID: 0,
+          Unit: "",
+          UnitPrice: 0,
+          ChallanDate: null,
+          ChallanNo: null,
+          CustomerPINo: "",
+          JobCardNo: "",
+          FName: "",
+          KeyEntry1: "",
+          KeyEntry1Value: "",
+          KeyEntry2: "",
+          KeyEntry2Value: "",
+          KeyEntry3: "",
+          KeyEntry3Value: "",
+          KeyEntry4: "",
+          KeyEntry4Value: "",
+          KeyEntry5: "",
+          KeyEntry5Value: "",
+          KeyEntry6: "",
+          KeyEntry6Value: "",
+          KeyEntry7: "",
+          KeyEntry7Value: "",
+          KeyEntry8: "",
+          KeyEntry8Value: "",
+          KeyEntry9: "",
+          KeyEntry9Value: "",
+          _source: "primary-only",
+          _merged: false,
+          _count: 0,
+        });
+        primaryOnlyCount++;
+      }
+    });
+
+    const mergedData = Array.from(mergedMap.values());
+
+    setRangeFetchProgress(80);
+    console.log("📦 Merged Data Count:", mergedData.length);
+    console.log("✅ Merged (complete):", mergedCount);
+    console.log("⚠️ Primary Only (date only):", primaryOnlyCount);
+
+    // ============================================================
+    // 5. FETCH SUPPORTING DATA
+    // ============================================================
+    setRangeFetchProgress(85);
     setRangeFetchStatus("Fetching supporting data...");
 
     const apiConfig = {
@@ -3480,8 +3954,8 @@ function Home() {
         ),
       ]);
 
-    setRangeFetchProgress(80);
-    setRangeFetchStatus("Processing supporting data...");
+    setRangeFetchProgress(95);
+    setRangeFetchStatus("Updating dashboard...");
 
     const challanData =
       challanRes.status === "fulfilled" && challanRes.value?.data
@@ -3505,13 +3979,9 @@ function Home() {
         ? challanReceiveRes.value.data
         : [];
 
-    setRangeFetchProgress(90);
-    setRangeFetchStatus("Updating dashboard...");
-
-    // আপডেটেড ডেটা সেট করা
     setcndata((prevState) => ({
       ...prevState,
-      apiData: updatedOrderData,
+      apiData: mergedData,
       groupedData: [],
       grupChallan: challanData,
       bblcData: bblcData,
@@ -3525,24 +3995,30 @@ function Home() {
         timestamp: new Date().toISOString(),
         startDate: stDate,
         endDate: edDate,
-        orderCount: updatedOrderData.length,
+        orderCount: mergedData.length,
+        primaryCount: primaryData.length,
+        secondaryCount: summarizedSecondaryData.length,
+        mergedCount: mergedCount,
+        primaryOnlyCount: primaryOnlyCount,
         challanCount: challanData.length,
         workOrderStatus: "date-range-loaded",
         autoLoaded: false,
         dateRange: true,
+        apiUsed: "merged-primary-secondary",
       },
     }));
 
     setRangeFetchProgress(100);
     setRangeFetchStatus(
-      `✅ Loaded ${updatedOrderData.length} orders with corrected dates!`,
+      `✅ Loaded ${mergedData.length} unique orders from ${stDate} to ${edDate}!`,
     );
     toast.success(
-      `✅ Loaded ${updatedOrderData.length} orders from ${stDate} to ${edDate}`,
+      `✅ Loaded ${mergedData.length} unique orders from ${stDate} to ${edDate}`,
     );
 
     setSelectedYear("All");
     setSelectedMonth("All");
+
   } catch (err) {
     if (axios.isCancel(err)) return;
     console.error("Date range fetch error:", err);
@@ -3555,6 +4031,10 @@ function Home() {
     setTimeout(() => setRangeFetchStatus(""), 3000);
   }
 };
+
+  // ============================================================
+  // 6. useMemo - data
+  // ============================================================
   const data = useComprehensiveData(
     apiData,
     selectedYear,
@@ -3563,6 +4043,9 @@ function Home() {
     viewMode,
   );
 
+  // ============================================================
+  // 7. marketingNames useMemo
+  // ============================================================
   const marketingNames = useMemo(() => {
     if (!apiData || !Array.isArray(apiData)) return ["All"];
     const names = new Set(
@@ -3571,76 +4054,75 @@ function Home() {
     return ["All", ...Array.from(names)];
   }, [apiData]);
 
-  // In the Home component
-const getChartData = () => {
-  switch (viewMode) {
-    case "yearly":
-      return data.yearlyData || [];
-    case "daily":
-      return data.dailyData || [];
-    case "weekly":
-      return data.weeklyData || [];
-    case "monthly":
-    default:
-      if (data.monthlyData && data.monthlyData.length > 0) {
-        const monthOrder = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-        return [...data.monthlyData].sort((a, b) => {
-          const monthA = a.name || a.month || "";
-          const monthB = b.name || b.month || "";
-          const yearA = a.year || 0;
-          const yearB = b.year || 0;
-          
-          if (yearA !== yearB) return yearA - yearB;
-          return monthOrder.indexOf(monthA) - monthOrder.indexOf(monthB);
-        });
-      }
-      return data.monthlyData || [];
-  }
-};
-  const chartData = getChartData();
+  // ============================================================
+  // 8. getChartData, getGrowthData, getGrowthLabel
+  // ============================================================
+  const getChartData = () => {
+    switch (viewMode) {
+      case "yearly":
+        return data.yearlyData || [];
+      case "daily":
+        return data.dailyData || [];
+      case "weekly":
+        return data.weeklyData || [];
+      case "monthly":
+      default:
+        if (data.monthlyData && data.monthlyData.length > 0) {
+          const monthOrder = [
+            "Jan",
+            "Feb",
+            "Mar",
+            "Apr",
+            "May",
+            "Jun",
+            "Jul",
+            "Aug",
+            "Sep",
+            "Oct",
+            "Nov",
+            "Dec",
+          ];
+          return [...data.monthlyData].sort((a, b) => {
+            const monthA = a.name || a.month || "";
+            const monthB = b.name || b.month || "";
+            const yearA = a.year || 0;
+            const yearB = b.year || 0;
 
-  // Inside Home component, replace the growthChartData section:
-  // Smart growth data selection
+            if (yearA !== yearB) return yearA - yearB;
+            return monthOrder.indexOf(monthA) - monthOrder.indexOf(monthB);
+          });
+        }
+        return data.monthlyData || [];
+    }
+  };
+
   const getGrowthData = () => {
-    // Weekly view
     if (viewMode === "weekly") {
       if (data.allWeeklyGrowthData && data.allWeeklyGrowthData.length >= 2) {
         return data.allWeeklyGrowthData;
       }
       return [];
     }
-
-    // Daily view
     if (viewMode === "daily") {
       if (data.allDailyGrowthData && data.allDailyGrowthData.length >= 2) {
         return data.allDailyGrowthData;
       }
       return [];
     }
-
-    // Yearly view
     if (viewMode === "yearly") {
       if (data.allYearlyGrowthData && data.allYearlyGrowthData.length >= 2) {
         return data.allYearlyGrowthData;
       }
       return [];
     }
-
-    // Monthly view (default)
     if (data.allGrowthData && data.allGrowthData.length >= 2) {
       return data.allGrowthData;
     }
-
-    // Fallback to filtered growth data
     if (data.growthData && data.growthData.length >= 2) {
       return data.growthData;
     }
-
     return [];
   };
-
-  const growthChartData = getGrowthData();
-  const hasEnoughData = growthChartData.length >= 2;
 
   const getGrowthLabel = () => {
     if (viewMode === "yearly") return "Year-over-year";
@@ -3649,289 +4131,56 @@ const getChartData = () => {
     return "Month-over-month";
   };
 
-  // In Home component, right after data is computed:
-  // console.log("=== GROWTH DATA DEBUG ===");
-  // console.log("View Mode:", viewMode);
-  // console.log("allGrowthData length:", data.allGrowthData?.length);
-  // console.log("growthData length:", data.growthData?.length);
-  // console.log("Chart data length:", growthChartData.length);
-  // console.log("First 3 items:", growthChartData.slice(0, 3));
+  const chartData = getChartData();
+  const growthChartData = getGrowthData();
+  const hasEnoughData = growthChartData.length >= 2;
 
-  // Fallback to filtered data
-  //   if (viewMode === "monthly" && data.growthData && data.growthData.length >= 2) {
-  //     return data.growthData;
-  //   } else if (viewMode === "weekly" && data.weeklyGrowthData && data.weeklyGrowthData.length >= 2) {
-  //     return data.weeklyGrowthData;
-  //   } else if (data.dailyGrowthData && data.dailyGrowthData.length >= 3) {
-  //     return data.dailyGrowthData;
-  //   }
-  //   return [];
-  // };
+ // ============================================================
+// 9. ALL useEffect
+// ============================================================
+useEffect(() => {
+  const timer = setTimeout(() => setIsLoading(false), 800);
+  return () => clearTimeout(timer);
+}, []);
 
-  // const growthChartData =
-  //   (viewMode === "weekly" && data.allWeeklyGrowthData) ||
-  //   (viewMode === "daily" && data.allDailyGrowthData) ||
-  //   data.allGrowthData ||
-  //   data.growthData ||
-  //   [];
-  // const hasEnoughData = growthChartData.length >= 2;
-
-const getCurrentMonthDates = () => {
-  const now = new Date();
-  const bdNow = new Date(now.getTime() + 6 * 60 * 60 * 1000);
-  
-  const year = bdNow.getFullYear();
-  const month = bdNow.getMonth();
-  
-
-  const firstDay = new Date(year, month, 1);
-
-  const lastDay = new Date(year, month + 1, 0);
-  
- 
-  const stDate = `${year}-${String(month + 1).padStart(2, '0')}-01`;
-  const edDate = `${year}-${String(month + 1).padStart(2, '0')}-${String(lastDay.getDate()).padStart(2, '0')}`;
-  
-  return {
-    startDate: firstDay,
-    endDate: lastDay,
-    stDate, 
-    edDate, 
-    month: bdNow.toLocaleString('default', { month: 'short' }),
-    year: year,
-  };
-};
-
-const fetchCurrentMonthData = async (force = false) => {
-  if (autoLoadRef.current && !force) return;
-  if (
-    !force &&
-    cndata?.apiData &&
-    cndata.apiData.length > 0 &&
-    cndata?._lastFetch
-  ) {
-    const lastFetchTime = new Date(cndata._lastFetch.timestamp);
-    const now = new Date();
-    const hoursSinceLastFetch = (now - lastFetchTime) / (1000 * 60 * 60);
-    if (hoursSinceLastFetch < 1) {
-      setAutoLoadAttempted(true);
-      return;
-    }
+// ✅ নতুন useEffect - ডেটা লোড হওয়ার পর isLoading false করবে
+useEffect(() => {
+  if (apiData && apiData.length > 0) {
+    setIsLoading(false);
   }
-  if (!apiKey) {
-    setAutoLoadAttempted(true);
-    return;
-  }
+}, [apiData]);
 
-  autoLoadRef.current = true;
-  setIsAutoLoading(true);
-  setAutoLoadProgress(0);
-  setAutoLoadStatus("Loading current month data...");
-
-  const source = axios.CancelToken.source();
-  cancelTokenRef.current = source;
-
-  try {
-    const { stDate, edDate, month, year } = getCurrentMonthDates();
-    setAutoLoadProgress(5);
-    setAutoLoadStatus(`Fetching orders for ${month} ${year}...`);
-
-    // CommandID=5 থেকে মূল ডেটা আনা
-    const orderReportResponse = await axios.get(
-      `https://tpl-api.ebs365.info/api/OrderReport/BI_OrderRelatedInformationReport?CompanyID=1&ProductCategoryID=0&ProductSubCategoryID=0&MarketingID=0&CustomerID=0&BuyerID=0&JobCardID=0&StartDate=${stDate}&EndDate=${edDate}&CommandID=5&EmpID=0`,
-      {
-        headers: { Authorization: `${apiKey}` },
-        timeout: 300000,
-        cancelToken: source.token,
-      },
-    );
-
-    let orderData = orderReportResponse.data || [];
-    setAutoLoadProgress(30);
-
-    if (!Array.isArray(orderData) || orderData.length === 0) {
-      toast.warning(`No data found for ${month} ${year}.`);
-      setIsAutoLoading(false);
-      autoLoadRef.current = false;
-      setAutoLoadAttempted(true);
-      return;
-    }
-
-    setAutoLoadProgress(35);
-    setAutoLoadStatus(`Found ${orderData.length} orders...`);
-
-    // CommandID=15 থেকে সঠিক তারিখের ডেটা আনা
-    setAutoLoadProgress(40);
-    setAutoLoadStatus("Fetching correct order receive dates...");
-    
-    const statusData = await fetchWorkOrderStatusData(apiKey, stDate, edDate);
-    
-    setAutoLoadProgress(45);
-    setAutoLoadStatus(`Found ${statusData.length} date records...`);
-
-    // OrderReceiveDate আপডেট করা
-    setAutoLoadProgress(50);
-    setAutoLoadStatus("Updating order receive dates...");
-    
-    const updatedOrderData = updateOrderReceiveDate(orderData, statusData);
-    
-    setAutoLoadProgress(55);
-    setAutoLoadStatus(`Processing ${updatedOrderData.length} records...`);
-
-    setAutoLoadProgress(60);
-    setAutoLoadStatus("Fetching supporting data...");
-
-    const apiConfig = {
-      headers: { Authorization: `${apiKey}` },
-      timeout: 90000,
-      cancelToken: source.token,
-    };
-
-    const [challanRes, bblcRes, invoiceRes, piRes, challanReceiveRes] =
-      await Promise.allSettled([
-        axios.get(
-          `https://tpl-api.ebs365.info/api/Challan/GetDeliveryChalanDashboard?CompanyID=1&ProductCategoryID=0&CustomerID=0&MarkettingID=0&StatusID=7&StartDate=${stDate}&EndDate=${edDate}`,
-          apiConfig,
-        ),
-        axios.get(
-          `https://tpl-api.ebs365.info/api/BBLC/GetBBLCDashboard?CustomerID=0&CompanyID=1&StartDate=${stDate}&EndDate=${edDate}`,
-          apiConfig,
-        ),
-        axios.get(
-          `https://tpl-api.ebs365.info/api/CommercialInvoice/GetInvoiceDashboard?CompanyID=1&CustomerID=0&StartDate=${stDate}&EndDate=${edDate}`,
-          apiConfig,
-        ),
-        axios.get(
-          `https://tpl-api.ebs365.info/api/CustomerPI/GetCustomerPIDashboard?CompanyID=1&CustomerID=0&MarketingID=0&StartDate=${stDate}&EndDate=${edDate}`,
-          apiConfig,
-        ),
-        axios.get(
-          `https://tpl-api.ebs365.info/api/Challan/GetDeliveryChalanReceiveDashboard?CompanyID=1&ProductCategoryID=0&CustomerID=0&MarkettingID=0&Status=Receive-Complete&StartDate=${stDate}&EndDate=${edDate}`,
-          apiConfig,
-        ),
-      ]);
-
-    setAutoLoadProgress(75);
-    setAutoLoadStatus("Processing supporting data...");
-
-    const challanData =
-      challanRes.status === "fulfilled" && challanRes.value?.data
-        ? challanRes.value.data
-        : [];
-    const bblcData =
-      bblcRes.status === "fulfilled" && bblcRes.value?.data
-        ? bblcRes.value.data
-        : [];
-    const invoiceData =
-      invoiceRes.status === "fulfilled" && invoiceRes.value?.data
-        ? invoiceRes.value.data
-        : [];
-    const piCompanyData =
-      piRes.status === "fulfilled" && piRes.value?.data
-        ? piRes.value.data
-        : [];
-    const challanReceiveData =
-      challanReceiveRes.status === "fulfilled" &&
-      challanReceiveRes.value?.data
-        ? challanReceiveRes.value.data
-        : [];
-
-    setAutoLoadProgress(90);
-    setAutoLoadStatus("Updating dashboard...");
-
-    setcndata((prevState) => ({
-      ...prevState,
-      apiData: updatedOrderData, // আপডেটেড ডেটা
-      groupedData: [],
-      grupChallan: challanData,
-      bblcData: bblcData,
-      invoiceData: invoiceData,
-      piCompanyData: piCompanyData,
-      workOrderIdMap: {},
-      challanReceiveMap: {},
-      rawChallanReceiveData: challanReceiveData,
-      workOrderStatus: "auto-loaded",
-      _lastFetch: {
-        timestamp: new Date().toISOString(),
-        startDate: stDate,
-        endDate: edDate,
-        month: month,
-        year: year,
-        orderCount: updatedOrderData.length,
-        challanCount: challanData.length,
-        workOrderStatus: "auto-loaded",
-        autoLoaded: true,
-      },
-    }));
-
-    setAutoLoadProgress(100);
-    setAutoLoadStatus(
-      `✅ Loaded ${updatedOrderData.length} orders with corrected dates for ${month} ${year}!`,
-    );
-    setAutoLoadAttempted(true);
-    toast.success(
-      `✅ Auto-loaded ${updatedOrderData.length} orders for ${month} ${year}`,
-    );
-  } catch (err) {
-    if (axios.isCancel(err)) return;
-    console.error("Auto-load error:", err);
-    toast.error("Failed to auto-load data.");
-    setAutoLoadAttempted(true);
-  } finally {
-    setIsAutoLoading(false);
-    setAutoLoadProgress(0);
-    autoLoadRef.current = false;
-    cancelTokenRef.current = null;
-  }
-};
-
-  useEffect(() => {
-    const timer = setTimeout(() => setIsLoading(false), 800);
-    return () => clearTimeout(timer);
-  }, []);
-//   useEffect(() => {
-//   console.log('📊 monthlyData with predicted:', data.monthlyData);
-//   console.log('📊 chartData:', chartData);
-//   console.log('📊 Predicted values:', data.monthlyData?.map(d => ({
-//     month: d.name,
-//     saleValue: d.saleValue,
-//     predicted: d.predicted,
-//     diff: d.predicted - d.saleValue
-//   })));
-// }, [data.monthlyData, chartData]);
-
-  useEffect(() => {
-    const shouldAutoLoad = () => {
-      if (autoLoadAttempted || !apiKey || autoLoadRef.current) return false;
-      if (cndata?.apiData && cndata.apiData.length > 0 && cndata?._lastFetch) {
-        const hoursSinceLastFetch =
-          (new Date() - new Date(cndata._lastFetch.timestamp)) /
-          (1000 * 60 * 60);
-        if (hoursSinceLastFetch < 1) {
-          setAutoLoadAttempted(true);
-          return false;
-        }
+useEffect(() => {
+  const shouldAutoLoad = () => {
+    if (autoLoadAttempted || !apiKey || autoLoadRef.current) return false;
+    if (cndata?.apiData && cndata.apiData.length > 0 && cndata?._lastFetch) {
+      const hoursSinceLastFetch =
+        (new Date() - new Date(cndata._lastFetch.timestamp)) /
+        (1000 * 60 * 60);
+      if (hoursSinceLastFetch < 1) {
+        setAutoLoadAttempted(true);
+        return false;
       }
-      return true;
-    };
-
-    if (shouldAutoLoad()) {
-      setTimeout(() => fetchCurrentMonthData(false), 1000);
     }
-  }, [apiKey, cndata, autoLoadAttempted]);
-  // Home component's useEffect for growth data logging
-  useEffect(() => {
-    // console.log("=== 📊 AFTER FIX - GROWTH DATA ===");
-    // console.log("allGrowthData:", data.allGrowthData);
+    return true;
+  };
 
+  if (shouldAutoLoad()) {
+    setTimeout(() => fetchCurrentMonthData(false), 1000);
+  }
+}, [apiKey, cndata, autoLoadAttempted]);
+  // growth data logging useEffect
+  useEffect(() => {
     if (data.allGrowthData && data.allGrowthData.length > 0) {
       data.allGrowthData.forEach((item) => {
-        // console.log(
-        //   `${item.month}: Order Growth ${item.orderGrowth}%, Sales Growth ${item.salesGrowth}%`,
-        // );
+        // console.log(`${item.month}: Order Growth ${item.orderGrowth}%, Sales Growth ${item.salesGrowth}%`);
       });
     }
   }, [data.allGrowthData]);
+
+  // ============================================================
+  // 10. ALL HANDLER FUNCTIONS
+  // ============================================================
   const handleRefresh = () => {
     setIsRefreshing(true);
     toast.info("Refreshing dashboard data...");
@@ -3942,43 +4191,40 @@ const fetchCurrentMonthData = async (force = false) => {
     toast.info("Exporting dashboard data...");
     setTimeout(() => toast.success("Data exported successfully!"), 1000);
   };
+
   const handleDateRangeSubmit = (e) => {
-    // Prevent any event bubbling
-    if (e) {
-      e.preventDefault();
-      e.stopPropagation();
-    }
+  if (e) {
+    e.preventDefault();
+    e.stopPropagation();
+  }
 
-    // Check if dates are selected
-    if (dateRange.startDate && dateRange.endDate) {
-      const diffTime = Math.abs(dateRange.endDate - dateRange.startDate);
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      // if (diffDays > 365) {
-      //   toast.warning(
-      //     "Date range exceeds 365 days. Please select a smaller range.",
-      //   );
-      //   return;
-      // }
-      // Close the date picker first
-      setShowDatePicker(false);
-      // Small delay to ensure the popup closes before fetching
-      setTimeout(() => {
-        fetchDataByDateRange(dateRange.startDate, dateRange.endDate);
-      }, 150);
-    } else {
-      toast.warning("Please select both start and end dates.");
-    }
-  };
-
-  // Add this quick date range preset handler
+  if (dateRange.startDate && dateRange.endDate) {
+    setShowDatePicker(false);
+    
+    // ✅ লোকাল ডেট তৈরি করুন
+    const start = new Date(dateRange.startDate);
+    const end = new Date(dateRange.endDate);
+    
+    // ✅ দিনের শুরু এবং শেষ সেট করুন
+    start.setHours(0, 0, 0, 0);
+    end.setHours(0, 0, 0, 0);
+    
+    // ✅ dayjs ব্যবহার না করে সরাসরি তারিখ পাঠান
+    setTimeout(() => {
+      fetchDataByDateRange(start, end);
+    }, 150);
+  } else {
+    toast.warning("Please select both start and end dates.");
+  }
+};
   const handleQuickRange = (days) => {
     const endDate = new Date();
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
     setDateRange({ startDate, endDate });
-    // Auto-fetch after setting
     setTimeout(() => fetchDataByDateRange(startDate, endDate), 300);
   };
+
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
       document.documentElement.requestFullscreen();
@@ -3989,6 +4235,9 @@ const fetchCurrentMonthData = async (force = false) => {
     }
   };
 
+  // ============================================================
+  // 11. ALL useMemo (years, months, kpiConfig)
+  // ============================================================
   const years = useMemo(() => {
     if (!apiData || apiData.length === 0) return ["All"];
     const uniqueYears = Array.from(
@@ -4040,6 +4289,177 @@ const fetchCurrentMonthData = async (force = false) => {
     );
     return ["All", ...sortedMonths];
   }, [apiData, selectedYear]);
+
+  // ============================================================
+  // FIXED: UNIQUE DATA ARRAY GENERATOR
+  // ============================================================
+const generateUniqueDataArray = (apiData) => {
+  if (!apiData || !Array.isArray(apiData) || apiData.length === 0) {
+    return [];
+  }
+
+  const uniqueMap = new Map();
+
+  apiData.forEach((item) => {
+    const orderNo = item.WorkOrderNo || item.workOrderNo || '';
+    if (!orderNo) return;
+
+    if (!uniqueMap.has(orderNo)) {
+      uniqueMap.set(orderNo, {
+        WorkOrderNo: orderNo,
+        OrderReceiveDate: item.OrderReceiveDate || item.orderReceiveDate || '',
+        // 🔥 সব Value ROUND করে নিচ্ছি
+        TotalOrderValue: Math.round(parseFloat(item.TotalOrderValue || item.totalOrderValue || 0)),
+        TotalBreakDownQTY: Math.round(parseFloat(item.TotalBreakDownQTY || item.totalBreakDownQTY || 0)),
+        ProductCategoryName: item.ProductCategoryName || item.productCategoryName || 'Uncategorized',
+        ProductCategoryID: item.ProductCategoryID || item.productCategoryID || 0,
+        ProductSubCategoryName: item.ProductSubCategoryName || item.productSubCategoryName || '',
+        MarketingName: item.MarketingName || item.marketingName || 'Unknown',
+        MarketingID: item.MarketingID || item.marketingID || 0,
+        TeamLeaderID: item.TeamLeaderID || item.teamLeaderID || 0,
+        CName: item.CName || item.customerName || 'Unknown',
+        CustomerID: item.CustomerID || item.customerID || 0,
+        BuyerName: item.BuyerName || item.buyerName || 'Unknown',
+        BrandName: item.BrandName || item.brandName || '',
+        ItemDescription: item.ItemDescription || item.itemDescription || '',
+        CustomerPONo: item.CustomerPONo || item.customerPONo || '',
+        DeliveryToAddress: item.DeliveryToAddress || item.deliveryToAddress || '',
+        CompanyID: item.CompanyID || item.companyID || 1,
+        SequenceNo: item.SequenceNo || item.sequenceNo || 0,
+        SL: item.SL || item.sl || 0,
+        // 🔥 Challan Data ROUND
+        ChallanQTY: Math.round(parseFloat(item.ChallanQTY || item.challanQTY || 0)),
+        ChallanValue: Math.round(parseFloat(item.ChallanValue || item.challanValue || 0)),
+        BalanceQTY: Math.round(parseFloat(item.BalanceQTY || item.balanceQTY || 0)),
+        BalanceValue: Math.round(parseFloat(item.BalanceValue || item.balanceValue || 0)),
+        // Calculated fields
+        DeliveryRate: 0,
+        OrderValueUSD: 0,
+        SaleValueUSD: 0,
+        _source: 'primary',
+        _merged: false,
+        _hasChallanData: false,
+      });
+    } else {
+      const existing = uniqueMap.get(orderNo);
+      
+      // 🔥 Merge করার সময়ও ROUND
+      if (item.ChallanQTY || item.challanQTY) {
+        existing.ChallanQTY += Math.round(parseFloat(item.ChallanQTY || item.challanQTY || 0));
+        existing._merged = true;
+        existing._source = 'merged';
+        existing._hasChallanData = true;
+      }
+      if (item.ChallanValue || item.challanValue) {
+        existing.ChallanValue += Math.round(parseFloat(item.ChallanValue || item.challanValue || 0));
+        existing._merged = true;
+        existing._source = 'merged';
+        existing._hasChallanData = true;
+      }
+      if (item.BalanceQTY || item.balanceQTY) {
+        existing.BalanceQTY += Math.round(parseFloat(item.BalanceQTY || item.balanceQTY || 0));
+        existing._merged = true;
+        existing._source = 'merged';
+        existing._hasChallanData = true;
+      }
+      if (item.BalanceValue || item.balanceValue) {
+        existing.BalanceValue += Math.round(parseFloat(item.BalanceValue || item.balanceValue || 0));
+        existing._merged = true;
+        existing._source = 'merged';
+        existing._hasChallanData = true;
+      }
+      
+      // অন্যান্য ফিল্ড পূরণ
+      if (!existing.MarketingName || existing.MarketingName === 'Unknown') {
+        existing.MarketingName = item.MarketingName || item.marketingName || existing.MarketingName;
+      }
+      if (!existing.CName || existing.CName === 'Unknown') {
+        existing.CName = item.CName || item.customerName || existing.CName;
+      }
+      if (!existing.ProductCategoryName || existing.ProductCategoryName === 'Uncategorized') {
+        existing.ProductCategoryName = item.ProductCategoryName || item.productCategoryName || existing.ProductCategoryName;
+      }
+    }
+  });
+
+  const uniqueArray = Array.from(uniqueMap.values());
+
+  uniqueArray.forEach((item) => {
+    item.DeliveryRate = item.TotalBreakDownQTY > 0 
+      ? (item.ChallanQTY / item.TotalBreakDownQTY) * 100 
+      : 0;
+    item.OrderValueUSD = Math.round(item.TotalOrderValue);
+    item.SaleValueUSD = Math.round(item.ChallanValue);
+  });
+
+  return uniqueArray;
+};
+
+  // Home কম্পোনেন্টে যোগ করুন
+  const uniqueData = useMemo(() => {
+    const data = generateUniqueDataArray(apiData);
+
+    // 🔍 ডেটা চেক করুন
+    console.log("📊 Total Unique Orders:", data.length);
+    console.log("📋 Sample Order:", data[0]);
+
+    // 🔍 কোন ফিল্ড খালি আছে চেক করুন
+    const emptyFields = data.filter(
+      (item) =>
+        item.TotalOrderValue === 0 ||
+        item.MarketingName === "Unknown" ||
+        item.CName === "Unknown",
+    );
+    console.log("⚠️ Orders with missing data:", emptyFields.length);
+
+    // 🔍 Marketing Names দেখুন
+    const marketingNames = new Set(data.map((item) => item.MarketingName));
+    console.log("👤 Marketing Names:", Array.from(marketingNames));
+
+    // 🔍 Categories দেখুন
+    const categories = new Set(data.map((item) => item.ProductCategoryName));
+    console.log("📂 Categories:", Array.from(categories));
+
+    return data;
+  }, [apiData]);
+
+  // Console এ দেখুন
+  console.log("✅ Unique Data Array:", uniqueData);
+  console.log("📊 Total Unique Orders:", uniqueData.length);
+
+  // ============================================================
+  // SORTED UNIQUE DATA (By OrderReceiveDate)
+  // ============================================================
+  const sortedUniqueData = [...uniqueData].sort((a, b) => {
+    const dateA = new Date(a.OrderReceiveDate);
+    const dateB = new Date(b.OrderReceiveDate);
+    return dateA - dateB; // Ascending
+  });
+
+  console.log("📅 Sorted by Date:", sortedUniqueData);
+
+  // ============================================================
+  // FILTERED UNIQUE DATA (By Marketing Name)
+  // ============================================================
+  const filteredByMarketing = uniqueData.filter(
+    (item) => item.MarketingName === "Md Shahab Uddin Shuzon",
+  );
+
+  console.log("👤 Shahab's Orders:", filteredByMarketing.length);
+
+  // ============================================================
+  // GROUP BY CATEGORY
+  // ============================================================
+  const groupByCategory = uniqueData.reduce((acc, item) => {
+    const category = item.ProductCategoryName || "Uncategorized";
+    if (!acc[category]) {
+      acc[category] = [];
+    }
+    acc[category].push(item);
+    return acc;
+  }, {});
+
+  console.log("📂 Group by Category:", Object.keys(groupByCategory));
 
   // KPI Config
   const kpiConfig = [
@@ -4750,27 +5170,15 @@ const fetchCurrentMonthData = async (force = false) => {
                   </div>
 
                   <div className="text-xs text-slate-400 flex items-center gap-2">
-                   <span>
-  {apiData.length} records
-  {isDataMerged(apiData) && (
-    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-purple-50 text-purple-600 rounded-full text-[10px] font-medium border border-purple-200 ml-1">
-      <FaCircle className="w-1.5 h-1.5 text-purple-400" />
-      Merged
-    </span>
-  )}
-</span>
+                    <span>{apiData.length} records</span>
+                    {cndata?._lastFetch?.autoLoaded && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-50 text-emerald-600 rounded-full text-[10px] font-medium border border-emerald-200">
+                        <FaCircle className="w-1.5 h-1.5 text-emerald-400" />
+                        {cndata._lastFetch.month} {cndata._lastFetch.year}
+                      </span>
+                    )}
                   </div>
                 </div>
-                {isDataMerged(apiData) && (
-  <div className="mt-2 px-4 py-2 bg-purple-50 rounded-xl border border-purple-200 text-xs text-purple-700 flex items-center gap-2 flex-wrap">
-    <FaCircle className="w-2 h-2 text-purple-500" />
-    <span>Data merged with CommandID=15 (Work Order Status)</span>
-    <span className="text-purple-400">|</span>
-    <span className="text-purple-600">
-      {apiData.filter(item => item._statusSource === "merged").length} orders updated
-    </span>
-  </div>
-)}
               </div>
             </motion.div>
           )}
@@ -6013,127 +6421,141 @@ const fetchCurrentMonthData = async (force = false) => {
                   </div>
 
                   {/* Order vs Sales Comparison Chart - FIXED with Predicted */}
-<div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-slate-200/60 p-4 md:p-6">
-  <div className="flex items-center justify-between mb-4">
-    <div>
-      <h3 className="text-base font-semibold text-slate-800">
-        Order vs Sales Comparison
-      </h3>
-      <p className="text-xs text-slate-400">
-        {viewMode === "yearly" ? "Year-over-year" :
-         viewMode === "daily" ? "Day-by-day" :
-         viewMode === "weekly" ? "Week-by-week" :
-         "Month-over-month"} comparison with predictions
-      </p>
-    </div>
-    <div className="flex items-center gap-4 text-xs">
-      <span className="flex items-center gap-1">
-        <span className="w-3 h-0.5 bg-emerald-500"></span>
-        Actual Sales
-      </span>
-      <span className="flex items-center gap-1">
-        <span className="w-3 h-0.5 bg-indigo-500 border-t-2 border-dashed"></span>
-        Predicted Sales
-      </span>
-    </div>
-  </div>
+                  <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-slate-200/60 p-4 md:p-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <div>
+                        <h3 className="text-base font-semibold text-slate-800">
+                          Order vs Sales Comparison
+                        </h3>
+                        <p className="text-xs text-slate-400">
+                          {viewMode === "yearly"
+                            ? "Year-over-year"
+                            : viewMode === "daily"
+                              ? "Day-by-day"
+                              : viewMode === "weekly"
+                                ? "Week-by-week"
+                                : "Month-over-month"}{" "}
+                          comparison with predictions
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-4 text-xs">
+                        <span className="flex items-center gap-1">
+                          <span className="w-3 h-0.5 bg-emerald-500"></span>
+                          Actual Sales
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <span className="w-3 h-0.5 bg-indigo-500 border-t-2 border-dashed"></span>
+                          Predicted Sales
+                        </span>
+                      </div>
+                    </div>
 
-  {chartData && chartData.length > 0 ? (
-    <ResponsiveContainer width="100%" height={300}>
-      <ComposedChart
-        data={chartData}
-        margin={{ top: 10, right: 20, left: 10, bottom: 20 }}
-      >
-        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-        <XAxis
-          dataKey="name"
-          tick={{ fontSize: 10, fill: "#64748B" }}
-          tickLine={false}
-          axisLine={{ stroke: "#E2E8F0" }}
-        />
-        <YAxis
-          tick={{ fontSize: 10, fill: "#64748B" }}
-          tickLine={false}
-          axisLine={{ stroke: "#E2E8F0" }}
-          tickFormatter={(v) => formatCompactCurrency(v)}
-          domain={["auto", "auto"]}
-        />
-        <Tooltip
-          formatter={(v, name) => [formatCurrency(v), name]}
-          contentStyle={{
-            backgroundColor: "white",
-            border: "1px solid #e2e8f0",
-            borderRadius: "10px",
-            padding: "8px 12px",
-            boxShadow: "0 4px 6px -1px rgba(0,0,0,0.1)",
-          }}
-        />
-        <Legend
-          wrapperStyle={{ fontSize: "10px", paddingTop: "8px" }}
-          iconType="circle"
-        />
+                    {chartData && chartData.length > 0 ? (
+                      <ResponsiveContainer width="100%" height={300}>
+                        <ComposedChart
+                          data={chartData}
+                          margin={{ top: 10, right: 20, left: 10, bottom: 20 }}
+                        >
+                          <CartesianGrid
+                            strokeDasharray="3 3"
+                            stroke="#f0f0f0"
+                          />
+                          <XAxis
+                            dataKey="name"
+                            tick={{ fontSize: 10, fill: "#64748B" }}
+                            tickLine={false}
+                            axisLine={{ stroke: "#E2E8F0" }}
+                          />
+                          <YAxis
+                            tick={{ fontSize: 10, fill: "#64748B" }}
+                            tickLine={false}
+                            axisLine={{ stroke: "#E2E8F0" }}
+                            tickFormatter={(v) => formatCompactCurrency(v)}
+                            domain={["auto", "auto"]}
+                          />
+                          <Tooltip
+                            formatter={(v, name) => [formatCurrency(v), name]}
+                            contentStyle={{
+                              backgroundColor: "white",
+                              border: "1px solid #e2e8f0",
+                              borderRadius: "10px",
+                              padding: "8px 12px",
+                              boxShadow: "0 4px 6px -1px rgba(0,0,0,0.1)",
+                            }}
+                          />
+                          <Legend
+                            wrapperStyle={{
+                              fontSize: "10px",
+                              paddingTop: "8px",
+                            }}
+                            iconType="circle"
+                          />
 
-        {/* Actual Sales - Area with line */}
-        <Area
-          type="monotone"
-          dataKey="saleValue"
-          name="Actual Sales"
-          fill="#10B981"
-          fillOpacity={0.15}
-          stroke="#10B981"
-          strokeWidth={2.5}
-          dot={{ fill: "#10B981", r: 4 }}
-          activeDot={{ r: 6 }}
-        />
+                          {/* Actual Sales - Area with line */}
+                          <Area
+                            type="monotone"
+                            dataKey="saleValue"
+                            name="Actual Sales"
+                            fill="#10B981"
+                            fillOpacity={0.15}
+                            stroke="#10B981"
+                            strokeWidth={2.5}
+                            dot={{ fill: "#10B981", r: 4 }}
+                            activeDot={{ r: 6 }}
+                          />
 
-        {/* Order Value - Line */}
-        <Line
-          type="monotone"
-          dataKey="orderValue"
-          name="Order Value"
-          stroke="#4F46E5"
-          strokeWidth={2}
-          dot={{ fill: "#4F46E5", r: 3 }}
-          activeDot={{ r: 5 }}
-        />
+                          {/* Order Value - Line */}
+                          <Line
+                            type="monotone"
+                            dataKey="orderValue"
+                            name="Order Value"
+                            stroke="#4F46E5"
+                            strokeWidth={2}
+                            dot={{ fill: "#4F46E5", r: 3 }}
+                            activeDot={{ r: 5 }}
+                          />
 
-        {/* 🔥 FIXED: Predicted Sales - Uses data from chartData */}
-        <Line
-          type="monotone"
-          dataKey="predicted"
-          name="Predicted Sales"
-          stroke="#8B5CF6"
-          strokeWidth={2}
-          strokeDasharray="6 4"
-          dot={{ fill: "#8B5CF6", r: 3 }}
-        />
+                          {/* 🔥 FIXED: Predicted Sales - Uses data from chartData */}
+                          <Line
+                            type="monotone"
+                            dataKey="predicted"
+                            name="Predicted Sales"
+                            stroke="#8B5CF6"
+                            strokeWidth={2}
+                            strokeDasharray="6 4"
+                            dot={{ fill: "#8B5CF6", r: 3 }}
+                          />
 
-        {/* Reference line for average */}
-        {(() => {
-          const avg = chartData.reduce((sum, d) => sum + (d.saleValue || 0), 0) / (chartData.length || 1);
-          return (
-            <ReferenceLine
-              y={avg}
-              stroke="#94A3B8"
-              strokeDasharray="3 3"
-              label={{
-                value: `Avg ${formatCompactCurrency(avg)}`,
-                position: "right",
-                fill: "#94A3B8",
-                fontSize: 9,
-              }}
-            />
-          );
-        })()}
-      </ComposedChart>
-    </ResponsiveContainer>
-  ) : (
-    <div className="h-[300px] flex items-center justify-center text-slate-400 flex-col gap-2">
-      <div className="text-4xl">📊</div>
-      <p>No data available for comparison</p>
-    </div>
-  )}
-</div>
+                          {/* Reference line for average */}
+                          {(() => {
+                            const avg =
+                              chartData.reduce(
+                                (sum, d) => sum + (d.saleValue || 0),
+                                0,
+                              ) / (chartData.length || 1);
+                            return (
+                              <ReferenceLine
+                                y={avg}
+                                stroke="#94A3B8"
+                                strokeDasharray="3 3"
+                                label={{
+                                  value: `Avg ${formatCompactCurrency(avg)}`,
+                                  position: "right",
+                                  fill: "#94A3B8",
+                                  fontSize: 9,
+                                }}
+                              />
+                            );
+                          })()}
+                        </ComposedChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <div className="h-[300px] flex items-center justify-center text-slate-400 flex-col gap-2">
+                        <div className="text-4xl">📊</div>
+                        <p>No data available for comparison</p>
+                      </div>
+                    )}
+                  </div>
 
                   {/* FIXED: Sales Person Ranking - Sort by TOTAL */}
                   <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-slate-200/60 p-4 md:p-6 lg:col-span-2">
@@ -7608,13 +8030,9 @@ const fetchCurrentMonthData = async (force = false) => {
 
         <div className="text-center">
           <p className="text-[10px] text-slate-400">
-  Last updated: {new Date().toLocaleString()} • {apiData.length} records loaded
-  {isDataMerged(apiData) && (
-    <span className="ml-2 text-purple-500">
-      • {apiData.filter(item => item._statusSource === "merged").length} merged
-    </span>
-  )}
-</p>
+            Last updated: {new Date().toLocaleString()} • {apiData.length}{" "}
+            records loaded
+          </p>
         </div>
       </div>
     </div>
