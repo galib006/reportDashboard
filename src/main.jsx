@@ -16,6 +16,7 @@ import EmployeeLIst from "./assets/pages/EmployeeLIst.jsx";
 import BalanceSummary from "./assets/pages/BalanceSummary.jsx";
 import OfficeStaffList from "./assets/pages/OfficeStaffList.jsx";
 import ChallanDashboard from "./assets/pages/ChallanDashboard.jsx";
+import home2 from "./assets/components/Home/index.jsx";
 
 
 
@@ -35,6 +36,10 @@ const router = createBrowserRouter([
     {
       path: "PISummary",
       Component: BalanceSummary
+    },
+    {
+      path: "Home2",
+      Component: home2
     },
     {
       path: "Dispatch",

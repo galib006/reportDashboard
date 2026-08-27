@@ -44,6 +44,12 @@ function Navbar() {
   // Menu items with icons
   const menuItems = [
     {
+      name: "Home2",
+      path: "Home2",
+      roles: ["admin", "user"],
+      icon: GoGraph,
+    },
+    {
       name: "Order Report",
       path: "OrderReport",
       roles: ["admin", "user"],

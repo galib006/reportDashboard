@@ -3473,69 +3473,69 @@ const API_ENDPOINTS = {
         cancelToken: source.token,
       };
 
-      const [challanRes, bblcRes, invoiceRes, piRes, challanReceiveRes] =
-        await Promise.allSettled([
-          axios.get(
-            `https://tpl-api.ebs365.info/api/Challan/GetDeliveryChalanDashboard?CompanyID=1&ProductCategoryID=0&CustomerID=0&MarkettingID=0&StatusID=7&StartDate=${stDate}&EndDate=${edDate}`,
-            apiConfig,
-          ),
-          axios.get(
-            `https://tpl-api.ebs365.info/api/BBLC/GetBBLCDashboard?CustomerID=0&CompanyID=1&StartDate=${stDate}&EndDate=${edDate}`,
-            apiConfig,
-          ),
-          axios.get(
-            `https://tpl-api.ebs365.info/api/CommercialInvoice/GetInvoiceDashboard?CompanyID=1&CustomerID=0&StartDate=${stDate}&EndDate=${edDate}`,
-            apiConfig,
-          ),
-          axios.get(
-            `https://tpl-api.ebs365.info/api/CustomerPI/GetCustomerPIDashboard?CompanyID=1&CustomerID=0&MarketingID=0&StartDate=${stDate}&EndDate=${edDate}`,
-            apiConfig,
-          ),
-          axios.get(
-            `https://tpl-api.ebs365.info/api/Challan/GetDeliveryChalanReceiveDashboard?CompanyID=1&ProductCategoryID=0&CustomerID=0&MarkettingID=0&Status=Receive-Complete&StartDate=${stDate}&EndDate=${edDate}`,
-            apiConfig,
-          ),
-        ]);
+      // const [challanRes, bblcRes, invoiceRes, piRes, challanReceiveRes] =
+      //   await Promise.allSettled([
+      //     axios.get(
+      //       `https://tpl-api.ebs365.info/api/Challan/GetDeliveryChalanDashboard?CompanyID=1&ProductCategoryID=0&CustomerID=0&MarkettingID=0&StatusID=7&StartDate=${stDate}&EndDate=${edDate}`,
+      //       apiConfig,
+      //     ),
+      //     axios.get(
+      //       `https://tpl-api.ebs365.info/api/BBLC/GetBBLCDashboard?CustomerID=0&CompanyID=1&StartDate=${stDate}&EndDate=${edDate}`,
+      //       apiConfig,
+      //     ),
+      //     axios.get(
+      //       `https://tpl-api.ebs365.info/api/CommercialInvoice/GetInvoiceDashboard?CompanyID=1&CustomerID=0&StartDate=${stDate}&EndDate=${edDate}`,
+      //       apiConfig,
+      //     ),
+      //     axios.get(
+      //       `https://tpl-api.ebs365.info/api/CustomerPI/GetCustomerPIDashboard?CompanyID=1&CustomerID=0&MarketingID=0&StartDate=${stDate}&EndDate=${edDate}`,
+      //       apiConfig,
+      //     ),
+      //     axios.get(
+      //       `https://tpl-api.ebs365.info/api/Challan/GetDeliveryChalanReceiveDashboard?CompanyID=1&ProductCategoryID=0&CustomerID=0&MarkettingID=0&Status=Receive-Complete&StartDate=${stDate}&EndDate=${edDate}`,
+      //       apiConfig,
+      //     ),
+      //   ]);
 
       setAutoLoadProgress(90);
       setAutoLoadStatus("Processing data...");
 
-      const challanData =
-        challanRes.status === "fulfilled" && challanRes.value?.data
-          ? challanRes.value.data
-          : [];
-      const bblcData =
-        bblcRes.status === "fulfilled" && bblcRes.value?.data
-          ? bblcRes.value.data
-          : [];
-      const invoiceData =
-        invoiceRes.status === "fulfilled" && invoiceRes.value?.data
-          ? invoiceRes.value.data
-          : [];
-      const piCompanyData =
-        piRes.status === "fulfilled" && piRes.value?.data
-          ? piRes.value.data
-          : [];
-      const challanReceiveData =
-        challanReceiveRes.status === "fulfilled" &&
-        challanReceiveRes.value?.data
-          ? challanReceiveRes.value.data
-          : [];
+      // const challanData =
+      //   challanRes.status === "fulfilled" && challanRes.value?.data
+      //     ? challanRes.value.data
+      //     : [];
+      // const bblcData =
+      //   bblcRes.status === "fulfilled" && bblcRes.value?.data
+      //     ? bblcRes.value.data
+      //     : [];
+      // const invoiceData =
+      //   invoiceRes.status === "fulfilled" && invoiceRes.value?.data
+      //     ? invoiceRes.value.data
+      //     : [];
+      // const piCompanyData =
+      //   piRes.status === "fulfilled" && piRes.value?.data
+      //     ? piRes.value.data
+      //     : [];
+      // const challanReceiveData =
+      //   challanReceiveRes.status === "fulfilled" &&
+      //   challanReceiveRes.value?.data
+      //     ? challanReceiveRes.value.data
+      //     : [];
 
       setAutoLoadProgress(95);
       setAutoLoadStatus("Updating dashboard...");
-
+      
       setcndata((prevState) => ({
         ...prevState,
         apiData: mergedData,
         groupedData: [],
-        grupChallan: challanData,
-        bblcData: bblcData,
-        invoiceData: invoiceData,
-        piCompanyData: piCompanyData,
+        // grupChallan: challanData,
+        // bblcData: bblcData,
+        // invoiceData: invoiceData,
+        // piCompanyData: piCompanyData,
         workOrderIdMap: {},
         challanReceiveMap: {},
-        rawChallanReceiveData: challanReceiveData,
+        // rawChallanReceiveData: challanReceiveData,
         workOrderStatus: "auto-loaded",
         _lastFetch: {
           timestamp: new Date().toISOString(),
@@ -3547,7 +3547,7 @@ const API_ENDPOINTS = {
           primaryCount: primaryData.length,
           secondaryCount: secondaryData.length,
           mergedCount: mergedCount,
-          challanCount: challanData.length,
+          // challanCount: challanData.length,
           workOrderStatus: "auto-loaded",
           autoLoaded: true,
           apiUsed: "merged-primary-secondary",
@@ -3571,7 +3571,6 @@ setIsLoading(false);
     console.error("Date range fetch error:", err);
     toast.error("Failed to fetch data for the selected date range.");
     setRangeFetchStatus("❌ Error fetching data");
-    // ✅ Error হলেও isLoading false
     setIsLoading(false);
   } finally {
     setIsFetchingRange(false);
@@ -4023,6 +4022,7 @@ const fetchDataByDateRange = async (startDate, endDate) => {
     console.error("Date range fetch error:", err);
     toast.error("Failed to fetch data for the selected date range.");
     setRangeFetchStatus("❌ Error fetching data");
+    
   } finally {
     setIsFetchingRange(false);
     setRangeFetchProgress(0);
@@ -4302,7 +4302,7 @@ const generateUniqueDataArray = (apiData) => {
   }
 
   const uniqueMap = new Map();
-
+  console.log("🔍 Generating unique data array from API data:", apiData);
   apiData.forEach((item) => {
     const orderNo = item.WorkOrderNo || item.workOrderNo || '';
     if (!orderNo) return;
@@ -4310,17 +4310,16 @@ const generateUniqueDataArray = (apiData) => {
     if (!uniqueMap.has(orderNo)) {
       uniqueMap.set(orderNo, {
         WorkOrderNo: orderNo,
-        OrderReceiveDate: item.OrderReceiveDate || item.orderReceiveDate || '',
-        // 🔥 সব Value ROUND করে নিচ্ছি
-        TotalOrderValue: Math.round(parseFloat(item.TotalOrderValue || item.totalOrderValue || 0)),
+        OrderReceiveDate: item.ApprovedDate,
+        TotalOrderValue: Math.round(parseFloat(item.OrderValue || 0)),
         TotalBreakDownQTY: Math.round(parseFloat(item.TotalBreakDownQTY || item.totalBreakDownQTY || 0)),
-        ProductCategoryName: item.ProductCategoryName || item.productCategoryName || 'Uncategorized',
+        ProductCategoryName: item.SectionName,
         ProductCategoryID: item.ProductCategoryID || item.productCategoryID || 0,
         ProductSubCategoryName: item.ProductSubCategoryName || item.productSubCategoryName || '',
-        MarketingName: item.MarketingName || item.marketingName || 'Unknown',
+        MarketingName: item.Marketing,
         MarketingID: item.MarketingID || item.marketingID || 0,
         TeamLeaderID: item.TeamLeaderID || item.teamLeaderID || 0,
-        CName: item.CName || item.customerName || 'Unknown',
+        CName: item.CustomerName,
         CustomerID: item.CustomerID || item.customerID || 0,
         BuyerName: item.BuyerName || item.buyerName || 'Unknown',
         BrandName: item.BrandName || item.brandName || '',
@@ -4331,10 +4330,10 @@ const generateUniqueDataArray = (apiData) => {
         SequenceNo: item.SequenceNo || item.sequenceNo || 0,
         SL: item.SL || item.sl || 0,
         // 🔥 Challan Data ROUND
-        ChallanQTY: Math.round(parseFloat(item.ChallanQTY || item.challanQTY || 0)),
-        ChallanValue: Math.round(parseFloat(item.ChallanValue || item.challanValue || 0)),
-        BalanceQTY: Math.round(parseFloat(item.BalanceQTY || item.balanceQTY || 0)),
-        BalanceValue: Math.round(parseFloat(item.BalanceValue || item.balanceValue || 0)),
+        ChallanQTY: Math.round(parseFloat(item.ChallanQTY || 0)),
+        ChallanValue: Math.round(parseFloat(item.ChallanValue || 0)),
+        BalanceQTY: Math.round(parseFloat(item.BalanceQTY || 0)),
+        BalanceValue: Math.round(parseFloat(item.BalanceValue || 0)),
         // Calculated fields
         DeliveryRate: 0,
         OrderValueUSD: 0,
@@ -4360,7 +4359,7 @@ const generateUniqueDataArray = (apiData) => {
         existing._hasChallanData = true;
       }
       if (item.BalanceQTY || item.balanceQTY) {
-        existing.BalanceQTY += Math.round(parseFloat(item.BalanceQTY || item.balanceQTY || 0));
+        existing.BalanceQTY += Math.round(parseFloat(item.BalanceQTY || 0));
         existing._merged = true;
         existing._source = 'merged';
         existing._hasChallanData = true;
@@ -4398,15 +4397,15 @@ const generateUniqueDataArray = (apiData) => {
   return uniqueArray;
 };
 
-  // Home কম্পোনেন্টে যোগ করুন
+
   const uniqueData = useMemo(() => {
     const data = generateUniqueDataArray(apiData);
-
-    // 🔍 ডেটা চেক করুন
+    console.log("🔍 Unique Data Array Generated:", data);
+    
     console.log("📊 Total Unique Orders:", data.length);
     console.log("📋 Sample Order:", data[0]);
 
-    // 🔍 কোন ফিল্ড খালি আছে চেক করুন
+
     const emptyFields = data.filter(
       (item) =>
         item.TotalOrderValue === 0 ||
@@ -4415,18 +4414,15 @@ const generateUniqueDataArray = (apiData) => {
     );
     console.log("⚠️ Orders with missing data:", emptyFields.length);
 
-    // 🔍 Marketing Names দেখুন
-    const marketingNames = new Set(data.map((item) => item.MarketingName));
-    console.log("👤 Marketing Names:", Array.from(marketingNames));
 
-    // 🔍 Categories দেখুন
+    const marketingNames = new Set(data.map((item) => item.MarketingName));
     const categories = new Set(data.map((item) => item.ProductCategoryName));
     console.log("📂 Categories:", Array.from(categories));
 
     return data;
   }, [apiData]);
 
-  // Console এ দেখুন
+
   console.log("✅ Unique Data Array:", uniqueData);
   console.log("📊 Total Unique Orders:", uniqueData.length);
 
@@ -4466,8 +4462,7 @@ const generateUniqueDataArray = (apiData) => {
 
 
   // KPI Config এর আগে loading check
-if (isLoading || contextLoading || loading) {
-  console.log("⏳ Loading:", { isLoading, contextLoading, loading });
+if (isLoading || contextLoading) {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 flex items-center justify-center">
       <div className="text-center">
@@ -4598,7 +4593,7 @@ if (isLoading || contextLoading || loading) {
     },
   ];
 
-  if (isLoading || contextLoading || loading) {
+  if (isLoading || contextLoading) {
   console.log("⏳ Loading:", { isLoading, contextLoading, loading });
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 flex items-center justify-center">
