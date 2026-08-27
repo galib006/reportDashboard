@@ -110,6 +110,9 @@ function Home() {
     selectedMarketing,
     viewMode,
   );
+  console.log("Comprehensive Data:", data);
+  
+  console.log("📊 Order Map Data:", data.orderMapData);
 
   // ============================================================
   // Memoized Values
@@ -497,7 +500,6 @@ function Home() {
       setRangeFetchProgress(15);
       setRangeFetchStatus("Fetching primary order data...");
 
-      // ✅ ইম্পোর্ট করা API_ENDPOINTS ব্যবহার করুন
       const primaryResponse = await axios.get(
         `${API_ENDPOINTS.primary.url}?CompanyID=1&ProductCategoryID=0&ProductSubCategoryID=0&MarketingID=0&CustomerID=0&BuyerID=0&StartDate=${stDate}&EndDate=${edDate}&CommandID=${API_ENDPOINTS.primary.commandId}&EmpID=0`,
         {
@@ -526,7 +528,6 @@ function Home() {
 
       let secondaryData = [];
       try {
-        // ✅ ইম্পোর্ট করা API_ENDPOINTS ব্যবহার করুন
         const secondaryResponse = await axios.get(
           `${API_ENDPOINTS.secondary.url}?CompanyID=1&ProductCategoryID=0&ProductSubCategoryID=0&MarketingID=0&CustomerID=0&BuyerID=0&JobCardID=0&StartDate=${stDate}&EndDate=${edDate}&CommandID=${API_ENDPOINTS.secondary.commandId}&EmpID=0`,
           {
@@ -638,6 +639,7 @@ function Home() {
       });
 
       const mergedData = Array.from(mergedMap.values());
+ 
 
       setRangeFetchProgress(80);
 

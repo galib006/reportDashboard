@@ -19,7 +19,7 @@ export const useComprehensiveData = (
 ) => {
   return useMemo(() => {
     // ============================================================
-    // Prediction Function
+    // ✅ PREDICTION FUNCTION
     // ============================================================
     const calculatePrediction = (dataArray, currentIndex, viewMode) => {
       if (!dataArray || dataArray.length === 0) return 0;
@@ -72,7 +72,7 @@ export const useComprehensiveData = (
     };
 
     // ============================================================
-    // Empty Result Template
+    // ✅ EMPTY RESULT - প্রথমে ডিফাইন করুন
     // ============================================================
     const emptyResult = {
       totals: {
@@ -160,17 +160,189 @@ export const useComprehensiveData = (
     };
 
     // ============================================================
-    // Data Validation
+    // ✅ DATA VALIDATION
     // ============================================================
     if (!apiData || !Array.isArray(apiData) || apiData.length === 0) {
       return emptyResult;
     }
 
     // ============================================================
-    // Filter Data
+    // ✅ MERGE FUNCTION - Primary + Secondary API Data
     // ============================================================
-    const filtered = apiData.filter((item) => {
-      const date = parseAPIDate(item.OrderReceiveDate);
+    const mergeApiData = (data) => {
+      const mergedMap = new Map();
+
+      data.forEach((item) => {
+        const orderNo = item.WorkOrderNo || item.workOrderNo || "";
+        if (!orderNo) return;
+
+        const orderReceiveDate = item.OrderReceiveDate || item.ApprovedDate || "";
+        const date = parseAPIDate(orderReceiveDate);
+
+        // ✅ চেক করুন এটি Primary API নাকি Secondary API
+        const isPrimaryData = item.OrderQTY !== undefined && item.OrderValue !== undefined;
+        const isSecondaryData = item.ChallanQTY !== undefined || item.ChallanValue !== undefined;
+
+        if (!mergedMap.has(orderNo)) {
+          mergedMap.set(orderNo, {
+            orderNo: orderNo,
+            orderReceiveDate: orderReceiveDate,
+            
+            // ✅ PRIMARY API DATA
+            orderQty: 0,
+            orderValue: 0,
+            customerName: "Unknown",
+            marketingName: "Unknown",
+            buyerName: "Unknown",
+            category: "Uncategorized",
+            orderStatus: "",
+            rate: 0,
+            pINumber: "",
+            jobCardNo: "",
+            gateOutDate: "",
+            jobBagDate: "",
+            cSName: "",
+            
+            // ✅ SECONDARY API DATA
+            saleQty: 0,
+            saleValue: 0,
+            balanceQty: 0,
+            balanceValue: 0,
+            breakDownQTY: 0,
+            challanDate: null,
+            challanNo: null,
+            deliveryToAddress: "",
+            productCategoryName: "",
+            productSubCategoryName: "",
+            itemDescription: "",
+            unit: "",
+            unitPrice: 0,
+            
+            // Product Details
+            productDetails: [],
+            subCategories: new Set(),
+            
+            date: date,
+            
+            // Source Tracking
+            source: {
+              primary: false,
+              secondary: false,
+            },
+          });
+        }
+
+        const existing = mergedMap.get(orderNo);
+
+        // ============================================================
+        // ✅ PRIMARY API DATA MERGE
+        // ============================================================
+        if (isPrimaryData) {
+          existing.orderQty += Math.round(Number(item.OrderQTY) || 0);
+          existing.orderValue += Math.round(Number(item.OrderValue) || 0);
+          existing.source.primary = true;
+          
+          if (item.CustomerName) existing.customerName = item.CustomerName;
+          if (item.Marketing) existing.marketingName = item.Marketing;
+          if (item.BuyerName) existing.buyerName = item.BuyerName;
+          if (item.SectionName) existing.category = item.SectionName;
+          if (item.OrderStatus) existing.orderStatus = item.OrderStatus;
+          if (item.Rate) existing.rate = item.Rate;
+          if (item.PINumber) existing.pINumber = item.PINumber;
+          if (item.JobCardNo) existing.jobCardNo = item.JobCardNo;
+          if (item.GateOutDate) existing.gateOutDate = item.GateOutDate;
+          if (item.JobBagDate) existing.jobBagDate = item.JobBagDate;
+          if (item.CSName) existing.cSName = item.CSName;
+        }
+
+        // ============================================================
+        // ✅ SECONDARY API DATA MERGE
+        // ============================================================
+        if (isSecondaryData) {
+          existing.saleQty += Math.round(Number(item.ChallanQTY) || 0);
+          existing.saleValue += Math.round(Number(item.ChallanValue) || 0);
+          existing.balanceQty += Math.round(Number(item.BalanceQTY) || 0);
+          existing.balanceValue += Math.round(Number(item.BalanceValue) || 0);
+          existing.breakDownQTY += Math.round(Number(item.BreakDownQTY) || 0);
+          existing.source.secondary = true;
+          
+          if (item.CName) existing.customerName = item.CName;
+          if (item.MarketingName) existing.marketingName = item.MarketingName;
+          if (item.BuyerName) existing.buyerName = item.BuyerName;
+          if (item.ProductCategoryName) {
+            existing.productCategoryName = item.ProductCategoryName;
+            existing.category = item.ProductCategoryName;
+          }
+          if (item.ProductSubCategoryName) {
+            existing.productSubCategoryName = item.ProductSubCategoryName;
+            existing.subCategories.add(item.ProductSubCategoryName);
+          }
+          if (item.ItemDescription) existing.itemDescription = item.ItemDescription;
+          if (item.DeliveryToAddress) existing.deliveryToAddress = item.DeliveryToAddress;
+          if (item.Unit) existing.unit = item.Unit;
+          if (item.UnitPrice) existing.unitPrice = item.UnitPrice;
+          if (item.ChallanNo) existing.challanNo = item.ChallanNo;
+          if (item.ChallanDate) existing.challanDate = item.ChallanDate;
+
+          // ============================================================
+          // ✅ PRODUCT DETAILS
+          // ============================================================
+          const productName = item.ItemDescription || "";
+          const subCategory = item.ProductSubCategoryName || "";
+          const category = item.ProductCategoryName || "";
+
+          if (productName) {
+            const existingProduct = existing.productDetails.find(
+              (p) => p.productName === productName
+            );
+
+            if (existingProduct) {
+              existingProduct.saleQty += Math.round(Number(item.ChallanQTY) || 0);
+              existingProduct.saleValue += Math.round(Number(item.ChallanValue) || 0);
+              existingProduct.balanceQty += Math.round(Number(item.BalanceQTY) || 0);
+              existingProduct.balanceValue += Math.round(Number(item.BalanceValue) || 0);
+              existingProduct.qty += Math.round(Number(item.BreakDownQTY) || 0);
+            } else {
+              existing.productDetails.push({
+                productName: productName,
+                subCategory: subCategory,
+                category: category,
+                qty: Math.round(Number(item.BreakDownQTY) || 0),
+                value: Math.round(Number(item.TotalOrderValue) || 0),
+                saleQty: Math.round(Number(item.ChallanQTY) || 0),
+                saleValue: Math.round(Number(item.ChallanValue) || 0),
+                balanceQty: Math.round(Number(item.BalanceQTY) || 0),
+                balanceValue: Math.round(Number(item.BalanceValue) || 0),
+                unitPrice: item.UnitPrice || 0,
+                unit: item.Unit || "",
+                challanNo: item.ChallanNo || "",
+                challanDate: item.ChallanDate || "",
+              });
+            }
+
+            if (subCategory) {
+              existing.subCategories.add(subCategory);
+            }
+          }
+        }
+      });
+
+      return Array.from(mergedMap.values());
+    };
+
+    // ============================================================
+    // ✅ MERGE DATA
+    // ============================================================
+    const mergedData = mergeApiData(apiData);
+    
+    // 🔍 DEBUG
+    console.log("✅ Merged Data Count:", mergedData.length);
+
+    // ============================================================
+    // ✅ FILTER DATA
+    // ============================================================
+    const filtered = mergedData.filter((item) => {
+      const date = item.date || new Date();
       const yearMatch =
         selectedYear === "All" || date.getFullYear() === Number(selectedYear);
 
@@ -186,7 +358,7 @@ export const useComprehensiveData = (
 
       const marketingMatch =
         selectedMarketing === "All" ||
-        (item.MarketingName || "").includes(selectedMarketing);
+        (item.marketingName || "").includes(selectedMarketing);
       return yearMatch && monthMatch && marketingMatch;
     });
 
@@ -195,7 +367,7 @@ export const useComprehensiveData = (
     }
 
     // ============================================================
-    // Data Aggregation Maps
+    // ✅ DATA AGGREGATION MAPS
     // ============================================================
     const orderMap = new Map();
     const dailyMap = new Map();
@@ -210,63 +382,111 @@ export const useComprehensiveData = (
     const hourMap = new Map();
 
     // ============================================================
-    // Process Each Item
+    // ✅ PROCESS EACH FILTERED ITEM
     // ============================================================
     filtered.forEach((item) => {
-      const orderNo = item.WorkOrderNo || item.workOrderNo || "N/A";
-      const date = parseAPIDate(item.OrderReceiveDate);
+      const date = item.date || new Date();
+      const orderNo = item.orderNo || "N/A";
+      
       const dayKey =
-        getDateKey(item.OrderReceiveDate) ||
         `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 
       const monthDisplay = date.toLocaleString("default", { month: "short" });
       const yearValue = date.getFullYear();
       const monthKey = `${yearValue}-${monthDisplay}`;
-
       const weekKey = `${date.getFullYear()}-W${getWeekNumber(date)}`;
       const hourKey = date.getHours();
 
-      const qty = Math.round(Number(item.BreakDownQTY) || 0);
-      const value = Math.round(Number(item.TotalOrderValue) || 0);
-      const saleQty = Math.round(Number(item.ChallanQTY) || 0);
-      const saleValue = Math.round(Number(item.ChallanValue) || 0);
-      const balanceQty = Math.round(Number(item.BalanceQTY) || 0);
-      const balanceValue = Math.round(Number(item.BalanceValue) || 0);
-      const customerName = item.CName || item.customerName || "Unknown";
-      const marketingName = item.MarketingName || "Unknown";
-      const buyerName = item.BuyerName || "Unknown";
-      const category = item.ProductCategoryName || "Uncategorized";
-      const subCategory = item.ProductSubCategoryName || "";
-      const productName = item.ItemDescription || "";
+      // ✅ Use merged data (Primary এবং Secondary আলাদা)
+      const orderQty = item.orderQty || 0;
+      const orderValue = item.orderValue || 0;
+      const saleQty = item.saleQty || 0;
+      const saleValue = item.saleValue || 0;
+      const balanceQty = item.balanceQty || 0;
+      const balanceValue = item.balanceValue || 0;
 
-      // Order Map
+      const customerName = item.customerName || "Unknown";
+      const marketingName = item.marketingName || "Unknown";
+      const buyerName = item.buyerName || "Unknown";
+      const category = item.category || "Uncategorized";
+      const subCategory = item.productSubCategoryName || "";
+      const productName = item.itemDescription || "";
+
+      // ============================================================
+      // ✅ ORDER MAP
+      // ============================================================
       if (!orderMap.has(orderNo)) {
         orderMap.set(orderNo, {
+          orderNo: orderNo,
+          orderReceiveDate: item.orderReceiveDate || "",
           orderQty: 0,
           orderValue: 0,
           saleQty: 0,
           saleValue: 0,
           balanceQty: 0,
           balanceValue: 0,
-          customerName,
-          marketingName,
-          buyerName,
-          category,
-          subCategory,
-          productName,
+          customerName: customerName,
+          marketingName: marketingName,
+          buyerName: buyerName,
+          category: category,
+          subCategory: subCategory,
+          orderStatus: item.orderStatus || "",
+          rate: item.rate || 0,
+          productDetails: [],
+          subCategories: new Set(),
           orderDate: date,
           hour: hourKey,
+          source: item.source || { primary: false, secondary: false },
         });
       }
+
       const order = orderMap.get(orderNo);
-      order.orderQty += qty;
-      order.orderValue += value;
+      
+      order.orderQty += orderQty;
+      order.orderValue += orderValue;
       order.saleQty += saleQty;
       order.saleValue += saleValue;
       order.balanceQty += balanceQty;
       order.balanceValue += balanceValue;
+      
+      if (subCategory) {
+        order.subCategories.add(subCategory);
+      }
+      
+      if (productName) {
+        const existingProduct = order.productDetails.find(
+          (p) => p.productName === productName
+        );
+        
+        if (existingProduct) {
+          existingProduct.qty += orderQty;
+          existingProduct.value += orderValue;
+          existingProduct.saleQty += saleQty;
+          existingProduct.saleValue += saleValue;
+          existingProduct.balanceQty += balanceQty;
+          existingProduct.balanceValue += balanceValue;
+        } else {
+          order.productDetails.push({
+            productName: productName,
+            subCategory: subCategory,
+            category: category,
+            qty: orderQty,
+            value: orderValue,
+            saleQty: saleQty,
+            saleValue: saleValue,
+            balanceQty: balanceQty,
+            balanceValue: balanceValue,
+            unitPrice: item.unitPrice || 0,
+            unit: item.unit || "",
+            challanNo: item.challanNo || "",
+            challanDate: item.challanDate || "",
+          });
+        }
+      }
 
-      // Daily Map
+      // ============================================================
+      // ✅ DAILY MAP
+      // ============================================================
       if (!dailyMap.has(dayKey)) {
         dailyMap.set(dayKey, {
           date: dayKey,
@@ -281,16 +501,18 @@ export const useComprehensiveData = (
         });
       }
       const daily = dailyMap.get(dayKey);
-      daily.orderValue += value;
+      daily.orderValue += orderValue;
       daily.saleValue += saleValue;
       daily.balanceValue += balanceValue;
-      daily.orderQty += qty;
+      daily.orderQty += orderQty;
       daily.saleQty += saleQty;
       daily.balanceQty += balanceQty;
       daily.count += 1;
       daily.uniqueOrders.add(orderNo);
 
-      // Weekly Map
+      // ============================================================
+      // ✅ WEEKLY MAP
+      // ============================================================
       if (!weeklyMap.has(weekKey)) {
         weeklyMap.set(weekKey, {
           week: weekKey,
@@ -303,14 +525,16 @@ export const useComprehensiveData = (
         });
       }
       const weekly = weeklyMap.get(weekKey);
-      weekly.orderValue += value;
+      weekly.orderValue += orderValue;
       weekly.saleValue += saleValue;
-      weekly.orderQty += qty;
+      weekly.orderQty += orderQty;
       weekly.saleQty += saleQty;
       weekly.count += 1;
       weekly.uniqueOrders.add(orderNo);
 
-      // Monthly Map
+      // ============================================================
+      // ✅ MONTHLY MAP
+      // ============================================================
       if (!monthlyMap.has(monthKey)) {
         monthlyMap.set(monthKey, {
           month: monthKey,
@@ -327,16 +551,18 @@ export const useComprehensiveData = (
         });
       }
       const monthly = monthlyMap.get(monthKey);
-      monthly.orderValue += value;
+      monthly.orderValue += orderValue;
       monthly.saleValue += saleValue;
       monthly.balanceValue += balanceValue;
-      monthly.orderQty += qty;
+      monthly.orderQty += orderQty;
       monthly.saleQty += saleQty;
       monthly.balanceQty += balanceQty;
       monthly.count += 1;
       monthly.uniqueOrders.add(orderNo);
 
-      // Hour Map
+      // ============================================================
+      // ✅ HOUR MAP
+      // ============================================================
       if (!hourMap.has(hourKey)) {
         hourMap.set(hourKey, {
           hour: hourKey,
@@ -347,10 +573,12 @@ export const useComprehensiveData = (
       }
       const hour = hourMap.get(hourKey);
       hour.count += 1;
-      hour.orderValue += value;
+      hour.orderValue += orderValue;
       hour.saleValue += saleValue;
 
-      // Customer Map
+      // ============================================================
+      // ✅ CUSTOMER MAP
+      // ============================================================
       if (!customerMap.has(customerName)) {
         customerMap.set(customerName, {
           name: customerName,
@@ -363,14 +591,16 @@ export const useComprehensiveData = (
         });
       }
       const customer = customerMap.get(customerName);
-      customer.orderValue += value;
+      customer.orderValue += orderValue;
       customer.saleValue += saleValue;
       customer.count += 1;
       customer.orders.add(orderNo);
       if (date > customer.lastOrder) customer.lastOrder = date;
       if (date < customer.firstOrder) customer.firstOrder = date;
 
-      // Marketing Map
+      // ============================================================
+      // ✅ MARKETING MAP
+      // ============================================================
       if (!marketingMap.has(marketingName)) {
         marketingMap.set(marketingName, {
           name: marketingName,
@@ -384,7 +614,7 @@ export const useComprehensiveData = (
         });
       }
       const marketing = marketingMap.get(marketingName);
-      marketing.orderValue += value;
+      marketing.orderValue += orderValue;
       marketing.saleValue += saleValue;
       marketing.count += 1;
       marketing.orders.add(orderNo);
@@ -392,7 +622,9 @@ export const useComprehensiveData = (
       marketing.customers.add(customerName);
       marketing.buyers.add(buyerName);
 
-      // Category Map
+      // ============================================================
+      // ✅ CATEGORY MAP
+      // ============================================================
       if (!categoryMap.has(category)) {
         categoryMap.set(category, {
           name: category,
@@ -405,14 +637,16 @@ export const useComprehensiveData = (
         });
       }
       const categoryData = categoryMap.get(category);
-      categoryData.orderValue += value;
+      categoryData.orderValue += orderValue;
       categoryData.saleValue += saleValue;
       categoryData.count += 1;
       categoryData.orders.add(orderNo);
       categoryData.customers.add(customerName);
       if (subCategory) categoryData.subCategories.add(subCategory);
 
-      // Sub-Category Map
+      // ============================================================
+      // ✅ SUB-CATEGORY MAP
+      // ============================================================
       if (subCategory) {
         const subKey = `${category}-${subCategory}`;
         if (!subCategoryMap.has(subKey)) {
@@ -426,13 +660,15 @@ export const useComprehensiveData = (
           });
         }
         const subData = subCategoryMap.get(subKey);
-        subData.orderValue += value;
+        subData.orderValue += orderValue;
         subData.saleValue += saleValue;
         subData.count += 1;
         subData.orders.add(orderNo);
       }
 
-      // Buyer Map
+      // ============================================================
+      // ✅ BUYER MAP
+      // ============================================================
       if (!buyerMap.has(buyerName)) {
         buyerMap.set(buyerName, {
           name: buyerName,
@@ -444,19 +680,22 @@ export const useComprehensiveData = (
         });
       }
       const buyer = buyerMap.get(buyerName);
-      buyer.orderValue += value;
+      buyer.orderValue += orderValue;
       buyer.saleValue += saleValue;
       buyer.count += 1;
       buyer.categories.add(category);
       buyer.orders.add(orderNo);
 
-      // Product Map
+      // ============================================================
+      // ✅ PRODUCT MAP
+      // ============================================================
       if (productName) {
         const productKey = `${category}-${productName}`;
         if (!productMap.has(productKey)) {
           productMap.set(productKey, {
             name: productName,
             category: category,
+            subCategory: subCategory,
             orderValue: 0,
             saleValue: 0,
             count: 0,
@@ -464,7 +703,7 @@ export const useComprehensiveData = (
           });
         }
         const product = productMap.get(productKey);
-        product.orderValue += value;
+        product.orderValue += orderValue;
         product.saleValue += saleValue;
         product.count += 1;
         product.orders.add(orderNo);
@@ -472,7 +711,7 @@ export const useComprehensiveData = (
     });
 
     // ============================================================
-    // Calculate Totals
+    // ✅ CALCULATE TOTALS
     // ============================================================
     const totals = {
       orderQty: 0,
@@ -484,8 +723,7 @@ export const useComprehensiveData = (
     };
 
     const statusData = { complete: 0, inProgress: 0, pending: 0 };
-    let completedValue = 0,
-      pendingValue = 0;
+    let completedValue = 0, pendingValue = 0;
 
     orderMap.forEach((order) => {
       totals.orderQty += order.orderQty;
@@ -498,17 +736,14 @@ export const useComprehensiveData = (
       completedValue += order.saleValue;
       pendingValue += order.balanceValue;
 
-      const completion =
-        order.orderQty > 0 ? (order.saleQty / order.orderQty) * 100 : 0;
+      const completion = order.orderQty > 0 ? (order.saleQty / order.orderQty) * 100 : 0;
       if (completion >= 100) statusData.complete += 1;
       else if (completion > 0) statusData.inProgress += 1;
       else statusData.pending += 1;
     });
 
-    const deliveryPercent =
-      totals.orderQty > 0 ? (totals.saleQty / totals.orderQty) * 100 : 0;
-    const valuePercent =
-      totals.orderValue > 0 ? (totals.saleValue / totals.orderValue) * 100 : 0;
+    const deliveryPercent = totals.orderQty > 0 ? (totals.saleQty / totals.orderQty) * 100 : 0;
+    const valuePercent = totals.orderValue > 0 ? (totals.saleValue / totals.orderValue) * 100 : 0;
 
     const growthMetrics = {
       completed: Math.round(completedValue),
@@ -517,7 +752,7 @@ export const useComprehensiveData = (
     };
 
     // ============================================================
-    // Monthly Data
+    // ✅ MONTHLY DATA
     // ============================================================
     const monthOrder = [
       "Jan", "Feb", "Mar", "Apr", "May", "Jun",
@@ -551,13 +786,12 @@ export const useComprehensiveData = (
           balanceValue: Math.round(data.balanceValue),
           count: data.count,
           uniqueOrders: data.uniqueOrders.size,
-          deliveryRate:
-            data.orderValue > 0 ? (data.saleValue / data.orderValue) * 100 : 0,
+          deliveryRate: data.orderValue > 0 ? (data.saleValue / data.orderValue) * 100 : 0,
         };
       });
 
     // ============================================================
-    // Growth Data
+    // ✅ GROWTH DATA
     // ============================================================
     const growthData = monthlySalesData.map((d, i, arr) => {
       let salesGrowth = 0;
@@ -598,7 +832,7 @@ export const useComprehensiveData = (
     });
 
     // ============================================================
-    // ALL Growth Data (Unfiltered)
+    // ✅ ALL GROWTH DATA (Unfiltered)
     // ============================================================
     const allMonthlySalesDataUnfiltered = Array.from(monthlyMap.entries())
       .sort((a, b) => {
@@ -621,8 +855,7 @@ export const useComprehensiveData = (
         balanceValue: Math.round(data.balanceValue),
         count: data.count,
         uniqueOrders: data.uniqueOrders.size,
-        deliveryRate:
-          data.orderValue > 0 ? (data.saleValue / data.orderValue) * 100 : 0,
+        deliveryRate: data.orderValue > 0 ? (data.saleValue / data.orderValue) * 100 : 0,
       }));
 
     const allGrowthData = allMonthlySalesDataUnfiltered
@@ -684,7 +917,7 @@ export const useComprehensiveData = (
       });
 
     // ============================================================
-    // Weekly & Daily Growth Data
+    // ✅ WEEKLY GROWTH DATA
     // ============================================================
     const allWeeklyGrowthData = Array.from(weeklyMap.entries())
       .sort((a, b) => a[0].localeCompare(b[0]))
@@ -716,6 +949,9 @@ export const useComprehensiveData = (
         };
       });
 
+    // ============================================================
+    // ✅ DAILY GROWTH DATA
+    // ============================================================
     const allDailyGrowthData = Array.from(dailyMap.entries())
       .sort((a, b) => a[0].localeCompare(b[0]))
       .map(([date, data], index, arr) => {
@@ -750,7 +986,7 @@ export const useComprehensiveData = (
       });
 
     // ============================================================
-    // Yearly Data
+    // ✅ YEARLY DATA
     // ============================================================
     const yearlyMap = new Map();
 
@@ -771,9 +1007,9 @@ export const useComprehensiveData = (
         });
       }
       const yearly = yearlyMap.get(yearKey);
-      yearly.orderValue += Math.round(Number(item.TotalOrderValue) || 0);
+      yearly.orderValue += Math.round(Number(item.OrderValue) || 0);
       yearly.saleValue += Math.round(Number(item.ChallanValue) || 0);
-      yearly.orderQty += Math.round(Number(item.BreakDownQTY) || 0);
+      yearly.orderQty += Math.round(Number(item.OrderQTY) || 0);
       yearly.saleQty += Math.round(Number(item.ChallanQTY) || 0);
       yearly.balanceValue += Math.round(Number(item.BalanceValue) || 0);
       yearly.count += 1;
@@ -791,8 +1027,7 @@ export const useComprehensiveData = (
         balanceValue: Math.round(data.balanceValue),
         count: data.count,
         uniqueOrders: data.uniqueOrders.size,
-        deliveryRate:
-          data.orderValue > 0 ? (data.saleValue / data.orderValue) * 100 : 0,
+        deliveryRate: data.orderValue > 0 ? (data.saleValue / data.orderValue) * 100 : 0,
       }));
 
     const allYearlyGrowthData = allYearlySalesDataUnfiltered.map((d, i, arr) => {
@@ -800,8 +1035,7 @@ export const useComprehensiveData = (
       let orderGrowth = 0;
 
       if (i > 0 && arr[i - 1].saleValue > 0) {
-        salesGrowth =
-          ((d.saleValue - arr[i - 1].saleValue) / arr[i - 1].saleValue) * 100;
+        salesGrowth = ((d.saleValue - arr[i - 1].saleValue) / arr[i - 1].saleValue) * 100;
       } else if (i > 0 && arr[i - 1].saleValue === 0 && d.saleValue > 0) {
         salesGrowth = 100;
       } else if (i > 0 && arr[i - 1].saleValue === 0 && d.saleValue === 0) {
@@ -809,8 +1043,7 @@ export const useComprehensiveData = (
       }
 
       if (i > 0 && arr[i - 1].orderValue > 0) {
-        orderGrowth =
-          ((d.orderValue - arr[i - 1].orderValue) / arr[i - 1].orderValue) * 100;
+        orderGrowth = ((d.orderValue - arr[i - 1].orderValue) / arr[i - 1].orderValue) * 100;
       } else if (i > 0 && arr[i - 1].orderValue === 0 && d.orderValue > 0) {
         orderGrowth = 100;
       }
@@ -846,7 +1079,7 @@ export const useComprehensiveData = (
     });
 
     // ============================================================
-    // Monthly Data with Predictions
+    // ✅ MONTHLY DATA WITH PREDICTIONS
     // ============================================================
     const monthlyData = monthlySalesData.map((d, i) => {
       const predicted = calculatePrediction(monthlySalesData, i, "monthly");
@@ -863,7 +1096,7 @@ export const useComprehensiveData = (
     });
 
     // ============================================================
-    // Daily Data
+    // ✅ DAILY DATA
     // ============================================================
     const dailyData = Array.from(dailyMap.values())
       .sort((a, b) => a.date.localeCompare(b.date))
@@ -897,7 +1130,7 @@ export const useComprehensiveData = (
       });
 
     // ============================================================
-    // Weekly Data
+    // ✅ WEEKLY DATA
     // ============================================================
     const weeklyData = Array.from(weeklyMap.values())
       .sort((a, b) => a.week.localeCompare(b.week))
@@ -916,51 +1149,39 @@ export const useComprehensiveData = (
           orderValue: w.orderValue,
           saleValue: w.saleValue,
           balanceValue: w.orderValue - w.saleValue,
-          deliveryRate:
-            w.orderValue > 0 ? (w.saleValue / w.orderValue) * 100 : 0,
+          deliveryRate: w.orderValue > 0 ? (w.saleValue / w.orderValue) * 100 : 0,
           predicted: predicted,
           period: "weekly",
-          growth:
-            i > 0 && arr[i - 1].orderValue > 0
-              ? ((w.orderValue - arr[i - 1].orderValue) /
-                  arr[i - 1].orderValue) *
-                100
-              : 0,
-          salesGrowth:
-            i > 0 && arr[i - 1].saleValue > 0
-              ? ((w.saleValue - arr[i - 1].saleValue) / arr[i - 1].saleValue) *
-                100
-              : 0,
+          growth: i > 0 && arr[i - 1].orderValue > 0
+            ? ((w.orderValue - arr[i - 1].orderValue) / arr[i - 1].orderValue) * 100
+            : 0,
+          salesGrowth: i > 0 && arr[i - 1].saleValue > 0
+            ? ((w.saleValue - arr[i - 1].saleValue) / arr[i - 1].saleValue) * 100
+            : 0,
           uniqueOrderCount: w.uniqueOrders.size,
         };
       });
 
     // ============================================================
-    // Performance Metrics
+    // ✅ PERFORMANCE METRICS
     // ============================================================
     const performanceMetrics = {
       avgDailyOrder: Math.round(
-        dailyData.reduce((sum, d) => sum + d.orderValue, 0) /
-          (dailyData.length || 1)
+        dailyData.reduce((sum, d) => sum + d.orderValue, 0) / (dailyData.length || 1)
       ),
       avgDailySale: Math.round(
-        dailyData.reduce((sum, d) => sum + d.saleValue, 0) /
-          (dailyData.length || 1)
+        dailyData.reduce((sum, d) => sum + d.saleValue, 0) / (dailyData.length || 1)
       ),
       avgOrderValue: Math.round(totals.orderValue / (orderMap.size || 1)),
       avgSaleValue: Math.round(totals.saleValue / (orderMap.size || 1)),
       avgCustomerValue: Math.round(totals.saleValue / (customerMap.size || 1)),
-      avgMarketingValue: Math.round(
-        totals.saleValue / (marketingMap.size || 1)
-      ),
-      orderToDeliveryRatio:
-        totals.orderQty > 0 ? totals.saleQty / totals.orderQty : 0,
-      customerRetention:
-        customerMap.size > 0 ? (customerMap.size / orderMap.size) * 100 : 0,
+      avgMarketingValue: Math.round(totals.saleValue / (marketingMap.size || 1)),
+      orderToDeliveryRatio: totals.orderQty > 0 ? totals.saleQty / totals.orderQty : 0,
+      customerRetention: customerMap.size > 0 ? (customerMap.size / orderMap.size) * 100 : 0,
     };
 
     // ============================================================
-    // Marketing Data - Sorted by TOTAL
+    // ✅ MARKETING DATA
     // ============================================================
     const allMarketingData = Array.from(marketingMap.values()).map((m) => ({
       name: m.name,
@@ -971,10 +1192,8 @@ export const useComprehensiveData = (
       categories: m.categories.size,
       customers: m.customers.size,
       buyers: m.buyers.size,
-      avgOrderValue:
-        m.orders.size > 0 ? Math.round((m.orderValue || 0) / m.orders.size) : 0,
-      avgSaleValue:
-        m.orders.size > 0 ? Math.round((m.saleValue || 0) / m.orders.size) : 0,
+      avgOrderValue: m.orders.size > 0 ? Math.round((m.orderValue || 0) / m.orders.size) : 0,
+      avgSaleValue: m.orders.size > 0 ? Math.round((m.saleValue || 0) / m.orders.size) : 0,
       deliveryRate: m.orderValue > 0 ? (m.saleValue / m.orderValue) * 100 : 0,
     }));
 
@@ -984,7 +1203,7 @@ export const useComprehensiveData = (
     const topMarketing = allMarketingDataRanked.slice(0, 10);
 
     // ============================================================
-    // Category Data - Sorted by TOTAL
+    // ✅ CATEGORY DATA
     // ============================================================
     const allCategoryData = Array.from(categoryMap.values())
       .map((c) => ({
@@ -996,17 +1215,14 @@ export const useComprehensiveData = (
         subCategories: c.subCategories.size,
         customers: c.customers.size,
         deliveryRate: c.orderValue > 0 ? (c.saleValue / c.orderValue) * 100 : 0,
-        avgOrderValue:
-          c.orders.size > 0
-            ? Math.round((c.orderValue || 0) / c.orders.size)
-            : 0,
+        avgOrderValue: c.orders.size > 0 ? Math.round((c.orderValue || 0) / c.orders.size) : 0,
       }))
       .sort((a, b) => b.orderValue - a.orderValue);
 
     const topCategories = allCategoryData.slice(0, 10);
 
     // ============================================================
-    // Sub-Categories - Sorted by TOTAL
+    // ✅ SUB-CATEGORIES
     // ============================================================
     const topSubCategories = Array.from(subCategoryMap.values())
       .map((s) => ({
@@ -1017,16 +1233,13 @@ export const useComprehensiveData = (
         count: s.count,
         orders: s.orders.size,
         deliveryRate: s.orderValue > 0 ? (s.saleValue / s.orderValue) * 100 : 0,
-        avgOrderValue:
-          s.orders.size > 0
-            ? Math.round((s.orderValue || 0) / s.orders.size)
-            : 0,
+        avgOrderValue: s.orders.size > 0 ? Math.round((s.orderValue || 0) / s.orders.size) : 0,
       }))
       .sort((a, b) => b.orderValue - a.orderValue)
       .slice(0, 10);
 
     // ============================================================
-    // Customer Data - Sorted by TOTAL
+    // ✅ CUSTOMER DATA
     // ============================================================
     const allCustomers = Array.from(customerMap.values())
       .map((c) => ({
@@ -1035,20 +1248,15 @@ export const useComprehensiveData = (
         orderValue: Math.round(c.orderValue || 0),
         count: c.count,
         orders: c.orders.size,
-        daysSinceLastOrder: Math.floor(
-          (new Date() - c.lastOrder) / (1000 * 60 * 60 * 24)
-        ),
-        avgOrderValue:
-          c.orders.size > 0
-            ? Math.round((c.orderValue || 0) / c.orders.size)
-            : 0,
+        daysSinceLastOrder: Math.floor((new Date() - c.lastOrder) / (1000 * 60 * 60 * 24)),
+        avgOrderValue: c.orders.size > 0 ? Math.round((c.orderValue || 0) / c.orders.size) : 0,
       }))
       .sort((a, b) => b.orderValue - a.orderValue);
 
     const topCustomers = allCustomers.slice(0, 10);
 
     // ============================================================
-    // Buyer Data - Sorted by TOTAL
+    // ✅ BUYER DATA
     // ============================================================
     const allBuyers = Array.from(buyerMap.values())
       .map((b) => ({
@@ -1058,17 +1266,14 @@ export const useComprehensiveData = (
         count: b.count,
         categories: b.categories.size,
         orders: b.orders.size,
-        avgOrderValue:
-          b.orders.size > 0
-            ? Math.round((b.orderValue || 0) / b.orders.size)
-            : 0,
+        avgOrderValue: b.orders.size > 0 ? Math.round((b.orderValue || 0) / b.orders.size) : 0,
       }))
       .sort((a, b) => b.orderValue - a.orderValue);
 
     const topBuyers = allBuyers.slice(0, 10);
 
     // ============================================================
-    // Top Products
+    // ✅ TOP PRODUCTS
     // ============================================================
     const topProducts = Array.from(productMap.values())
       .sort((a, b) => b.saleValue - a.saleValue)
@@ -1083,7 +1288,7 @@ export const useComprehensiveData = (
       }));
 
     // ============================================================
-    // Order Funnel Data
+    // ✅ ORDER FUNNEL DATA
     // ============================================================
     const orderFunnelData = [
       {
@@ -1106,7 +1311,7 @@ export const useComprehensiveData = (
     const funnelConversionData = orderFunnelData;
 
     // ============================================================
-    // Channel Performance Data
+    // ✅ CHANNEL PERFORMANCE DATA
     // ============================================================
     const channelPerformanceData = allMarketingDataRanked.slice(0, 8).map((m, i) => {
       const avgOrderValue = m.avgOrderValue || 0;
@@ -1139,32 +1344,22 @@ export const useComprehensiveData = (
         avgSaleValue: formatCurrency(m.avgSaleValue),
         customers: m.customers,
         categories: m.categories,
-        leakage:
-          m.orderValue > 0
-            ? formatCurrency(m.orderValue - m.value)
-            : formatCurrency(0),
-        leakagePercent:
-          m.orderValue > 0
-            ? (((m.orderValue - m.value) / m.orderValue) * 100).toFixed(0) + "%"
-            : "0%",
+        leakage: m.orderValue > 0 ? formatCurrency(m.orderValue - m.value) : formatCurrency(0),
+        leakagePercent: m.orderValue > 0 ? (((m.orderValue - m.value) / m.orderValue) * 100).toFixed(0) + "%" : "0%",
         status: tier.status,
         tier: tier.tier,
         tierIcon: tier.icon,
         tierColor: tier.color,
         tierBg: tier.bg,
         color: CHART_COLORS[i % CHART_COLORS.length],
-        orderTrend:
-          allMarketingDataRanked.length > 1
-            ? ((m.orderValue -
-                (allMarketingDataRanked[i + 1]?.orderValue || 0)) /
-                (allMarketingDataRanked[i + 1]?.orderValue || 1)) *
-              100
-            : 0,
+        orderTrend: allMarketingDataRanked.length > 1
+          ? ((m.orderValue - (allMarketingDataRanked[i + 1]?.orderValue || 0)) / (allMarketingDataRanked[i + 1]?.orderValue || 1)) * 100
+          : 0,
       };
     });
 
     // ============================================================
-    // Sales vs Order Data
+    // ✅ SALES VS ORDER DATA
     // ============================================================
     const salesVsOrderData = allMarketingDataRanked.map((m) => ({
       name: m.name,
@@ -1174,7 +1369,7 @@ export const useComprehensiveData = (
     }));
 
     // ============================================================
-    // Completion Data
+    // ✅ COMPLETION DATA
     // ============================================================
     const completionData = [
       { name: "Complete", value: statusData.complete, fill: COLORS.success },
@@ -1183,7 +1378,7 @@ export const useComprehensiveData = (
     ];
 
     // ============================================================
-    // Top Performing Marketing
+    // ✅ TOP PERFORMING MARKETING
     // ============================================================
     const topPerformingMarketing = allMarketingDataRanked.slice(0, 5).map((m) => {
       const tier = getPerformanceTier(
@@ -1210,7 +1405,7 @@ export const useComprehensiveData = (
     });
 
     // ============================================================
-    // Category Performance
+    // ✅ CATEGORY PERFORMANCE
     // ============================================================
     const categoryPerformance = allCategoryData.slice(0, 5).map((c) => ({
       name: c.name,
@@ -1224,7 +1419,7 @@ export const useComprehensiveData = (
     }));
 
     // ============================================================
-    // Peak Hours Data
+    // ✅ PEAK HOURS DATA
     // ============================================================
     const peakHoursData = Array.from(hourMap.values())
       .sort((a, b) => a.hour - b.hour)
@@ -1236,7 +1431,7 @@ export const useComprehensiveData = (
       }));
 
     // ============================================================
-    // Sales Person Ranking
+    // ✅ SALES PERSON RANKING
     // ============================================================
     const salesPersonRanking = allMarketingDataRanked.map((m, index) => {
       const avgOrderValue = m.avgOrderValue || 0;
@@ -1271,19 +1466,12 @@ export const useComprehensiveData = (
         tierIcon: Icon,
         tierColor: tier.color,
         tierBg: tier.bg,
-        badge:
-          index === 0
-            ? "🥇"
-            : index === 1
-            ? "🥈"
-            : index === 2
-            ? "🥉"
-            : `${index + 1}.`,
+        badge: index === 0 ? "🥇" : index === 1 ? "🥈" : index === 2 ? "🥉" : `${index + 1}.`,
       };
     });
 
     // ============================================================
-    // Customer Segmentation
+    // ✅ CUSTOMER SEGMENTATION
     // ============================================================
     const customerSegmentation = {
       vip: allCustomers
@@ -1317,7 +1505,7 @@ export const useComprehensiveData = (
     };
 
     // ============================================================
-    // Customer Loyalty
+    // ✅ CUSTOMER LOYALTY
     // ============================================================
     const customerLoyalty = allCustomers.slice(0, 5).map((c) => ({
       name: c.name,
@@ -1329,7 +1517,7 @@ export const useComprehensiveData = (
     }));
 
     // ============================================================
-    // Churn Risk Data
+    // ✅ CHURN RISK DATA
     // ============================================================
     const churnRiskData = allCustomers
       .filter((c) => c.daysSinceLastOrder > 30)
@@ -1341,16 +1529,14 @@ export const useComprehensiveData = (
       }));
 
     // ============================================================
-    // Sales Growth
+    // ✅ SALES GROWTH
     // ============================================================
     const firstMonth = monthlySalesData[0]?.saleValue || 0;
-    const lastMonth =
-      monthlySalesData[monthlySalesData.length - 1]?.saleValue || 0;
-    const salesGrowth =
-      firstMonth > 0 ? ((lastMonth - firstMonth) / firstMonth) * 100 : 0;
+    const lastMonth = monthlySalesData[monthlySalesData.length - 1]?.saleValue || 0;
+    const salesGrowth = firstMonth > 0 ? ((lastMonth - firstMonth) / firstMonth) * 100 : 0;
 
     // ============================================================
-    // Distribution Data
+    // ✅ DISTRIBUTION DATA
     // ============================================================
     const distributionData = [];
     const ranges = [0, 1000, 5000, 10000, 50000, 100000, 500000];
@@ -1367,35 +1553,29 @@ export const useComprehensiveData = (
     });
 
     // ============================================================
-    // Order Size Distribution
+    // ✅ ORDER SIZE DISTRIBUTION
     // ============================================================
     const orderSizeDistribution = [
       {
         name: "Small (<100)",
-        value: Array.from(orderMap.values()).filter((o) => o.saleValue < 100)
-          .length,
+        value: Array.from(orderMap.values()).filter((o) => o.saleValue < 100).length,
       },
       {
         name: "Medium (100-500)",
-        value: Array.from(orderMap.values()).filter(
-          (o) => o.saleValue >= 100 && o.saleValue < 500
-        ).length,
+        value: Array.from(orderMap.values()).filter((o) => o.saleValue >= 100 && o.saleValue < 500).length,
       },
       {
         name: "Large (500-2000)",
-        value: Array.from(orderMap.values()).filter(
-          (o) => o.saleValue >= 500 && o.saleValue < 2000
-        ).length,
+        value: Array.from(orderMap.values()).filter((o) => o.saleValue >= 500 && o.saleValue < 2000).length,
       },
       {
         name: "XL (>2000)",
-        value: Array.from(orderMap.values()).filter((o) => o.saleValue >= 2000)
-          .length,
+        value: Array.from(orderMap.values()).filter((o) => o.saleValue >= 2000).length,
       },
     ];
 
     // ============================================================
-    // Market Basket
+    // ✅ MARKET BASKET
     // ============================================================
     const marketBasket = topSubCategories.slice(0, 5).map((s) => ({
       products: s.name,
@@ -1405,22 +1585,17 @@ export const useComprehensiveData = (
     }));
 
     // ============================================================
-    // YoY Comparison
+    // ✅ YOY COMPARISON
     // ============================================================
     const yoyComparison = monthlyData.map((m) => ({
       month: m.name,
       currentYear: m.saleValue,
       lastYear: Math.round(m.saleValue * (0.7 + Math.random() * 0.3)),
-      growth:
-        m.saleValue > 0
-          ? ((m.saleValue - Math.round(m.saleValue * 0.7)) /
-              Math.round(m.saleValue * 0.7)) *
-            100
-          : 0,
+      growth: m.saleValue > 0 ? ((m.saleValue - Math.round(m.saleValue * 0.7)) / Math.round(m.saleValue * 0.7)) * 100 : 0,
     }));
 
     // ============================================================
-    // Efficiency Data
+    // ✅ EFFICIENCY DATA
     // ============================================================
     let efficiencyData = [];
 
@@ -1508,7 +1683,69 @@ export const useComprehensiveData = (
     }
 
     // ============================================================
-    // ✅ FINAL RETURN - একটাই return
+    // ✅ SWOT ANALYSIS
+    // ============================================================
+    const swotAnalysis = {
+      strengths: allMarketingDataRanked
+        .slice(0, 3)
+        .map((m) => `${m.name}: ${formatCurrency(m.value)} revenue`),
+      weaknesses: allMarketingDataRanked
+        .slice(-3)
+        .map((m) => `${m.name}: ${formatCurrency(m.value)} revenue`),
+      opportunities: [
+        "Growing demand in top categories",
+        "New market expansion",
+        "Digital transformation",
+      ],
+      threats: [
+        "Competition from new players",
+        "Supply chain disruptions",
+        "Rising material costs",
+      ],
+    };
+
+    // ============================================================
+    // ✅ CATEGORY MATRIX
+    // ============================================================
+    const categoryMatrix = allCategoryData.slice(0, 8).map((c) => ({
+      name: c.name,
+      growth: c.orders > 0 ? c.value / c.orders : 0,
+      marketShare: c.value / totals.saleValue,
+      revenue: c.value,
+    }));
+
+    // ============================================================
+    // ✅ DELIVERY EFFICIENCY DATA
+    // ============================================================
+    const deliveryEfficiencyData = allMarketingData
+      .map((m) => ({
+        name: m.name,
+        deliveryRate: m.deliveryRate,
+        orders: m.orders,
+        revenue: m.value,
+      }))
+      .sort((a, b) => b.deliveryRate - a.deliveryRate)
+      .slice(0, 10);
+
+    // ============================================================
+    // ✅ COHORT DATA
+    // ============================================================
+    const cohortData = monthlyData.map((d, i) => ({
+      cohort: d.name,
+      revenue: d.saleValue,
+      cumulative: monthlyData.slice(0, i + 1).reduce((sum, item) => sum + item.saleValue, 0),
+    }));
+
+    // ============================================================
+    // ✅ REVENUE LEAKAGE
+    // ============================================================
+    const revenueLeakage = [
+      { name: "Delivered", value: totals.saleValue, color: COLORS.success },
+      { name: "Pending", value: totals.balanceValue, color: COLORS.danger },
+    ];
+
+    // ============================================================
+    // ✅ FINAL RETURN
     // ============================================================
     return {
       totals,
@@ -1605,57 +1842,18 @@ export const useComprehensiveData = (
       churnRiskData,
       performanceScorecard: allMarketingDataRanked.slice(0, 5),
       yoyComparison,
-      revenueLeakage: [
-        { name: "Delivered", value: totals.saleValue, color: COLORS.success },
-        { name: "Pending", value: totals.balanceValue, color: COLORS.danger },
-      ],
+      revenueLeakage,
       marketBasket,
-      swotAnalysis: {
-        strengths: allMarketingDataRanked
-          .slice(0, 3)
-          .map((m) => `${m.name}: ${formatCurrency(m.value)} revenue`),
-        weaknesses: allMarketingDataRanked
-          .slice(-3)
-          .map((m) => `${m.name}: ${formatCurrency(m.value)} revenue`),
-        opportunities: [
-          "Growing demand in top categories",
-          "New market expansion",
-          "Digital transformation",
-        ],
-        threats: [
-          "Competition from new players",
-          "Supply chain disruptions",
-          "Rising material costs",
-        ],
-      },
-      categoryMatrix: allCategoryData.slice(0, 8).map((c) => ({
-        name: c.name,
-        growth: c.orders > 0 ? c.value / c.orders : 0,
-        marketShare: c.value / totals.saleValue,
-        revenue: c.value,
-      })),
+      swotAnalysis,
+      categoryMatrix,
       salesPersonRanking,
       salesGrowthData: growthData,
       monthlySalesData,
       salesVsOrderData,
-      deliveryEfficiencyData: allMarketingData
-        .map((m) => ({
-          name: m.name,
-          deliveryRate: m.deliveryRate,
-          orders: m.orders,
-          revenue: m.value,
-        }))
-        .sort((a, b) => b.deliveryRate - a.deliveryRate)
-        .slice(0, 10),
+      deliveryEfficiencyData,
       funnelConversionData,
       channelPerformanceData,
-      cohortData: monthlyData.map((d, i) => ({
-        cohort: d.name,
-        revenue: d.saleValue,
-        cumulative: monthlyData
-          .slice(0, i + 1)
-          .reduce((sum, item) => sum + item.saleValue, 0),
-      })),
+      cohortData,
       growthMetrics,
     };
   }, [apiData, selectedYear, selectedMonth, selectedMarketing, viewMode]);
