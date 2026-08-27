@@ -71,9 +71,6 @@ export const useComprehensiveData = (
       return Math.max(0, Math.round(predicted));
     };
 
-    // ============================================================
-    // ✅ EMPTY RESULT - প্রথমে ডিফাইন করুন
-    // ============================================================
     const emptyResult = {
       totals: {
         orderQty: 0,
@@ -234,26 +231,29 @@ export const useComprehensiveData = (
 
         const existing = mergedMap.get(orderNo);
 
-        // ============================================================
-        // ✅ PRIMARY API DATA MERGE
-        // ============================================================
         if (isPrimaryData) {
-          existing.orderQty += Math.round(Number(item.OrderQTY) || 0);
-          existing.orderValue += Math.round(Number(item.OrderValue) || 0);
-          existing.source.primary = true;
-          
-          if (item.CustomerName) existing.customerName = item.CustomerName;
-          if (item.Marketing) existing.marketingName = item.Marketing;
-          if (item.BuyerName) existing.buyerName = item.BuyerName;
-          if (item.SectionName) existing.category = item.SectionName;
-          if (item.OrderStatus) existing.orderStatus = item.OrderStatus;
-          if (item.Rate) existing.rate = item.Rate;
-          if (item.PINumber) existing.pINumber = item.PINumber;
-          if (item.JobCardNo) existing.jobCardNo = item.JobCardNo;
-          if (item.GateOutDate) existing.gateOutDate = item.GateOutDate;
-          if (item.JobBagDate) existing.jobBagDate = item.JobBagDate;
-          if (item.CSName) existing.cSName = item.CSName;
-        }
+  // ============================================================
+  // PRIMARY DATA MUST BE COUNTED ONLY ONCE PER WORK ORDER
+  // ============================================================
+  if (!existing.source.primary) {
+    existing.orderQty = Math.round(Number(item.OrderQTY) || 0);
+    existing.orderValue = Math.round(Number(item.OrderValue) || 0);
+
+    existing.source.primary = true;
+
+    if (item.CustomerName) existing.customerName = item.CustomerName;
+    if (item.Marketing) existing.marketingName = item.Marketing;
+    if (item.BuyerName) existing.buyerName = item.BuyerName;
+    if (item.SectionName) existing.category = item.SectionName;
+    if (item.OrderStatus) existing.orderStatus = item.OrderStatus;
+    if (item.Rate) existing.rate = item.Rate;
+    if (item.PINumber) existing.pINumber = item.PINumber;
+    if (item.JobCardNo) existing.jobCardNo = item.JobCardNo;
+    if (item.GateOutDate) existing.gateOutDate = item.GateOutDate;
+    if (item.JobBagDate) existing.jobBagDate = item.JobBagDate;
+    if (item.CSName) existing.cSName = item.CSName;
+  }
+}
 
         // ============================================================
         // ✅ SECONDARY API DATA MERGE
@@ -416,38 +416,63 @@ export const useComprehensiveData = (
       // ✅ ORDER MAP
       // ============================================================
       if (!orderMap.has(orderNo)) {
-        orderMap.set(orderNo, {
-          orderNo: orderNo,
-          orderReceiveDate: item.orderReceiveDate || "",
-          orderQty: 0,
-          orderValue: 0,
-          saleQty: 0,
-          saleValue: 0,
-          balanceQty: 0,
-          balanceValue: 0,
-          customerName: customerName,
-          marketingName: marketingName,
-          buyerName: buyerName,
-          category: category,
-          subCategory: subCategory,
-          orderStatus: item.orderStatus || "",
-          rate: item.rate || 0,
-          productDetails: [],
-          subCategories: new Set(),
-          orderDate: date,
-          hour: hourKey,
-          source: item.source || { primary: false, secondary: false },
-        });
-      }
+  orderMap.set(orderNo, {
+    orderNo: orderNo,
+    orderReceiveDate: item.orderReceiveDate || "",
+
+    orderQty: 0,
+    orderValue: 0,
+
+    orderQtySet: false,
+    orderValueSet: false,
+
+    saleQty: 0,
+    saleValue: 0,
+    balanceQty: 0,
+    balanceValue: 0,
+
+    customerName: customerName,
+    marketingName: marketingName,
+    buyerName: buyerName,
+    category: category,
+    subCategory: subCategory,
+    orderStatus: item.orderStatus || "",
+    rate: item.rate || 0,
+    productDetails: [],
+    subCategories: new Set(),
+    orderDate: date,
+    hour: hourKey,
+    source: item.source || {
+      primary: false,
+      secondary: false,
+    },
+  });
+}
 
       const order = orderMap.get(orderNo);
       
-      order.orderQty += orderQty;
-      order.orderValue += orderValue;
-      order.saleQty += saleQty;
-      order.saleValue += saleValue;
-      order.balanceQty += balanceQty;
-      order.balanceValue += balanceValue;
+     // ============================================================
+// ORDER-LEVEL VALUES
+// Order Qty / Value are already unique in mergedData.
+// Do NOT add them again.
+// ============================================================
+if (order.orderQty === 0 && order.orderValue === 0) {
+  order.orderQty = orderQty;
+  order.orderValue = orderValue;
+}
+if (!order.orderQtySet) {
+  order.orderQty = orderQty;
+  order.orderQtySet = true;
+}
+if (!order.orderValueSet) {
+  order.orderValue = orderValue;
+  order.orderValueSet = true;
+}
+// Secondary values are aggregated.
+order.saleQty += saleQty;
+order.saleValue += saleValue;
+order.balanceQty += balanceQty;
+order.balanceValue += balanceValue;
       
       if (subCategory) {
         order.subCategories.add(subCategory);
@@ -459,8 +484,8 @@ export const useComprehensiveData = (
         );
         
         if (existingProduct) {
-          existingProduct.qty += orderQty;
-          existingProduct.value += orderValue;
+         qty: orderQty,
+          value: orderValue,
           existingProduct.saleQty += saleQty;
           existingProduct.saleValue += saleValue;
           existingProduct.balanceQty += balanceQty;
