@@ -9,6 +9,7 @@ import {
 import { FaCircle, FaArrowUp, FaArrowDown } from 'react-icons/fa';
 
 const Header = ({
+  showDatePicker,
   dateRange,
   cndata,
   data,
