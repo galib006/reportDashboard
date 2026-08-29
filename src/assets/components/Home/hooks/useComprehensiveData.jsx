@@ -485,11 +485,11 @@ order.balanceValue += balanceValue;
         
         if (existingProduct) {
          qty: orderQty,
-          value: orderValue,
-          existingProduct.saleQty += saleQty;
-          existingProduct.saleValue += saleValue;
-          existingProduct.balanceQty += balanceQty;
-          existingProduct.balanceValue += balanceValue;
+          // value: orderValue,
+          existingProduct.saleQty += saleQty,
+          existingProduct.saleValue += saleValue,
+          existingProduct.balanceQty += balanceQty,
+          existingProduct.balanceValue += balanceValue
         } else {
           order.productDetails.push({
             productName: productName,
