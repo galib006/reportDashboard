@@ -58,15 +58,26 @@ export const getWeekNumber = (date) => {
 
 export const getCurrentMonthDates = () => {
   const now = new Date();
-  const bdNow = new Date(now.getTime() + 6 * 60 * 60 * 1000);
-  const startDate = new Date(bdNow.getFullYear(), bdNow.getMonth(), 1);
-  const endDate = new Date(bdNow.getFullYear(), bdNow.getMonth() + 1, 0);
+  
+  // ✅ Use UTC methods
+  const year = now.getUTCFullYear();
+  const month = now.getUTCMonth();
+  const day = now.getUTCDate();
+  
+  const startOfMonth = new Date(Date.UTC(year, month, 1));
+  const endOfMonth = new Date(Date.UTC(year, month + 1, 0));
+  
+  const formatDate = (date) => {
+    const y = date.getUTCFullYear();
+    const m = String(date.getUTCMonth() + 1).padStart(2, "0");
+    const d = String(date.getUTCDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  };
+  
   return {
-    startDate,
-    endDate,
-    stDate: startDate.toISOString().split("T")[0],
-    edDate: endDate.toISOString().split("T")[0],
-    month: bdNow.toLocaleString("default", { month: "short" }),
-    year: bdNow.getFullYear(),
+    stDate: formatDate(startOfMonth),
+    edDate: formatDate(endOfMonth),
+    month: now.toLocaleString('default', { month: 'short' }),
+    year: year.toString()
   };
 };
