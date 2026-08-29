@@ -59,18 +59,18 @@ export const getWeekNumber = (date) => {
 export const getCurrentMonthDates = () => {
   const now = new Date();
   
-  // ✅ Use UTC methods
-  const year = now.getUTCFullYear();
-  const month = now.getUTCMonth();
-  const day = now.getUTCDate();
+  // ✅ Use LOCAL methods
+  const year = now.getFullYear();
+  const month = now.getMonth();
+  const day = now.getDate();
   
-  const startOfMonth = new Date(Date.UTC(year, month, 1));
-  const endOfMonth = new Date(Date.UTC(year, month + 1, 0));
+  const startOfMonth = new Date(year, month, 1);
+  const endOfMonth = new Date(year, month + 1, 0);
   
   const formatDate = (date) => {
-    const y = date.getUTCFullYear();
-    const m = String(date.getUTCMonth() + 1).padStart(2, "0");
-    const d = String(date.getUTCDate()).padStart(2, "0");
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, "0");
+    const d = String(date.getDate()).padStart(2, "0");
     return `${y}-${m}-${d}`;
   };
   
