@@ -69,6 +69,11 @@ function Home() {
   const { cndata, setcndata, loading: contextLoading, apiKey } =
     useContext(GetDataContext);
   const apiData = useMemo(() => cndata?.apiData || [], [cndata]);
+  console.log("🔍 FIRST API ITEM:", apiData?.[0]);
+console.log(
+  "🔍 API KEYS:",
+  apiData?.[0] ? Object.keys(apiData[0]) : []
+);
 
   // ============================================================
   // State

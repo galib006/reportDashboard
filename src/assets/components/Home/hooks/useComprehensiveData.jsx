@@ -176,9 +176,10 @@ export const useComprehensiveData = (
         const orderReceiveDate = item.OrderReceiveDate || item.ApprovedDate || "";
         const date = parseAPIDate(orderReceiveDate);
 
-        // ✅ চেক করুন এটি Primary API নাকি Secondary API
-        const isPrimaryData = item.OrderQTY !== undefined && item.OrderValue !== undefined;
-        const isSecondaryData = item.ChallanQTY !== undefined || item.ChallanValue !== undefined;
+
+         const isPrimaryData =
+            item.BreakDownQTY !== undefined &&
+            item.TotalOrderValue !== undefined;
 
         if (!mergedMap.has(orderNo)) {
           mergedMap.set(orderNo, {
@@ -236,8 +237,8 @@ export const useComprehensiveData = (
   // PRIMARY DATA MUST BE COUNTED ONLY ONCE PER WORK ORDER
   // ============================================================
   if (!existing.source.primary) {
-    existing.orderQty = Math.round(Number(item.OrderQTY) || 0);
-    existing.orderValue = Math.round(Number(item.OrderValue) || 0);
+    existing.orderQty = Math.round(Number(item.BreakDownQTY) || 0);
+    existing.orderValue = Number(item.TotalOrderValue) || 0;
 
     existing.source.primary = true;
 
@@ -1880,6 +1881,7 @@ order.balanceValue += balanceValue;
       channelPerformanceData,
       cohortData,
       growthMetrics,
-    };
+    }
+    ;
   }, [apiData, selectedYear, selectedMonth, selectedMarketing, viewMode]);
 };
