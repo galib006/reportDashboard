@@ -240,11 +240,8 @@ export const useComprehensiveData = (
 
         if (!orderNo) return;
 
-        const orderReceiveDate =
-          item.OrderReceiveDate || item.ApprovedDate || "";
-
+         const orderReceiveDate = item.ApprovedDate || "";
         const date = parseAPIDate(orderReceiveDate);
-
         // ========================================================
         // PRIMARY DATA DETECTION
         // ========================================================
