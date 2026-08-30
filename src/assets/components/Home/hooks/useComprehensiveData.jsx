@@ -252,12 +252,8 @@ export const useComprehensiveData = (
   // COUNT ONLY ONCE PER WORK ORDER
   // ============================================================
   if (isPrimaryData && !existing.source.primary) {
-    existing.orderQty = Math.round(
-      Number(item.BreakDownQTY) || 0
-    );
-
-    existing.orderValue =
-      Number(item.TotalOrderValue) || 0;
+    existing.orderValue = orderValue;
+    existing.orderQty = orderQty;
 
     existing.source.primary = true;
 
@@ -533,8 +529,14 @@ export const useComprehensiveData = (
       const hourKey = date.getHours();
 
       // ✅ Use merged data (Primary এবং Secondary আলাদা)
-      const orderQty = item.orderQty || 0;
-      const orderValue = item.orderValue || 0;
+      const orderQty = Number(
+  item.TotalBreakDownQTY ??
+  item.BreakDownQTY ??
+  0
+);
+      const orderValue = Number(
+  item.TotalOrderValue ?? 0
+);
       const saleQty = item.saleQty || 0;
       const saleValue = item.saleValue || 0;
       const balanceQty = item.balanceQty || 0;
