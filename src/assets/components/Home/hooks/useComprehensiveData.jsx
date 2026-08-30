@@ -170,173 +170,297 @@ export const useComprehensiveData = (
       const mergedMap = new Map();
 
       data.forEach((item) => {
-        const orderNo = item.WorkOrderNo || item.workOrderNo || "";
-        if (!orderNo) return;
+  const orderNo = item.WorkOrderNo || item.workOrderNo || "";
+  if (!orderNo) return;
 
-        const orderReceiveDate = item.OrderReceiveDate || item.ApprovedDate || "";
-        const date = parseAPIDate(orderReceiveDate);
+  const orderReceiveDate =
+    item.OrderReceiveDate || item.ApprovedDate || "";
 
+  const date = parseAPIDate(orderReceiveDate);
 
-         const isPrimaryData =
-          item.BreakDownQTY !== undefined &&
-          item.TotalOrderValue !== undefined;
-
-        const isSecondaryData =
-          item.ChallanQTY !== undefined ||
-          item.ChallanValue !== undefined ||
-          item.ChallanDate !== undefined;
-          if (isPrimaryData) {
-            existing.orderQty = Number(item.BreakDownQTY) || 0;
-            existing.orderValue = Number(item.TotalOrderValue) || 0;
-            existing.source.primary = true;
-          }
-
-        if (!mergedMap.has(orderNo)) {
-          mergedMap.set(orderNo, {
-            orderNo: orderNo,
-            orderReceiveDate: orderReceiveDate,
-            
-            // ✅ PRIMARY API DATA
-            orderQty: 0,
-            orderValue: 0,
-            customerName: "Unknown",
-            marketingName: "Unknown",
-            buyerName: "Unknown",
-            category: "Uncategorized",
-            orderStatus: "",
-            rate: 0,
-            pINumber: "",
-            jobCardNo: "",
-            gateOutDate: "",
-            jobBagDate: "",
-            cSName: "",
-            
-            // ✅ SECONDARY API DATA
-            saleQty: 0,
-            saleValue: 0,
-            balanceQty: 0,
-            balanceValue: 0,
-            breakDownQTY: 0,
-            challanDate: null,
-            challanNo: null,
-            deliveryToAddress: "",
-            productCategoryName: "",
-            productSubCategoryName: "",
-            itemDescription: "",
-            unit: "",
-            unitPrice: 0,
-            
-            // Product Details
-            productDetails: [],
-            subCategories: new Set(),
-            
-            date: date,
-            
-            // Source Tracking
-            source: {
-              primary: false,
-              secondary: false,
-            },
-          });
-        }
-
-        const existing = mergedMap.get(orderNo);
-
-        if (isPrimaryData) {
   // ============================================================
-  // PRIMARY DATA MUST BE COUNTED ONLY ONCE PER WORK ORDER
+  // PRIMARY vs SECONDARY DATA
   // ============================================================
-  if (!existing.source.primary) {
-    existing.orderQty = Math.round(Number(item.BreakDownQTY) || 0);
-    existing.orderValue = Number(item.TotalOrderValue) || 0;
+  const isPrimaryData =
+    item.BreakDownQTY !== undefined &&
+    item.TotalOrderValue !== undefined;
+
+  const isSecondaryData =
+    item.ChallanQTY !== undefined ||
+    item.ChallanValue !== undefined ||
+    item.BalanceQTY !== undefined ||
+    item.BalanceValue !== undefined ||
+    item.ProductCategoryName !== undefined ||
+    item.ItemDescription !== undefined;
+
+  // ============================================================
+  // CREATE MERGED RECORD FIRST
+  // ============================================================
+  if (!mergedMap.has(orderNo)) {
+    mergedMap.set(orderNo, {
+      orderNo,
+      orderReceiveDate,
+
+      // PRIMARY
+      orderQty: 0,
+      orderValue: 0,
+      customerName: "Unknown",
+      marketingName: "Unknown",
+      buyerName: "Unknown",
+      category: "Uncategorized",
+      orderStatus: "",
+      rate: 0,
+      pINumber: "",
+      jobCardNo: "",
+      gateOutDate: "",
+      jobBagDate: "",
+      cSName: "",
+
+      // SECONDARY
+      saleQty: 0,
+      saleValue: 0,
+      balanceQty: 0,
+      balanceValue: 0,
+      breakDownQTY: 0,
+      challanDate: null,
+      challanNo: null,
+      deliveryToAddress: "",
+      productCategoryName: "",
+      productSubCategoryName: "",
+      itemDescription: "",
+      unit: "",
+      unitPrice: 0,
+
+      productDetails: [],
+      subCategories: new Set(),
+
+      date,
+
+      source: {
+        primary: false,
+        secondary: false,
+      },
+    });
+  }
+
+  // IMPORTANT:
+  // existing must be obtained AFTER the object is created.
+  const existing = mergedMap.get(orderNo);
+
+  // ============================================================
+  // PRIMARY DATA
+  // COUNT ONLY ONCE PER WORK ORDER
+  // ============================================================
+  if (isPrimaryData && !existing.source.primary) {
+    existing.orderQty = Math.round(
+      Number(item.BreakDownQTY) || 0
+    );
+
+    existing.orderValue =
+      Number(item.TotalOrderValue) || 0;
 
     existing.source.primary = true;
 
-    if (item.CustomerName) existing.customerName = item.CustomerName;
-    if (item.Marketing) existing.marketingName = item.Marketing;
-    if (item.BuyerName) existing.buyerName = item.BuyerName;
-    if (item.SectionName) existing.category = item.SectionName;
-    if (item.OrderStatus) existing.orderStatus = item.OrderStatus;
-    if (item.Rate) existing.rate = item.Rate;
-    if (item.PINumber) existing.pINumber = item.PINumber;
-    if (item.JobCardNo) existing.jobCardNo = item.JobCardNo;
-    if (item.GateOutDate) existing.gateOutDate = item.GateOutDate;
-    if (item.JobBagDate) existing.jobBagDate = item.JobBagDate;
-    if (item.CSName) existing.cSName = item.CSName;
+    if (item.CustomerName) {
+      existing.customerName = item.CustomerName;
+    }
+
+    if (item.Marketing) {
+      existing.marketingName = item.Marketing;
+    }
+
+    if (item.BuyerName) {
+      existing.buyerName = item.BuyerName;
+    }
+
+    if (item.SectionName) {
+      existing.category = item.SectionName;
+    }
+
+    if (item.OrderStatus) {
+      existing.orderStatus = item.OrderStatus;
+    }
+
+    if (item.Rate) {
+      existing.rate = item.Rate;
+    }
+
+    if (item.PINumber) {
+      existing.pINumber = item.PINumber;
+    }
+
+    if (item.JobCardNo) {
+      existing.jobCardNo = item.JobCardNo;
+    }
+
+    if (item.GateOutDate) {
+      existing.gateOutDate = item.GateOutDate;
+    }
+
+    if (item.JobBagDate) {
+      existing.jobBagDate = item.JobBagDate;
+    }
+
+    if (item.CSName) {
+      existing.cSName = item.CSName;
+    }
   }
-}
 
-        // ============================================================
-        // ✅ SECONDARY API DATA MERGE
-        // ============================================================
-        if (isSecondaryData) {
-          existing.saleQty += Math.round(Number(item.ChallanQTY) || 0);
-          existing.saleValue += Math.round(Number(item.ChallanValue) || 0);
-          existing.balanceQty += Math.round(Number(item.BalanceQTY) || 0);
-          existing.balanceValue += Math.round(Number(item.BalanceValue) || 0);
-          existing.breakDownQTY += Math.round(Number(item.BreakDownQTY) || 0);
-          existing.source.secondary = true;
-          
-          if (item.CName) existing.customerName = item.CName;
-          if (item.MarketingName) existing.marketingName = item.MarketingName;
-          if (item.BuyerName) existing.buyerName = item.BuyerName;
-          if (item.ProductCategoryName) {
-            existing.productCategoryName = item.ProductCategoryName;
-            existing.category = item.ProductCategoryName;
-          }
-          if (item.ProductSubCategoryName) {
-            existing.productSubCategoryName = item.ProductSubCategoryName;
-            existing.subCategories.add(item.ProductSubCategoryName);
-          }
-          if (item.ItemDescription) existing.itemDescription = item.ItemDescription;
-          if (item.DeliveryToAddress) existing.deliveryToAddress = item.DeliveryToAddress;
-          if (item.Unit) existing.unit = item.Unit;
-          if (item.UnitPrice) existing.unitPrice = item.UnitPrice;
-          if (item.ChallanNo) existing.challanNo = item.ChallanNo;
-          if (item.ChallanDate) existing.challanDate = item.ChallanDate;
+  // ============================================================
+  // SECONDARY DATA
+  // ============================================================
+  if (isSecondaryData) {
+    existing.saleQty +=
+      Math.round(Number(item.ChallanQTY) || 0);
 
-          // ============================================================
-          // ✅ PRODUCT DETAILS
-          // ============================================================
-          const productName = item.ItemDescription || "";
-          const subCategory = item.ProductSubCategoryName || "";
-          const category = item.ProductCategoryName || "";
+    existing.saleValue +=
+      Math.round(Number(item.ChallanValue) || 0);
 
-          if (productName) {
-            const existingProduct = existing.productDetails.find(
-              (p) => p.productName === productName
-            );
+    existing.balanceQty +=
+      Math.round(Number(item.BalanceQTY) || 0);
 
-            if (existingProduct) {
-              existingProduct.saleQty += Math.round(Number(item.ChallanQTY) || 0);
-              existingProduct.saleValue += Math.round(Number(item.ChallanValue) || 0);
-              existingProduct.balanceQty += Math.round(Number(item.BalanceQTY) || 0);
-              existingProduct.balanceValue += Math.round(Number(item.BalanceValue) || 0);
-              existingProduct.qty += Math.round(Number(item.BreakDownQTY) || 0);
-            } else {
-              existing.productDetails.push({
-                productName: productName,
-                subCategory: subCategory,
-                category: category,
-                qty: Math.round(Number(item.BreakDownQTY) || 0),
-                value: Math.round(Number(item.TotalOrderValue) || 0),
-                saleQty: Math.round(Number(item.ChallanQTY) || 0),
-                saleValue: Math.round(Number(item.ChallanValue) || 0),
-                balanceQty: Math.round(Number(item.BalanceQTY) || 0),
-                balanceValue: Math.round(Number(item.BalanceValue) || 0),
-                unitPrice: item.UnitPrice || 0,
-                unit: item.Unit || "",
-                challanNo: item.ChallanNo || "",
-                challanDate: item.ChallanDate || "",
-              });
-            }
+    existing.balanceValue +=
+      Math.round(Number(item.BalanceValue) || 0);
 
-            if (subCategory) {
-              existing.subCategories.add(subCategory);
-            }
-          }
-        }
-      });
+    existing.breakDownQTY +=
+      Math.round(Number(item.BreakDownQTY) || 0);
+
+    existing.source.secondary = true;
+
+    if (item.CName) {
+      existing.customerName = item.CName;
+    }
+
+    if (item.MarketingName) {
+      existing.marketingName = item.MarketingName;
+    }
+
+    if (item.BuyerName) {
+      existing.buyerName = item.BuyerName;
+    }
+
+    if (item.ProductCategoryName) {
+      existing.productCategoryName =
+        item.ProductCategoryName;
+
+      existing.category =
+        item.ProductCategoryName;
+    }
+
+    if (item.ProductSubCategoryName) {
+      existing.productSubCategoryName =
+        item.ProductSubCategoryName;
+
+      existing.subCategories.add(
+        item.ProductSubCategoryName
+      );
+    }
+
+    if (item.ItemDescription) {
+      existing.itemDescription =
+        item.ItemDescription;
+    }
+
+    if (item.DeliveryToAddress) {
+      existing.deliveryToAddress =
+        item.DeliveryToAddress;
+    }
+
+    if (item.Unit) {
+      existing.unit = item.Unit;
+    }
+
+    if (item.UnitPrice) {
+      existing.unitPrice = item.UnitPrice;
+    }
+
+    if (item.ChallanNo) {
+      existing.challanNo = item.ChallanNo;
+    }
+
+    if (item.ChallanDate) {
+      existing.challanDate = item.ChallanDate;
+    }
+
+    // ============================================================
+    // PRODUCT DETAILS
+    // ============================================================
+    const productName = item.ItemDescription || "";
+    const subCategory =
+      item.ProductSubCategoryName || "";
+    const category =
+      item.ProductCategoryName || "";
+
+    if (productName) {
+      const existingProduct =
+        existing.productDetails.find(
+          (p) => p.productName === productName
+        );
+
+      if (existingProduct) {
+        existingProduct.saleQty +=
+          Math.round(Number(item.ChallanQTY) || 0);
+
+        existingProduct.saleValue +=
+          Math.round(Number(item.ChallanValue) || 0);
+
+        existingProduct.balanceQty +=
+          Math.round(Number(item.BalanceQTY) || 0);
+
+        existingProduct.balanceValue +=
+          Math.round(Number(item.BalanceValue) || 0);
+
+        existingProduct.qty +=
+          Math.round(Number(item.BreakDownQTY) || 0);
+      } else {
+        existing.productDetails.push({
+          productName,
+          subCategory,
+          category,
+
+          qty:
+            Math.round(
+              Number(item.BreakDownQTY) || 0
+            ),
+
+          value:
+            Math.round(
+              Number(item.TotalOrderValue) || 0
+            ),
+
+          saleQty:
+            Math.round(
+              Number(item.ChallanQTY) || 0
+            ),
+
+          saleValue:
+            Math.round(
+              Number(item.ChallanValue) || 0
+            ),
+
+          balanceQty:
+            Math.round(
+              Number(item.BalanceQTY) || 0
+            ),
+
+          balanceValue:
+            Math.round(
+              Number(item.BalanceValue) || 0
+            ),
+
+          unitPrice: item.UnitPrice || 0,
+          unit: item.Unit || "",
+          challanNo: item.ChallanNo || "",
+          challanDate: item.ChallanDate || "",
+        });
+      }
+
+      if (subCategory) {
+        existing.subCategories.add(subCategory);
+      }
+    }
+  }
+});
 
       return Array.from(mergedMap.values());
     };
