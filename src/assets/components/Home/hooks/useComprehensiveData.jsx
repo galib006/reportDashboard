@@ -218,114 +218,76 @@ export const useComprehensiveData = (
 
     // ============================================================
     // MERGE API DATA
-    //
-    // API SOURCES
-    // ------------------------------------------------------------
-    // command1  = CommandID=1
-    //   ONLY ApprovedDate -> OrderReceiveDate
-    //
-    // command15 = CommandID=15
-    //   Order Qty
-    //   Order Value
-    //   Sales Concern
-    //   Customer
-    //   Buyer
-    //   Section
-    //
-    // command5  = CommandID=5
-    //   Challan
-    //   Balance
-    //   Product details
-    //
-    // JOIN KEY:
-    //   WorkOrderNo
     // ============================================================
     const mergeApiData = (data) => {
       const mergedMap = new Map();
 
       // ------------------------------------------------------------
-      // Helpers
+      // HELPERS
       // ------------------------------------------------------------
       const getWorkOrderNo = (item) =>
-        item?.WorkOrderNo || item?.workOrderNo || "";
+        item?.WorkOrderNo ||
+        item?.workOrderNo ||
+        "";
 
       const getNumber = (value) => {
         const n = Number(value);
         return Number.isFinite(n) ? n : 0;
       };
 
-      const getDate = (value) => {
-        if (!value) return "";
-        return value;
+      const getSource = (item) => {
+        if (!item) return "unknown";
+
+        const commandId =
+          item.CommandID ??
+          item.commandId ??
+          item._commandId ??
+          item._commandID;
+
+        if (Number(commandId) === 1) return "command1";
+        if (Number(commandId) === 5) return "command5";
+        if (Number(commandId) === 15) return "command15";
+
+        const apiSource = String(item._apiSource || "").toLowerCase();
+
+        if (["command1", "cmd1", "1"].includes(apiSource)) {
+          return "command1";
+        }
+
+        if (["command5", "cmd5", "5"].includes(apiSource)) {
+          return "command5";
+        }
+
+        if (["command15", "cmd15", "15"].includes(apiSource)) {
+          return "command15";
+        }
+
+        // Combined API response.
+        if (
+          item.OrderQTY !== undefined ||
+          item.OrderValue !== undefined ||
+          item.ChallanQTY !== undefined ||
+          item.ChallanValue !== undefined ||
+          item.BalanceQTY !== undefined ||
+          item.BalanceValue !== undefined
+        ) {
+          return "combined";
+        }
+
+        return "unknown";
       };
 
       // ------------------------------------------------------------
-      // SOURCE DETECTION
-      // ------------------------------------------------------------
-     const getSource = (item) => {
-  if (!item) return "unknown";
-
-  const commandId =
-    item.CommandID ??
-    item.commandId ??
-    item._commandId ??
-    item._commandID;
-
-  if (Number(commandId) === 1) return "command1";
-  if (Number(commandId) === 5) return "command5";
-  if (Number(commandId) === 15) return "command15";
-
-  const apiSource = String(item._apiSource || "").toLowerCase();
-
-  if (["command1", "cmd1", "1"].includes(apiSource)) {
-    return "command1";
-  }
-
-  if (["command5", "cmd5", "5"].includes(apiSource)) {
-    return "command5";
-  }
-
-  if (["command15", "cmd15", "15"].includes(apiSource)) {
-    return "command15";
-  }
-
-  // ============================================================
-  // IMPORTANT:
-  // This API response contains ALL fields in the same row.
-  // Therefore do NOT classify it as command1 just because
-  // ApprovedDate exists.
-  // ============================================================
-
-  if (
-    item.OrderQTY !== undefined ||
-    item.OrderValue !== undefined ||
-    item.ChallanQTY !== undefined ||
-    item.ChallanValue !== undefined ||
-    item.BalanceQTY !== undefined ||
-    item.BalanceValue !== undefined
-  ) {
-    return "combined";
-  }
-
-  return "unknown";
-};
-
-      // ------------------------------------------------------------
-      // CREATE EMPTY ORDER
+      // EMPTY ORDER
       // ------------------------------------------------------------
       const createEmptyRecord = (orderNo) => ({
         orderNo,
 
-        // IMPORTANT:
-        // This MUST come from CommandID=1 ApprovedDate
+        // DATE
         orderReceiveDate: "",
-
-        // Date used for dashboard filtering
         date: null,
 
-        // ----------------------------------------------------------
         // ORDER LEVEL
-        // ----------------------------------------------------------
         orderQty: 0,
         orderValue: 0,
 
@@ -342,9 +304,7 @@ export const useComprehensiveData = (
         jobBagDate: "",
         cSName: "",
 
-        // ----------------------------------------------------------
         // DELIVERY
-        // ----------------------------------------------------------
         saleQty: 0,
         saleValue: 0,
 
@@ -358,196 +318,482 @@ export const useComprehensiveData = (
 
         deliveryToAddress: "",
 
-        // ----------------------------------------------------------
         // PRODUCT
-        // ----------------------------------------------------------
         productCategoryName: "",
         productSubCategoryName: "",
         itemDescription: "",
-
         unit: "",
         unitPrice: 0,
 
         productDetails: [],
         subCategories: new Set(),
 
+        // INTERNAL TRACKING
         source: {
           command1: false,
           command5: false,
           command15: false,
         },
+
+        _command5Rows: new Map(),
       });
 
       // ============================================================
-      // DEBUG SOURCE DETECTION
+      // PROCESS API DATA
       // ============================================================
-      console.log(
-        "🧪 SOURCE SAMPLE:",
-        data.slice(0, 10).map((item) => ({
-          WorkOrderNo: item.WorkOrderNo,
-          CommandID: item.CommandID,
-          commandId: item.commandId,
-          _commandId: item._commandId,
-          _apiSource: item._apiSource,
-          OrderQTY: item.OrderQTY,
-          OrderValue: item.OrderValue,
-          TotalBreakDownQTY: item.TotalBreakDownQTY,
-          TotalOrderValue: item.TotalOrderValue,
-          ChallanQTY: item.ChallanQTY,
-          ChallanValue: item.ChallanValue,
-        })),
-      );
-      // ============================================================
-      // PROCESS DATA
-      // ============================================================
-     data.forEach((item) => {
-  const orderNo = getWorkOrderNo(item);
+      data.forEach((item) => {
+        const orderNo = getWorkOrderNo(item);
 
-  if (!orderNo) return;
+        if (!orderNo) return;
 
-  if (!mergedMap.has(orderNo)) {
-    mergedMap.set(orderNo, createEmptyRecord(orderNo));
-  }
+        if (!mergedMap.has(orderNo)) {
+          mergedMap.set(
+            orderNo,
+            createEmptyRecord(orderNo)
+          );
+        }
 
-  const existing = mergedMap.get(orderNo);
+        const existing = mergedMap.get(orderNo);
 
-  // ============================================================
-  // ORDER DATE
-  // ============================================================
-  if (item.ApprovedDate) {
-    existing.orderReceiveDate = item.ApprovedDate;
-    existing.date = parseAPIDate(item.ApprovedDate);
-  }
+        const source = getSource(item);
 
-  // ============================================================
-  // ORDER QTY
-  // ============================================================
-  const orderQty = getNumber(item.OrderQTY);
+        // ==========================================================
+        // SOURCE FLAG
+        // ==========================================================
+        if (source === "command1") {
+          existing.source.command1 = true;
+        }
 
-  if (orderQty > 0) {
-    existing.orderQty = Math.max(existing.orderQty, orderQty);
-  }
+        if (source === "command5") {
+          existing.source.command5 = true;
+        }
 
-  // ============================================================
-  // ORDER VALUE
-  // ============================================================
-  const orderValue = getNumber(item.OrderValue);
+        if (source === "command15") {
+          existing.source.command15 = true;
+        }
 
-  if (orderValue > 0) {
-    existing.orderValue = Math.max(existing.orderValue, orderValue);
-  }
+        // ==========================================================
+        // ORDER RECEIVE DATE
+        // ==========================================================
+        if (item.ApprovedDate) {
+          const approvedDate = parseAPIDate(
+            item.ApprovedDate
+          );
 
-  // ============================================================
-  // MASTER DATA
-  // ============================================================
-  if (item.CustomerName) {
-    existing.customerName = item.CustomerName;
-  }
+          if (
+            approvedDate &&
+            !Number.isNaN(approvedDate.getTime())
+          ) {
+            existing.orderReceiveDate =
+              item.ApprovedDate;
 
-  if (item.Marketing) {
-    existing.marketingName = item.Marketing;
-  }
+            existing.date = approvedDate;
+          }
+        }
 
-  if (item.BuyerName) {
-    existing.buyerName = item.BuyerName;
-  }
+        // ==========================================================
+        // COMMAND 15
+        // ==========================================================
+        if (
+          source === "command15" ||
+          source === "combined"
+        ) {
+          const orderQty = getNumber(
+            item.OrderQTY
+          );
 
-  if (item.SectionName) {
-    existing.category = item.SectionName;
-  }
+          const orderValue = getNumber(
+            item.OrderValue
+          );
 
-  if (item.PINumber) {
-    existing.pINumber = item.PINumber;
-  }
+          // Use MAX to handle multiple Command 15 rows for same order
+          if (orderQty > existing.orderQty) {
+            existing.orderQty = orderQty;
+          }
 
-  if (item.JobCardNo) {
-    existing.jobCardNo = item.JobCardNo;
-  }
+          if (orderValue > existing.orderValue) {
+            existing.orderValue = orderValue;
+          }
 
-  if (item.JobBagDate) {
-    existing.jobBagDate = item.JobBagDate;
-  }
+          // MASTER DATA
+          if (
+            item.CustomerName ||
+            item.CName ||
+            item.FName
+          ) {
+            existing.customerName =
+              item.CustomerName ||
+              item.CName ||
+              item.FName ||
+              existing.customerName;
+          }
 
-  if (item.GateOutDate) {
-    existing.gateOutDate = item.GateOutDate;
-  }
+          if (
+            item.Marketing ||
+            item.MarketingName
+          ) {
+            existing.marketingName =
+              item.Marketing ||
+              item.MarketingName ||
+              existing.marketingName;
+          }
 
-  if (item.CSName) {
-    existing.cSName = item.CSName;
-  }
+          if (item.BuyerName) {
+            existing.buyerName =
+              item.BuyerName;
+          }
 
-  if (item.OrderStatus) {
-    existing.orderStatus = item.OrderStatus;
-  }
+          if (
+            item.SectionName ||
+            item.ProductCategoryName
+          ) {
+            existing.category =
+              item.SectionName ||
+              item.ProductCategoryName ||
+              existing.category;
+          }
 
-  if (item.Rate !== undefined) {
-    existing.rate = getNumber(item.Rate);
-  }
+          if (item.PINumber) {
+            existing.pINumber =
+              item.PINumber;
+          }
 
-  // ============================================================
-  // CHALLAN
-  // ============================================================
-  existing.saleQty += Math.round(
-    getNumber(item.ChallanQTY)
-  );
+          if (item.CustomerPINo) {
+            existing.pINumber =
+              item.CustomerPINo;
+          }
 
-  existing.saleValue += getNumber(
-    item.ChallanValue
-  );
+          if (item.JobCardNo) {
+            existing.jobCardNo =
+              item.JobCardNo;
+          }
 
-  // ============================================================
-  // BREAKDOWN
-  // ============================================================
-  existing.breakDownQTY += Math.round(
-    getNumber(item.BreakDownQTY)
-  );
-});
+          if (item.JobBagDate) {
+            existing.jobBagDate =
+              item.JobBagDate;
+          }
+
+          if (item.GateOutDate) {
+            existing.gateOutDate =
+              item.GateOutDate;
+          }
+
+          if (item.CSName) {
+            existing.cSName =
+              item.CSName;
+          }
+
+          if (item.OrderStatus) {
+            existing.orderStatus =
+              item.OrderStatus;
+          }
+
+          if (item.Rate !== undefined) {
+            existing.rate =
+              getNumber(item.Rate);
+          }
+
+          if (item.DeliveryToAddress) {
+            existing.deliveryToAddress =
+              item.DeliveryToAddress;
+          }
+        }
+
+        // ==========================================================
+        // COMMAND 5
+        // ==========================================================
+        if (
+          source === "command5" ||
+          source === "combined"
+        ) {
+          // UNIQUE COMMAND 5 ROW KEY
+          const rowKey =
+            item.ID !== undefined &&
+            item.ID !== null
+              ? `ID:${item.ID}`
+              : [
+                  item.ItemDescription || "",
+                  item.ProductCategoryName || "",
+                  item.ProductSubCategoryName || "",
+                  item.KeyEntry1Value || "",
+                  item.KeyEntry2Value || "",
+                  item.KeyEntry3Value || "",
+                  item.Unit || "",
+                  item.UnitPrice || "",
+                ].join("|");
+
+          // Prevent same Command 5 row from being processed twice
+          if (
+            !existing._command5Rows.has(rowKey)
+          ) {
+            existing._command5Rows.set(
+              rowKey,
+              item
+            );
+
+            // CHALLAN
+            existing.saleQty += Math.round(
+              getNumber(item.ChallanQTY)
+            );
+
+            existing.saleValue +=
+              getNumber(item.ChallanValue);
+
+            // BREAKDOWN QTY
+            existing.breakDownQTY += Math.round(
+              getNumber(item.BreakDownQTY)
+            );
+
+            // CHALLAN INFO
+            if (item.ChallanDate) {
+              existing.challanDate =
+                item.ChallanDate;
+            }
+
+            if (item.ChallanNo) {
+              existing.challanNo =
+                item.ChallanNo;
+            }
+
+            // DELIVERY ADDRESS
+            if (item.DeliveryToAddress) {
+              existing.deliveryToAddress =
+                item.DeliveryToAddress;
+            }
+
+            // PRODUCT MASTER
+            if (item.ProductCategoryName) {
+              existing.productCategoryName =
+                item.ProductCategoryName;
+            }
+
+            if (item.ProductSubCategoryName) {
+              existing.productSubCategoryName =
+                item.ProductSubCategoryName;
+
+              existing.subCategories.add(
+                item.ProductSubCategoryName
+              );
+            }
+
+            if (item.ItemDescription) {
+              existing.itemDescription =
+                item.ItemDescription;
+            }
+
+            if (item.Unit) {
+              existing.unit =
+                item.Unit;
+            }
+
+            if (item.UnitPrice !== undefined) {
+              existing.unitPrice =
+                getNumber(item.UnitPrice);
+            }
+
+            // PRODUCT DETAILS
+            existing.productDetails.push({
+              productName:
+                item.ItemDescription || "",
+
+              category:
+                item.ProductCategoryName || "",
+
+              subCategory:
+                item.ProductSubCategoryName || "",
+
+              qty: Math.round(
+                getNumber(item.BreakDownQTY)
+              ),
+
+              value: getNumber(
+                item.TotalOrderValue
+              ),
+
+              saleQty: Math.round(
+                getNumber(item.ChallanQTY)
+              ),
+
+              saleValue: getNumber(
+                item.ChallanValue
+              ),
+
+              balanceQty: Math.round(
+                getNumber(item.BalanceQTY)
+              ),
+
+              balanceValue: getNumber(
+                item.BalanceValue
+              ),
+
+              unit:
+                item.Unit || "",
+
+              unitPrice:
+                getNumber(item.UnitPrice),
+
+              style:
+                item.KeyEntry1Value || "",
+
+              color:
+                item.KeyEntry2Value || "",
+
+              po:
+                item.KeyEntry3Value || "",
+
+              orderNo:
+                item.WorkOrderNo || "",
+
+              customerPINo:
+                item.CustomerPINo || "",
+
+              jobCardNo:
+                item.JobCardNo || "",
+
+              challanDate:
+                item.ChallanDate || null,
+
+              challanNo:
+                item.ChallanNo || null,
+            });
+          }
+        }
+
+        // ==========================================================
+        // FALLBACK MASTER DATA
+        // ==========================================================
+        if (
+          existing.customerName === "Unknown"
+        ) {
+          existing.customerName =
+            item.CustomerName ||
+            item.CName ||
+            item.FName ||
+            existing.customerName;
+        }
+
+        if (
+          existing.marketingName === "Unknown"
+        ) {
+          existing.marketingName =
+            item.Marketing ||
+            item.MarketingName ||
+            existing.marketingName;
+        }
+
+        if (
+          existing.buyerName === "Unknown"
+        ) {
+          existing.buyerName =
+            item.BuyerName ||
+            existing.buyerName;
+        }
+
+        if (
+          existing.category === "Uncategorized"
+        ) {
+          existing.category =
+            item.SectionName ||
+            item.ProductCategoryName ||
+            existing.category;
+        }
+
+        if (!existing.jobCardNo) {
+          existing.jobCardNo =
+            item.JobCardNo || "";
+        }
+
+        if (!existing.deliveryToAddress) {
+          existing.deliveryToAddress =
+            item.DeliveryToAddress || "";
+        }
+      });
 
       // ============================================================
       // FINAL NORMALIZATION
       // ============================================================
       mergedMap.forEach((record) => {
-  record.balanceQty = Math.max(
-    0,
-    record.orderQty - record.saleQty
-  );
+        // FALLBACK ORDER QTY
+        if (
+          record.orderQty <= 0 &&
+          record._command5Rows.size > 0
+        ) {
+          let fallbackQty = 0;
 
-  record.balanceValue = Math.max(
-    0,
-    record.orderValue - record.saleValue
-  );
+          record._command5Rows.forEach(
+            (row) => {
+              fallbackQty += Math.round(
+                getNumber(row.ChallanQTY)
+              );
 
-  if (record.orderReceiveDate) {
-    record.date = parseAPIDate(
-      record.orderReceiveDate
-    );
-  }
-});
+              fallbackQty += Math.round(
+                getNumber(row.BalanceQTY)
+              );
+            }
+          );
+
+          record.orderQty = fallbackQty;
+        }
+
+        // FALLBACK ORDER VALUE
+        if (
+          record.orderValue <= 0 &&
+          record._command5Rows.size > 0
+        ) {
+          let fallbackValue = 0;
+
+          record._command5Rows.forEach(
+            (row) => {
+              fallbackValue +=
+                getNumber(row.ChallanValue);
+
+              fallbackValue +=
+                getNumber(row.BalanceValue);
+            }
+          );
+
+          record.orderValue = fallbackValue;
+        }
+
+        // BALANCE
+        record.balanceQty = Math.max(
+          0,
+          record.orderQty -
+            record.saleQty
+        );
+
+        record.balanceValue = Math.max(
+          0,
+          record.orderValue -
+            record.saleValue
+        );
+
+        // DATE
+        if (record.orderReceiveDate) {
+          const parsedDate = parseAPIDate(
+            record.orderReceiveDate
+          );
+
+          if (
+            parsedDate &&
+            !Number.isNaN(
+              parsedDate.getTime()
+            )
+          ) {
+            record.date = parsedDate;
+          }
+        }
+
+        // REMOVE INTERNAL MAP
+        delete record._command5Rows;
+      });
+
       // ============================================================
-      // DEBUG
+      // FINAL RESULT
       // ============================================================
-      const result = Array.from(mergedMap.values());
-
-      console.log("🔵 FINAL MERGED DATA:", result);
-
-      console.log("🔵 FINAL ORDER COUNT:", result.length);
-
-      console.log(
-        "🔵 COMMAND 1 ORDERS:",
-        result.filter((x) => x.source.command1).length,
+      return Array.from(
+        mergedMap.values()
       );
-
-      console.log(
-        "🔵 COMMAND 15 ORDERS:",
-        result.filter((x) => x.source.command15).length,
-      );
-
-      console.log(
-        "🔵 COMMAND 5 ORDERS:",
-        result.filter((x) => x.source.command5).length,
-      );
-
-      return result;
     };
 
     // ============================================================
@@ -556,7 +802,6 @@ export const useComprehensiveData = (
     const mergedData = mergeApiData(apiData);
 
     console.log("✅ API Row Count:", apiData.length);
-
     console.log("✅ Merged Order Count:", mergedData.length);
 
     // ============================================================
@@ -605,6 +850,7 @@ export const useComprehensiveData = (
     // ============================================================
     // AGGREGATION MAPS
     // ============================================================
+    // IMPORTANT: Use orderNo as the key to prevent duplicate counting
     const orderMap = new Map();
 
     const dailyMap = new Map();
@@ -626,37 +872,22 @@ export const useComprehensiveData = (
     filtered.forEach((item) => {
       const date = item.date || new Date();
 
+      // Use orderNo as the key - each order should be counted once
       const orderNo = item.orderNo || "N/A";
 
-      // ========================================================
-      // IMPORTANT:
-      // Use the already merged values.
-      //
-      // DO NOT read TotalBreakDownQTY / TotalOrderValue here.
-      // ========================================================
+      // Use the already merged values
       const orderQty = Number(item.orderQty) || 0;
-
       const orderValue = Number(item.orderValue) || 0;
-
       const saleQty = Number(item.saleQty) || 0;
-
       const saleValue = Number(item.saleValue) || 0;
-
       const balanceQty = Number(item.balanceQty) || 0;
-
       const balanceValue = Number(item.balanceValue) || 0;
 
       const customerName = item.customerName || "Unknown";
-
       const marketingName = item.marketingName || "Unknown";
-
       const buyerName = item.buyerName || "Unknown";
-
       const category = item.category || "Uncategorized";
-
       const subCategory = item.productSubCategoryName || "";
-
-      const productName = item.itemDescription || "";
 
       const dayKey = `${date.getFullYear()}-${String(
         date.getMonth() + 1,
@@ -667,102 +898,40 @@ export const useComprehensiveData = (
       });
 
       const yearValue = date.getFullYear();
-
       const monthKey = `${yearValue}-${monthDisplay}`;
-
       const weekKey = `${date.getFullYear()}-W${getWeekNumber(date)}`;
-
       const hourKey = date.getHours();
 
       // ========================================================
-      // ORDER MAP
-      //
-      // One merged record = one order.
+      // ORDER MAP - Use orderNo as the ONLY key
       // ========================================================
       if (!orderMap.has(orderNo)) {
         orderMap.set(orderNo, {
           orderNo,
-
           orderReceiveDate: item.orderReceiveDate || "",
-
           orderQty,
           orderValue,
-
           saleQty,
           saleValue,
-
           balanceQty,
           balanceValue,
-
           customerName,
           marketingName,
           buyerName,
           category,
-
           subCategory,
-
           orderStatus: item.orderStatus || "",
-
           rate: Number(item.rate) || 0,
-
-          productDetails: [],
-          subCategories: new Set(),
-
+          productDetails: [...(item.productDetails || [])],
+          subCategories: new Set(item.subCategories || []),
           orderDate: date,
           hour: hourKey,
-
           source: item.source || {
-            primary: false,
-            secondary: false,
+            command1: false,
+            command5: false,
+            command15: false,
           },
         });
-      }
-
-      const order = orderMap.get(orderNo);
-
-      // ========================================================
-      // PRODUCT DETAILS
-      //
-      // Since filtered contains ONE record per WorkOrderNo,
-      // productDetails are already merged in mergeApiData().
-      //
-      // Therefore we copy them instead of adding orderQty/value
-      // repeatedly.
-      // ========================================================
-      if (Array.isArray(item.productDetails)) {
-        item.productDetails.forEach((product) => {
-          const existingProduct = order.productDetails.find(
-            (p) => p.productName === product.productName,
-          );
-
-          if (existingProduct) {
-            existingProduct.qty += Number(product.qty) || 0;
-
-            existingProduct.value += Number(product.value) || 0;
-
-            existingProduct.saleQty += Number(product.saleQty) || 0;
-
-            existingProduct.saleValue += Number(product.saleValue) || 0;
-
-            existingProduct.balanceQty += Number(product.balanceQty) || 0;
-
-            existingProduct.balanceValue += Number(product.balanceValue) || 0;
-          } else {
-            order.productDetails.push({
-              ...product,
-              qty: Number(product.qty) || 0,
-              value: Number(product.value) || 0,
-              saleQty: Number(product.saleQty) || 0,
-              saleValue: Number(product.saleValue) || 0,
-              balanceQty: Number(product.balanceQty) || 0,
-              balanceValue: Number(product.balanceValue) || 0,
-            });
-          }
-        });
-      }
-
-      if (subCategory) {
-        order.subCategories.add(subCategory);
       }
 
       // ========================================================
@@ -771,37 +940,25 @@ export const useComprehensiveData = (
       if (!dailyMap.has(dayKey)) {
         dailyMap.set(dayKey, {
           date: dayKey,
-
           orderValue: 0,
           saleValue: 0,
           balanceValue: 0,
-
           orderQty: 0,
           saleQty: 0,
           balanceQty: 0,
-
           count: 0,
-
           uniqueOrders: new Set(),
         });
       }
 
       const daily = dailyMap.get(dayKey);
-
       daily.orderValue += orderValue;
-
       daily.saleValue += saleValue;
-
       daily.balanceValue += balanceValue;
-
       daily.orderQty += orderQty;
-
       daily.saleQty += saleQty;
-
       daily.balanceQty += balanceQty;
-
       daily.count += 1;
-
       daily.uniqueOrders.add(orderNo);
 
       // ========================================================
@@ -810,31 +967,21 @@ export const useComprehensiveData = (
       if (!weeklyMap.has(weekKey)) {
         weeklyMap.set(weekKey, {
           week: weekKey,
-
           orderValue: 0,
           saleValue: 0,
-
           orderQty: 0,
           saleQty: 0,
-
           count: 0,
-
           uniqueOrders: new Set(),
         });
       }
 
       const weekly = weeklyMap.get(weekKey);
-
       weekly.orderValue += orderValue;
-
       weekly.saleValue += saleValue;
-
       weekly.orderQty += orderQty;
-
       weekly.saleQty += saleQty;
-
       weekly.count += 1;
-
       weekly.uniqueOrders.add(orderNo);
 
       // ========================================================
@@ -845,37 +992,25 @@ export const useComprehensiveData = (
           month: monthKey,
           displayName: monthDisplay,
           year: yearValue,
-
           orderValue: 0,
           saleValue: 0,
           balanceValue: 0,
-
           orderQty: 0,
           saleQty: 0,
           balanceQty: 0,
-
           count: 0,
-
           uniqueOrders: new Set(),
         });
       }
 
       const monthly = monthlyMap.get(monthKey);
-
       monthly.orderValue += orderValue;
-
       monthly.saleValue += saleValue;
-
       monthly.balanceValue += balanceValue;
-
       monthly.orderQty += orderQty;
-
       monthly.saleQty += saleQty;
-
       monthly.balanceQty += balanceQty;
-
       monthly.count += 1;
-
       monthly.uniqueOrders.add(orderNo);
 
       // ========================================================
@@ -891,11 +1026,8 @@ export const useComprehensiveData = (
       }
 
       const hour = hourMap.get(hourKey);
-
       hour.count += 1;
-
       hour.orderValue += orderValue;
-
       hour.saleValue += saleValue;
 
       // ========================================================
@@ -904,27 +1036,19 @@ export const useComprehensiveData = (
       if (!customerMap.has(customerName)) {
         customerMap.set(customerName, {
           name: customerName,
-
           orderValue: 0,
           saleValue: 0,
-
           count: 0,
-
           orders: new Set(),
-
           lastOrder: date,
           firstOrder: date,
         });
       }
 
       const customer = customerMap.get(customerName);
-
       customer.orderValue += orderValue;
-
       customer.saleValue += saleValue;
-
       customer.count += 1;
-
       customer.orders.add(orderNo);
 
       if (date > customer.lastOrder) {
@@ -941,12 +1065,9 @@ export const useComprehensiveData = (
       if (!marketingMap.has(marketingName)) {
         marketingMap.set(marketingName, {
           name: marketingName,
-
           orderValue: 0,
           saleValue: 0,
-
           count: 0,
-
           orders: new Set(),
           categories: new Set(),
           customers: new Set(),
@@ -955,19 +1076,12 @@ export const useComprehensiveData = (
       }
 
       const marketing = marketingMap.get(marketingName);
-
       marketing.orderValue += orderValue;
-
       marketing.saleValue += saleValue;
-
       marketing.count += 1;
-
       marketing.orders.add(orderNo);
-
       marketing.categories.add(category);
-
       marketing.customers.add(customerName);
-
       marketing.buyers.add(buyerName);
 
       // ========================================================
@@ -976,12 +1090,9 @@ export const useComprehensiveData = (
       if (!categoryMap.has(category)) {
         categoryMap.set(category, {
           name: category,
-
           orderValue: 0,
           saleValue: 0,
-
           count: 0,
-
           orders: new Set(),
           subCategories: new Set(),
           customers: new Set(),
@@ -989,15 +1100,10 @@ export const useComprehensiveData = (
       }
 
       const categoryData = categoryMap.get(category);
-
       categoryData.orderValue += orderValue;
-
       categoryData.saleValue += saleValue;
-
       categoryData.count += 1;
-
       categoryData.orders.add(orderNo);
-
       categoryData.customers.add(customerName);
 
       if (subCategory) {
@@ -1013,26 +1119,18 @@ export const useComprehensiveData = (
         if (!subCategoryMap.has(subKey)) {
           subCategoryMap.set(subKey, {
             category,
-
             name: subCategory,
-
             orderValue: 0,
             saleValue: 0,
-
             count: 0,
-
             orders: new Set(),
           });
         }
 
         const subData = subCategoryMap.get(subKey);
-
         subData.orderValue += orderValue;
-
         subData.saleValue += saleValue;
-
         subData.count += 1;
-
         subData.orders.add(orderNo);
       }
 
@@ -1042,61 +1140,43 @@ export const useComprehensiveData = (
       if (!buyerMap.has(buyerName)) {
         buyerMap.set(buyerName, {
           name: buyerName,
-
           orderValue: 0,
           saleValue: 0,
-
           count: 0,
-
           categories: new Set(),
-
           orders: new Set(),
         });
       }
 
       const buyer = buyerMap.get(buyerName);
-
       buyer.orderValue += orderValue;
-
       buyer.saleValue += saleValue;
-
       buyer.count += 1;
-
       buyer.categories.add(category);
-
       buyer.orders.add(orderNo);
 
       // ========================================================
       // PRODUCT MAP
       // ========================================================
-      if (productName) {
-        const productKey = `${category}-${productName}`;
+      if (item.itemDescription) {
+        const productKey = `${category}-${item.itemDescription}`;
 
         if (!productMap.has(productKey)) {
           productMap.set(productKey, {
-            name: productName,
-
+            name: item.itemDescription,
             category,
-
             subCategory,
-
             orderValue: 0,
             saleValue: 0,
-
             count: 0,
-
             orders: new Set(),
           });
         }
 
         const product = productMap.get(productKey);
-
         product.orderValue += orderValue;
-
         product.saleValue += saleValue;
-
         product.count += 1;
-
         product.orders.add(orderNo);
       }
     });
@@ -1107,10 +1187,8 @@ export const useComprehensiveData = (
     const totals = {
       orderQty: 0,
       orderValue: 0,
-
       saleQty: 0,
       saleValue: 0,
-
       balanceQty: 0,
       balanceValue: 0,
     };
@@ -1124,21 +1202,16 @@ export const useComprehensiveData = (
     let completedValue = 0;
     let pendingValue = 0;
 
+    // Use orderMap which has unique orders only
     orderMap.forEach((order) => {
       totals.orderQty += Number(order.orderQty) || 0;
-
       totals.orderValue += Number(order.orderValue) || 0;
-
       totals.saleQty += Number(order.saleQty) || 0;
-
       totals.saleValue += Number(order.saleValue) || 0;
-
       totals.balanceQty += Number(order.balanceQty) || 0;
-
       totals.balanceValue += Number(order.balanceValue) || 0;
 
       completedValue += Number(order.saleValue) || 0;
-
       pendingValue += Number(order.balanceValue) || 0;
 
       const completion =
@@ -1161,9 +1234,7 @@ export const useComprehensiveData = (
 
     const growthMetrics = {
       completed: Math.round(completedValue),
-
       recurring: Math.round(totals.saleValue * 0.15),
-
       pending: Math.round(pendingValue),
     };
 
@@ -1188,15 +1259,12 @@ export const useComprehensiveData = (
     const monthlySalesData = Array.from(monthlyMap.entries())
       .sort((a, b) => {
         const partsA = a[0].split("-");
-
         const partsB = b[0].split("-");
 
         const yearA = parseInt(partsA[0]) || 0;
-
         const yearB = parseInt(partsB[0]) || 0;
 
         const monthA = partsA[1] || partsA[0];
-
         const monthB = partsB[1] || partsB[0];
 
         if (yearA !== yearB) {
@@ -1207,34 +1275,21 @@ export const useComprehensiveData = (
       })
       .map(([key, data]) => {
         const parts = key.split("-");
-
         const monthDisplay = parts[1] || key;
-
         const yearValue = parseInt(parts[0]) || new Date().getFullYear();
 
         return {
           name: monthDisplay,
-
           fullName: key,
-
           year: yearValue,
-
           orderValue: Math.round(data.orderValue),
-
           saleValue: Math.round(data.saleValue),
-
           orderQty: Math.round(data.orderQty),
-
           saleQty: Math.round(data.saleQty),
-
           balanceValue: Math.round(data.balanceValue),
-
           balanceQty: Math.round(data.balanceQty),
-
           count: data.count,
-
           uniqueOrders: data.uniqueOrders.size,
-
           deliveryRate:
             data.orderValue > 0 ? (data.saleValue / data.orderValue) * 100 : 0,
         };
@@ -1249,11 +1304,8 @@ export const useComprehensiveData = (
 
       if (i > 0) {
         const prevSale = arr[i - 1]?.saleValue || 0;
-
         const prevOrder = arr[i - 1]?.orderValue || 0;
-
         const currentSale = d.saleValue || 0;
-
         const currentOrder = d.orderValue || 0;
 
         if (prevSale > 0) {
@@ -1271,17 +1323,11 @@ export const useComprehensiveData = (
 
       return {
         month: d.name,
-
         fullName: d.fullName || d.name,
-
         orderValue: Math.round(d.orderValue || 0),
-
         saleValue: Math.round(d.saleValue || 0),
-
         orderGrowth: Math.round(orderGrowth * 10) / 10,
-
         salesGrowth: Math.round(salesGrowth * 10) / 10,
-
         uniqueOrders: d.uniqueOrders || 0,
       };
     });
@@ -1292,15 +1338,12 @@ export const useComprehensiveData = (
     const allMonthlySalesDataUnfiltered = Array.from(monthlyMap.entries())
       .sort((a, b) => {
         const partsA = a[0].split("-");
-
         const partsB = b[0].split("-");
 
         const yearA = parseInt(partsA[0]) || 0;
-
         const yearB = parseInt(partsB[0]) || 0;
 
         const monthA = partsA[1] || partsA[0];
-
         const monthB = partsB[1] || partsB[0];
 
         if (yearA !== yearB) {
@@ -1311,23 +1354,14 @@ export const useComprehensiveData = (
       })
       .map(([month, data]) => ({
         name: month,
-
         orderValue: Math.round(data.orderValue),
-
         saleValue: Math.round(data.saleValue),
-
         orderQty: Math.round(data.orderQty),
-
         saleQty: Math.round(data.saleQty),
-
         balanceValue: Math.round(data.balanceValue),
-
         balanceQty: Math.round(data.balanceQty),
-
         count: data.count,
-
         uniqueOrders: data.uniqueOrders.size,
-
         deliveryRate:
           data.orderValue > 0 ? (data.saleValue / data.orderValue) * 100 : 0,
       }));
@@ -1335,15 +1369,12 @@ export const useComprehensiveData = (
     const allGrowthData = [...allMonthlySalesDataUnfiltered]
       .sort((a, b) => {
         const partsA = a.name.split("-");
-
         const partsB = b.name.split("-");
 
         const yearA = parseInt(partsA[0]) || 0;
-
         const yearB = parseInt(partsB[0]) || 0;
 
         const monthA = partsA[1] || partsA[0];
-
         const monthB = partsB[1] || partsB[0];
 
         if (yearA !== yearB) {
@@ -1357,25 +1388,19 @@ export const useComprehensiveData = (
         let orderGrowth = 0;
 
         const MIN_THRESHOLD = 1000;
-
         const MAX_GROWTH = 200;
-
         const MIN_GROWTH = -100;
 
         if (i > 0) {
           const prevSale = arr[i - 1]?.saleValue || 0;
-
           const prevOrder = arr[i - 1]?.orderValue || 0;
-
           const currentSale = d.saleValue || 0;
-
           const currentOrder = d.orderValue || 0;
 
           if (prevSale < MIN_THRESHOLD && currentSale > MIN_THRESHOLD) {
             salesGrowth = 100;
           } else if (prevSale >= MIN_THRESHOLD) {
             salesGrowth = ((currentSale - prevSale) / prevSale) * 100;
-
             salesGrowth = Math.max(
               MIN_GROWTH,
               Math.min(MAX_GROWTH, salesGrowth),
@@ -1386,7 +1411,6 @@ export const useComprehensiveData = (
             orderGrowth = 100;
           } else if (prevOrder >= MIN_THRESHOLD) {
             orderGrowth = ((currentOrder - prevOrder) / prevOrder) * 100;
-
             orderGrowth = Math.max(
               MIN_GROWTH,
               Math.min(MAX_GROWTH, orderGrowth),
@@ -1395,22 +1419,15 @@ export const useComprehensiveData = (
         }
 
         const monthParts = d.name.split("-");
-
         const monthName = monthParts.length > 1 ? monthParts[1] : d.name;
 
         return {
           month: monthName,
-
           fullName: d.name,
-
           orderValue: Math.round(d.orderValue || 0),
-
           saleValue: Math.round(d.saleValue || 0),
-
           orderGrowth: Math.round(orderGrowth * 10) / 10,
-
           salesGrowth: Math.round(salesGrowth * 10) / 10,
-
           uniqueOrders: d.uniqueOrders || 0,
         };
       });
@@ -1424,21 +1441,17 @@ export const useComprehensiveData = (
         let salesGrowth = 0;
 
         const MIN_THRESHOLD = 1000;
-
         const MAX_GROWTH = 200;
-
         const MIN_GROWTH = -100;
 
         if (index > 0) {
           const prevSale = arr[index - 1][1].saleValue || 0;
-
           const currentSale = data.saleValue || 0;
 
           if (prevSale < MIN_THRESHOLD && currentSale > MIN_THRESHOLD) {
             salesGrowth = 100;
           } else if (prevSale >= MIN_THRESHOLD) {
             salesGrowth = ((currentSale - prevSale) / prevSale) * 100;
-
             salesGrowth = Math.max(
               MIN_GROWTH,
               Math.min(MAX_GROWTH, salesGrowth),
@@ -1448,11 +1461,8 @@ export const useComprehensiveData = (
 
         return {
           month: week,
-
           salesGrowth: Math.round(salesGrowth * 10) / 10,
-
           saleValue: Math.round(data.saleValue),
-
           orderValue: Math.round(data.orderValue),
         };
       });
@@ -1466,21 +1476,17 @@ export const useComprehensiveData = (
         let salesGrowth = 0;
 
         const MIN_THRESHOLD = 500;
-
         const MAX_GROWTH = 200;
-
         const MIN_GROWTH = -100;
 
         if (index > 0) {
           const prevSale = arr[index - 1][1].saleValue || 0;
-
           const currentSale = data.saleValue || 0;
 
           if (prevSale < MIN_THRESHOLD && currentSale > MIN_THRESHOLD) {
             salesGrowth = 100;
           } else if (prevSale >= MIN_THRESHOLD) {
             salesGrowth = ((currentSale - prevSale) / prevSale) * 100;
-
             salesGrowth = Math.max(
               MIN_GROWTH,
               Math.min(MAX_GROWTH, salesGrowth),
@@ -1493,19 +1499,14 @@ export const useComprehensiveData = (
             month: "short",
             day: "numeric",
           }),
-
           salesGrowth: Math.round(salesGrowth * 10) / 10,
-
           saleValue: Math.round(data.saleValue),
-
           orderValue: Math.round(data.orderValue),
         };
       });
 
     // ============================================================
     // YEARLY DATA
-    //
-    // Use merged data so order values are not duplicated.
     // ============================================================
     const yearlyMap = new Map();
 
@@ -1517,18 +1518,13 @@ export const useComprehensiveData = (
       if (!yearlyMap.has(yearKey)) {
         yearlyMap.set(yearKey, {
           year: yearKey,
-
           orderValue: 0,
           saleValue: 0,
-
           orderQty: 0,
           saleQty: 0,
-
           balanceValue: 0,
           balanceQty: 0,
-
           count: 0,
-
           uniqueOrders: new Set(),
         });
       }
@@ -1536,19 +1532,12 @@ export const useComprehensiveData = (
       const yearly = yearlyMap.get(yearKey);
 
       yearly.orderValue += Number(item.orderValue) || 0;
-
       yearly.saleValue += Number(item.saleValue) || 0;
-
       yearly.orderQty += Number(item.orderQty) || 0;
-
       yearly.saleQty += Number(item.saleQty) || 0;
-
       yearly.balanceValue += Number(item.balanceValue) || 0;
-
       yearly.balanceQty += Number(item.balanceQty) || 0;
-
       yearly.count += 1;
-
       yearly.uniqueOrders.add(item.orderNo);
     });
 
@@ -1556,23 +1545,14 @@ export const useComprehensiveData = (
       .sort((a, b) => a[0].localeCompare(b[0]))
       .map(([year, data]) => ({
         name: year,
-
         orderValue: Math.round(data.orderValue),
-
         saleValue: Math.round(data.saleValue),
-
         orderQty: Math.round(data.orderQty),
-
         saleQty: Math.round(data.saleQty),
-
         balanceValue: Math.round(data.balanceValue),
-
         balanceQty: Math.round(data.balanceQty),
-
         count: data.count,
-
         uniqueOrders: data.uniqueOrders.size,
-
         deliveryRate:
           data.orderValue > 0 ? (data.saleValue / data.orderValue) * 100 : 0,
       }));
@@ -1599,15 +1579,10 @@ export const useComprehensiveData = (
 
         return {
           month: d.name,
-
           orderValue: Math.round(d.orderValue),
-
           saleValue: Math.round(d.saleValue),
-
           orderGrowth,
-
           salesGrowth,
-
           uniqueOrders: d.uniqueOrders,
         };
       },
@@ -1627,13 +1602,9 @@ export const useComprehensiveData = (
 
       return {
         ...d,
-
         predicted,
-
         balanceValue: d.orderValue - d.saleValue,
-
         deliveryRate: d.orderValue > 0 ? (d.saleValue / d.orderValue) * 100 : 0,
-
         period: "yearly",
       };
     });
@@ -1646,9 +1617,7 @@ export const useComprehensiveData = (
 
       return {
         ...d,
-
         predicted,
-
         period: "monthly",
       };
     });
@@ -1671,23 +1640,17 @@ export const useComprehensiveData = (
 
       return {
         ...d,
-
         name: new Date(d.date).toLocaleDateString("en-US", {
           month: "short",
           day: "numeric",
         }),
-
         date: new Date(d.date).toLocaleDateString("en-US", {
           month: "short",
           day: "numeric",
         }),
-
         deliveryRate: d.orderQty > 0 ? (d.saleQty / d.orderQty) * 100 : 0,
-
         uniqueOrderCount: d.uniqueOrders.size,
-
         predicted,
-
         period: "daily",
       };
     });
@@ -1710,29 +1673,21 @@ export const useComprehensiveData = (
 
       return {
         ...w,
-
         name: w.week,
-
         balanceValue: w.orderValue - w.saleValue,
-
         deliveryRate: w.orderValue > 0 ? (w.saleValue / w.orderValue) * 100 : 0,
-
         predicted,
-
         period: "weekly",
-
         growth:
           i > 0 && arr[i - 1].orderValue > 0
             ? ((w.orderValue - arr[i - 1].orderValue) / arr[i - 1].orderValue) *
               100
             : 0,
-
         salesGrowth:
           i > 0 && arr[i - 1].saleValue > 0
             ? ((w.saleValue - arr[i - 1].saleValue) / arr[i - 1].saleValue) *
               100
             : 0,
-
         uniqueOrderCount: w.uniqueOrders.size,
       };
     });
@@ -1745,25 +1700,18 @@ export const useComprehensiveData = (
         dailyData.reduce((sum, d) => sum + Number(d.orderValue || 0), 0) /
           (dailyData.length || 1),
       ),
-
       avgDailySale: Math.round(
         dailyData.reduce((sum, d) => sum + Number(d.saleValue || 0), 0) /
           (dailyData.length || 1),
       ),
-
       avgOrderValue: Math.round(totals.orderValue / (orderMap.size || 1)),
-
       avgSaleValue: Math.round(totals.saleValue / (orderMap.size || 1)),
-
       avgCustomerValue: Math.round(totals.saleValue / (customerMap.size || 1)),
-
       avgMarketingValue: Math.round(
         totals.saleValue / (marketingMap.size || 1),
       ),
-
       orderToDeliveryRatio:
         totals.orderQty > 0 ? totals.saleQty / totals.orderQty : 0,
-
       customerRetention:
         customerMap.size > 0 && orderMap.size > 0
           ? (customerMap.size / orderMap.size) * 100
@@ -1775,27 +1723,17 @@ export const useComprehensiveData = (
     // ============================================================
     const allMarketingData = Array.from(marketingMap.values()).map((m) => ({
       name: m.name,
-
       value: Math.round(m.saleValue || 0),
-
       orderValue: Math.round(m.orderValue || 0),
-
       count: m.count,
-
       orders: m.orders.size,
-
       categories: m.categories.size,
-
       customers: m.customers.size,
-
       buyers: m.buyers.size,
-
       avgOrderValue:
         m.orders.size > 0 ? Math.round(m.orderValue / m.orders.size) : 0,
-
       avgSaleValue:
         m.orders.size > 0 ? Math.round(m.saleValue / m.orders.size) : 0,
-
       deliveryRate: m.orderValue > 0 ? (m.saleValue / m.orderValue) * 100 : 0,
     }));
 
@@ -1811,21 +1749,13 @@ export const useComprehensiveData = (
     const allCategoryData = Array.from(categoryMap.values())
       .map((c) => ({
         name: c.name,
-
         value: Math.round(c.saleValue || 0),
-
         orderValue: Math.round(c.orderValue || 0),
-
         count: c.count,
-
         orders: c.orders.size,
-
         subCategories: c.subCategories.size,
-
         customers: c.customers.size,
-
         deliveryRate: c.orderValue > 0 ? (c.saleValue / c.orderValue) * 100 : 0,
-
         avgOrderValue:
           c.orders.size > 0 ? Math.round(c.orderValue / c.orders.size) : 0,
       }))
@@ -1839,19 +1769,12 @@ export const useComprehensiveData = (
     const topSubCategories = Array.from(subCategoryMap.values())
       .map((s) => ({
         name: s.name,
-
         category: s.category,
-
         value: Math.round(s.saleValue || 0),
-
         orderValue: Math.round(s.orderValue || 0),
-
         count: s.count,
-
         orders: s.orders.size,
-
         deliveryRate: s.orderValue > 0 ? (s.saleValue / s.orderValue) * 100 : 0,
-
         avgOrderValue:
           s.orders.size > 0 ? Math.round(s.orderValue / s.orders.size) : 0,
       }))
@@ -1864,19 +1787,13 @@ export const useComprehensiveData = (
     const allCustomers = Array.from(customerMap.values())
       .map((c) => ({
         name: c.name,
-
         value: Math.round(c.saleValue || 0),
-
         orderValue: Math.round(c.orderValue || 0),
-
         count: c.count,
-
         orders: c.orders.size,
-
         daysSinceLastOrder: Math.floor(
           (new Date() - c.lastOrder) / (1000 * 60 * 60 * 24),
         ),
-
         avgOrderValue:
           c.orders.size > 0 ? Math.round(c.orderValue / c.orders.size) : 0,
       }))
@@ -1890,17 +1807,11 @@ export const useComprehensiveData = (
     const allBuyers = Array.from(buyerMap.values())
       .map((b) => ({
         name: b.name,
-
         value: Math.round(b.saleValue || 0),
-
         orderValue: Math.round(b.orderValue || 0),
-
         count: b.count,
-
         categories: b.categories.size,
-
         orders: b.orders.size,
-
         avgOrderValue:
           b.orders.size > 0 ? Math.round(b.orderValue / b.orders.size) : 0,
       }))
@@ -1916,15 +1827,10 @@ export const useComprehensiveData = (
       .slice(0, 10)
       .map((p) => ({
         name: p.name.length > 30 ? p.name.substring(0, 30) + "..." : p.name,
-
         category: p.category,
-
         value: Math.round(p.saleValue || 0),
-
         orderValue: Math.round(p.orderValue || 0),
-
         count: p.count,
-
         orders: p.orders.size,
       }));
 
@@ -1934,25 +1840,17 @@ export const useComprehensiveData = (
     const orderFunnelData = [
       {
         name: "Orders Received",
-
         value: Math.round(totals.orderValue) || 1,
-
         fill: COLORS.primary,
       },
-
       {
         name: "Delivered",
-
         value: Math.round(totals.saleValue) || 1,
-
         fill: COLORS.success,
       },
-
       {
         name: "Pending",
-
         value: Math.round(totals.balanceValue) || 1,
-
         fill: COLORS.danger,
       },
     ];
@@ -1966,11 +1864,8 @@ export const useComprehensiveData = (
       .slice(0, 8)
       .map((m, i) => {
         const avgOrderValue = m.avgOrderValue || 0;
-
         const deliveryRate = m.deliveryRate || 0;
-
         const totalOrderValue = m.orderValue || 0;
-
         const orders = m.orders || 0;
 
         const tier = getPerformanceTier(
@@ -1987,52 +1882,32 @@ export const useComprehensiveData = (
 
         return {
           channel: m.name,
-
           orderValue: formatCurrency(m.orderValue),
-
           revenue: formatCurrency(m.value),
-
           avgOrderValue: formatCurrency(avgOrderValue),
-
           orderValueNum: Math.round(m.orderValue || 0),
-
           saleValueNum: Math.round(m.value || 0),
-
           orders: m.orders,
-
           delivered: Math.round(m.orders * (deliveryRate / 100)),
-
           deliveryRate: deliveryRate.toFixed(0) + "%",
-
           avgSaleValue: formatCurrency(m.avgSaleValue),
-
           customers: m.customers,
-
           categories: m.categories,
-
           leakage:
             m.orderValue > 0
               ? formatCurrency(m.orderValue - m.value)
               : formatCurrency(0),
-
           leakagePercent:
             m.orderValue > 0
               ? (((m.orderValue - m.value) / m.orderValue) * 100).toFixed(0) +
                 "%"
               : "0%",
-
           status: tier.status,
-
           tier: tier.tier,
-
           tierIcon: tier.icon,
-
           tierColor: tier.color,
-
           tierBg: tier.bg,
-
           color: CHART_COLORS[i % CHART_COLORS.length],
-
           orderTrend:
             allMarketingDataRanked.length > 1 && allMarketingDataRanked[i + 1]
               ? ((m.orderValue -
@@ -2048,11 +1923,8 @@ export const useComprehensiveData = (
     // ============================================================
     const salesVsOrderData = allMarketingDataRanked.map((m) => ({
       name: m.name,
-
       orderValue: Math.round(m.orderValue || 0),
-
       saleValue: Math.round(m.value || 0),
-
       deliveryRate: m.deliveryRate || 0,
     }));
 
@@ -2065,13 +1937,11 @@ export const useComprehensiveData = (
         value: statusData.complete,
         fill: COLORS.success,
       },
-
       {
         name: "In Progress",
         value: statusData.inProgress,
         fill: COLORS.warning,
       },
-
       {
         name: "Pending",
         value: statusData.pending,
@@ -2096,25 +1966,15 @@ export const useComprehensiveData = (
 
         return {
           name: m.name,
-
           revenueDisplay: formatCurrency(m.value),
-
           revenue: m.value,
-
           orderValue: m.orderValue,
-
           avgOrderValue: formatCurrency(m.avgOrderValue),
-
           orders: m.orders,
-
           customers: m.customers,
-
           deliveryRate: m.deliveryRate.toFixed(0) + "%",
-
           tier: tier.tier,
-
           tierColor: tier.color,
-
           tierBg: tier.bg,
         };
       });
@@ -2124,19 +1984,12 @@ export const useComprehensiveData = (
     // ============================================================
     const categoryPerformance = allCategoryData.slice(0, 5).map((c) => ({
       name: c.name,
-
       revenue: Math.round(c.value),
-
       orderValue: Math.round(c.orderValue),
-
       avgOrderValue: formatCurrency(c.avgOrderValue),
-
       orders: c.orders,
-
       subCategories: c.subCategories,
-
       customers: c.customers,
-
       deliveryRate: c.deliveryRate.toFixed(0) + "%",
     }));
 
@@ -2147,11 +2000,8 @@ export const useComprehensiveData = (
       .sort((a, b) => a.hour - b.hour)
       .map((h) => ({
         hour: `${h.hour}:00`,
-
         orders: h.count,
-
         orderRevenue: Math.round(h.orderValue),
-
         saleRevenue: Math.round(h.saleValue),
       }));
 
@@ -2160,11 +2010,8 @@ export const useComprehensiveData = (
     // ============================================================
     const salesPersonRanking = allMarketingDataRanked.map((m, index) => {
       const avgOrderValue = m.avgOrderValue || 0;
-
       const deliveryRate = m.deliveryRate || 0;
-
       const totalOrderValue = m.orderValue || 0;
-
       const orders = m.orders || 0;
 
       const tier = getPerformanceTier(
@@ -2177,40 +2024,24 @@ export const useComprehensiveData = (
       );
 
       const Icon = tier.icon;
-
       const deliveryStatus = getDeliveryStatus(m.deliveryRate);
 
       return {
         rank: index + 1,
-
         name: m.name,
-
         orderValue: formatCurrency(m.orderValue),
-
         revenue: formatCurrency(m.value),
-
         avgOrderValue: formatCurrency(m.avgOrderValue),
-
         avgSaleValue: formatCurrency(m.avgSaleValue),
-
         orders: m.orders,
-
         customers: m.customers,
-
         deliveryRate: m.deliveryRate.toFixed(0) + "%",
-
         deliveryStatus: deliveryStatus.status,
-
         deliveryStatusIcon: deliveryStatus.icon,
-
         tier: tier.tier,
-
         tierIcon: Icon,
-
         tierColor: tier.color,
-
         tierBg: tier.bg,
-
         badge:
           index === 0
             ? "🥇"
@@ -2230,39 +2061,28 @@ export const useComprehensiveData = (
         .filter((c) => c.avgOrderValue > 10000)
         .map((c) => ({
           name: c.name,
-
           orderValue: formatCurrency(c.orderValue),
-
           avgOrderValue: formatCurrency(c.avgOrderValue),
         })),
-
       regular: allCustomers
         .filter((c) => c.avgOrderValue >= 1000 && c.avgOrderValue <= 10000)
         .map((c) => ({
           name: c.name,
-
           orderValue: formatCurrency(c.orderValue),
-
           avgOrderValue: formatCurrency(c.avgOrderValue),
         })),
-
       occasional: allCustomers
         .filter((c) => c.avgOrderValue < 1000 && c.count > 0)
         .map((c) => ({
           name: c.name,
-
           orderValue: formatCurrency(c.orderValue),
-
           avgOrderValue: formatCurrency(c.avgOrderValue),
         })),
-
       new: allCustomers
         .filter((c) => c.daysSinceLastOrder < 30)
         .map((c) => ({
           name: c.name,
-
           orderValue: formatCurrency(c.orderValue),
-
           avgOrderValue: formatCurrency(c.avgOrderValue),
         })),
     };
@@ -2272,15 +2092,10 @@ export const useComprehensiveData = (
     // ============================================================
     const customerLoyalty = allCustomers.slice(0, 5).map((c) => ({
       name: c.name,
-
       orders: c.orders,
-
       value: c.value,
-
       orderValue: c.orderValue,
-
       avgOrderValue: c.avgOrderValue,
-
       loyaltyScore: Math.min(100, c.orders * 10),
     }));
 
@@ -2292,9 +2107,7 @@ export const useComprehensiveData = (
       .slice(0, 10)
       .map((c) => ({
         name: c.name,
-
         daysSinceLastOrder: c.daysSinceLastOrder,
-
         risk: c.daysSinceLastOrder > 90 ? "High" : "Medium",
       }));
 
@@ -2302,7 +2115,6 @@ export const useComprehensiveData = (
     // SALES GROWTH
     // ============================================================
     const firstMonth = monthlySalesData[0]?.saleValue || 0;
-
     const lastMonth =
       monthlySalesData[monthlySalesData.length - 1]?.saleValue || 0;
 
@@ -2326,7 +2138,6 @@ export const useComprehensiveData = (
           range: `${formatCompactCurrency(range)}-${formatCompactCurrency(
             ranges[i + 1],
           )}`,
-
           count: count || 0,
         });
       }
@@ -2338,30 +2149,23 @@ export const useComprehensiveData = (
     const orderSizeDistribution = [
       {
         name: "Small (<100)",
-
         value: Array.from(orderMap.values()).filter((o) => o.saleValue < 100)
           .length,
       },
-
       {
         name: "Medium (100-500)",
-
         value: Array.from(orderMap.values()).filter(
           (o) => o.saleValue >= 100 && o.saleValue < 500,
         ).length,
       },
-
       {
         name: "Large (500-2000)",
-
         value: Array.from(orderMap.values()).filter(
           (o) => o.saleValue >= 500 && o.saleValue < 2000,
         ).length,
       },
-
       {
         name: "XL (>2000)",
-
         value: Array.from(orderMap.values()).filter((o) => o.saleValue >= 2000)
           .length,
       },
@@ -2372,11 +2176,8 @@ export const useComprehensiveData = (
     // ============================================================
     const marketBasket = topSubCategories.slice(0, 5).map((s) => ({
       products: s.name,
-
       category: s.category,
-
       count: s.orders,
-
       value: s.value,
     }));
 
@@ -2385,11 +2186,8 @@ export const useComprehensiveData = (
     // ============================================================
     const yoyComparison = monthlyData.map((m) => ({
       month: m.name,
-
       currentYear: m.saleValue,
-
       lastYear: Math.round(m.saleValue * 0.85),
-
       growth: m.saleValue > 0 ? 15 : 0,
     }));
 
@@ -2401,48 +2199,36 @@ export const useComprehensiveData = (
     if (viewMode === "yearly") {
       efficiencyData = allYearlySalesDataUnfiltered.map((m) => ({
         name: m.name,
-
         efficiency:
           m.uniqueOrders > 0 ? Math.round(m.saleValue / m.uniqueOrders) : 0,
-
         orders: m.uniqueOrders,
-
         revenue: Math.round(m.saleValue),
       }));
     } else if (viewMode === "weekly") {
       efficiencyData = weeklyData.map((m) => ({
         name: m.name,
-
         efficiency:
           m.uniqueOrders && m.uniqueOrders > 0
             ? Math.round(m.saleValue / m.uniqueOrders)
             : 0,
-
         orders: m.uniqueOrderCount || m.uniqueOrders?.size || 0,
-
         revenue: Math.round(m.saleValue || 0),
       }));
     } else if (viewMode === "daily") {
       efficiencyData = dailyData.slice(-30).map((m) => ({
         name: m.name,
-
         efficiency:
           m.uniqueOrderCount > 0
             ? Math.round(m.saleValue / m.uniqueOrderCount)
             : 0,
-
         orders: m.uniqueOrderCount || 0,
-
         revenue: Math.round(m.saleValue || 0),
       }));
     } else {
       efficiencyData = allMarketingData.map((m) => ({
         name: m.name,
-
         efficiency: m.orders > 0 ? Math.round(m.value / m.orders) : 0,
-
         orders: m.orders || 0,
-
         revenue: Math.round(m.value || 0),
       }));
     }
@@ -2454,17 +2240,14 @@ export const useComprehensiveData = (
       strengths: allMarketingDataRanked
         .slice(0, 3)
         .map((m) => `${m.name}: ${formatCurrency(m.value)} revenue`),
-
       weaknesses: allMarketingDataRanked
         .slice(-3)
         .map((m) => `${m.name}: ${formatCurrency(m.value)} revenue`),
-
       opportunities: [
         "Growing demand in top categories",
         "New market expansion",
         "Digital transformation",
       ],
-
       threats: [
         "Competition from new players",
         "Supply chain disruptions",
@@ -2477,11 +2260,8 @@ export const useComprehensiveData = (
     // ============================================================
     const categoryMatrix = allCategoryData.slice(0, 8).map((c) => ({
       name: c.name,
-
       growth: c.orders > 0 ? c.value / c.orders : 0,
-
       marketShare: totals.saleValue > 0 ? c.value / totals.saleValue : 0,
-
       revenue: c.value,
     }));
 
@@ -2491,11 +2271,8 @@ export const useComprehensiveData = (
     const deliveryEfficiencyData = allMarketingData
       .map((m) => ({
         name: m.name,
-
         deliveryRate: m.deliveryRate,
-
         orders: m.orders,
-
         revenue: m.value,
       }))
       .sort((a, b) => b.deliveryRate - a.deliveryRate)
@@ -2506,9 +2283,7 @@ export const useComprehensiveData = (
     // ============================================================
     const cohortData = monthlyData.map((d, i) => ({
       cohort: d.name,
-
       revenue: d.saleValue,
-
       cumulative: monthlyData
         .slice(0, i + 1)
         .reduce((sum, item) => sum + item.saleValue, 0),
@@ -2520,17 +2295,12 @@ export const useComprehensiveData = (
     const revenueLeakage = [
       {
         name: "Delivered",
-
         value: totals.saleValue,
-
         color: COLORS.success,
       },
-
       {
         name: "Pending",
-
         value: totals.balanceValue,
-
         color: COLORS.danger,
       },
     ];
@@ -2540,17 +2310,11 @@ export const useComprehensiveData = (
     // ============================================================
     console.log("📊 FINAL TOTALS:", {
       orderQty: totals.orderQty,
-
       orderValue: totals.orderValue,
-
       saleQty: totals.saleQty,
-
       saleValue: totals.saleValue,
-
       balanceQty: totals.balanceQty,
-
       balanceValue: totals.balanceValue,
-
       totalOrders: orderMap.size,
     });
 
@@ -2559,214 +2323,121 @@ export const useComprehensiveData = (
     // ============================================================
     return {
       totals,
-
       deliveryPercent,
-
       valuePercent,
-
       salesGrowth,
-
       growthData,
-
       allGrowthData,
-
       allWeeklyGrowthData,
-
       allDailyGrowthData,
-
       allYearlyGrowthData,
-
       yearlyData,
-
       topCustomers,
-
       topMarketing,
-
       topCategories,
-
       topSubCategories,
-
       topBuyers,
-
       topProducts,
-
       statusData,
-
       totalOrders: orderMap.size,
-
       totalCustomers: customerMap.size,
-
       totalMarketing: marketingMap.size,
-
       totalBuyers: buyerMap.size,
-
       totalCategories: categoryMap.size,
-
       comparisonData: monthlyData,
-
       marketingData: topMarketing,
-
       categoryData: topCategories,
-
       buyerData: topBuyers,
-
       dailyData,
-
       monthlyData,
-
       weeklyData,
-
       allMarketingDataRanked,
-
       outliers: [],
-
       performanceMetrics,
-
       heatmapData: [],
-
       scatterData: allMarketingData.map((m) => ({
         x: m.orders || 1,
-
         y: m.value || 1,
-
         z: m.customers || 1,
-
         name: m.name,
       })),
-
       radarData: allMarketingData.map((m) => ({
         subject: m.name,
-
         Revenue: m.value,
-
         Orders: m.orders,
-
         Customers: m.customers,
-
         Categories: m.categories,
       })),
-
       funnelData: orderFunnelData,
-
       orderFunnelData,
-
       distributionData,
-
       correlationData: [
         {
           name: "Orders vs Sales",
           value: 0.92,
         },
-
         {
           name: "Customers vs Sales",
           value: 0.78,
         },
-
         {
           name: "Categories vs Sales",
           value: 0.65,
         },
-
         {
           name: "Marketing vs Sales",
           value: 0.85,
         },
-
         {
           name: "Delivery Rate vs Sales",
           value: 0.72,
         },
       ],
-
       seasonalData: monthlyData.map((d) => ({
         month: d.name,
-
         value: Math.round(d.saleValue),
       })),
-
-      // IMPORTANT:
-      // Return calculated efficiencyData.
       efficiencyData,
-
       completionData,
-
       buyerCategoryMatrix: [],
-
       allMarketingData,
-
       allCategoryData,
-
       monthlyTrendData: monthlyData,
-
       weeklyTrendData: weeklyData.slice(-12),
-
       topPerformingMarketing,
-
       categoryPerformance,
-
       buyerRetentionData: topBuyers.slice(0, 5),
-
       orderSizeDistribution,
-
       marketingComparisonData: allMarketingDataRanked.slice(0, 8).map((m) => ({
         name: m.name,
-
         orderValue: formatCurrency(m.orderValue),
-
         avgOrderValue: formatCurrency(m.avgOrderValue),
-
         revenue: formatCurrency(m.value),
-
         orders: m.orders,
-
         customers: m.customers,
-
         deliveryRate: m.deliveryRate.toFixed(0) + "%",
       })),
-
       categoryGrowthData: allCategoryData.slice(0, 5),
-
       customerSegmentation,
-
       deliveryTimeData: [],
-
       salesTargetData: [],
-
       peakHoursData,
-
       customerLoyalty,
-
       churnRiskData,
-
       performanceScorecard: allMarketingDataRanked.slice(0, 5),
-
       yoyComparison,
-
       revenueLeakage,
-
       marketBasket,
-
       swotAnalysis,
-
       categoryMatrix,
-
       salesPersonRanking,
-
       salesGrowthData: growthData,
-
       monthlySalesData,
-
       salesVsOrderData,
-
       deliveryEfficiencyData,
-
       funnelConversionData,
-
       channelPerformanceData,
-
       cohortData,
-
       growthMetrics,
     };
   }, [apiData, selectedYear, selectedMonth, selectedMarketing, viewMode]);
