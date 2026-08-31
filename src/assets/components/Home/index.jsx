@@ -7,12 +7,12 @@ import { AnimatePresence } from "framer-motion";
 import axios from "axios";
 
 // Utils
-import { COLORS, API_ENDPOINTS } from "./utils/constants";  // ✅ API_ENDPOINTS ইম্পোর্ট করুন
-import { 
-  formatCurrency, 
-  formatNumber, 
-  formatCompactCurrency, 
-  getStatusColor 
+import { COLORS, API_ENDPOINTS } from "./utils/constants"; // ✅ API_ENDPOINTS ইম্পোর্ট করুন
+import {
+  formatCurrency,
+  formatNumber,
+  formatCompactCurrency,
+  getStatusColor,
 } from "./utils/formatUtils";
 import { getCurrentMonthDates } from "./utils/dateUtils";
 
@@ -55,25 +55,22 @@ import {
   FaPercentage,
   FaUsers,
 } from "react-icons/fa";
-import {
-  RiMoneyDollarCircleFill,
-} from "react-icons/ri";
-import {
-  TbTruckDelivery,
-} from "react-icons/tb";
+import { RiMoneyDollarCircleFill } from "react-icons/ri";
+import { TbTruckDelivery } from "react-icons/tb";
 
 function Home() {
   // ============================================================
   // Context
   // ============================================================
-  const { cndata, setcndata, loading: contextLoading, apiKey } =
-    useContext(GetDataContext);
+  const {
+    cndata,
+    setcndata,
+    loading: contextLoading,
+    apiKey,
+  } = useContext(GetDataContext);
   const apiData = useMemo(() => cndata?.apiData || [], [cndata]);
   console.log("🔍 FIRST API ITEM:", apiData?.[0]);
-console.log(
-  "🔍 API KEYS:",
-  apiData?.[0] ? Object.keys(apiData[0]) : []
-);
+  console.log("🔍 API KEYS:", apiData?.[0] ? Object.keys(apiData[0]) : []);
 
   // ============================================================
   // State
@@ -116,7 +113,7 @@ console.log(
     viewMode,
   );
   console.log("Comprehensive Data:", data);
-  
+
   console.log("📊 Order Map Data:", data.orderMapData);
 
   // ============================================================
@@ -155,8 +152,18 @@ console.log(
     );
 
     const monthOrder = [
-      "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-      "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "May",
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sep",
+      "Oct",
+      "Nov",
+      "Dec",
     ];
     const sortedMonths = uniqueMonths.sort(
       (a, b) => monthOrder.indexOf(a) - monthOrder.indexOf(b),
@@ -343,7 +350,9 @@ console.log(
       }
 
       setAutoLoadProgress(40);
-      setAutoLoadStatus(`Found ${primaryData.length} orders from primary API...`);
+      setAutoLoadStatus(
+        `Found ${primaryData.length} orders from primary API...`,
+      );
 
       // Secondary API
       setAutoLoadProgress(50);
@@ -366,7 +375,9 @@ console.log(
       }
 
       setAutoLoadProgress(55);
-      setAutoLoadStatus(`Found ${secondaryData.length} orders from secondary API...`);
+      setAutoLoadStatus(
+        `Found ${secondaryData.length} orders from secondary API...`,
+      );
 
       // Merge Data
       setAutoLoadProgress(60);
@@ -455,7 +466,6 @@ console.log(
       );
 
       setIsLoading(false);
-
     } catch (err) {
       if (axios.isCancel(err)) return;
       console.error("Date range fetch error:", err);
@@ -472,21 +482,23 @@ console.log(
 
   const fetchDataByDateRange = async (startDate, endDate) => {
     setIsLoading(true);
-  const formatLocalDate = (date) => {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const day = String(date.getDate()).padStart(2, "0");
-    return `${year}-${month}-${day}`;
-  };
 
-  const stDate = formatLocalDate(startDate);
-  const edDate = formatLocalDate(endDate);
-  
-  console.log("📅 Selected Dates:", stDate, "to", edDate); // Should show correct dates
+    const formatLocalDate = (date) => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const day = String(date.getDate()).padStart(2, "0");
 
+      return `${year}-${month}-${day}`;
+    };
+
+    const stDate = formatLocalDate(startDate);
+    const edDate = formatLocalDate(endDate);
+
+    console.log("📅 Selected Dates:", stDate, "to", edDate);
 
     if (!apiKey) {
       toast.error("API key not available");
+      setIsLoading(false);
       return;
     }
 
@@ -499,206 +511,556 @@ console.log(
     cancelTokenRef.current = source;
 
     try {
-      setRangeFetchProgress(10);
-      setRangeFetchStatus(`Fetching orders from ${stDate} to ${edDate}...`);
-
-      if (!stDate || !edDate) {
-        toast.warning("Please select a valid date range");
-        setIsFetchingRange(false);
-        setRangeFetchStatus("");
-        return;
-      }
+      // ============================================================
+      // 1️⃣ COMMAND ID = 1
+      // ONLY ApprovedDate will be used as OrderReceiveDate
+      // ============================================================
 
       setRangeFetchProgress(15);
-      setRangeFetchStatus("Fetching primary order data...");
+      setRangeFetchStatus("Fetching approved order data...");
 
       const primaryResponse = await axios.get(
         `${API_ENDPOINTS.primary.url}?CompanyID=1&ProductCategoryID=0&ProductSubCategoryID=0&MarketingID=0&CustomerID=0&BuyerID=0&StartDate=${stDate}&EndDate=${edDate}&CommandID=${API_ENDPOINTS.primary.commandId}&EmpID=0`,
         {
-          headers: { Authorization: `${apiKey}` },
+          headers: {
+            Authorization: `${apiKey}`,
+          },
           timeout: 300000,
           cancelToken: source.token,
         },
       );
 
-      const primaryData = primaryResponse.data || [];
-      setRangeFetchProgress(30);
+      const primaryData = Array.isArray(primaryResponse.data)
+        ? primaryResponse.data
+        : [];
 
-      if (!Array.isArray(primaryData) || primaryData.length === 0) {
-        toast.warning(`No data found for ${stDate} to ${edDate}.`);
+      console.log("🟢 CommandID=1 records:", primaryData.length);
+
+      if (primaryData.length === 0) {
+        toast.warning(
+          `No approved order data found for ${stDate} to ${edDate}.`,
+        );
+
         setIsFetchingRange(false);
         setRangeFetchStatus("");
+        setIsLoading(false);
         return;
       }
 
-      setRangeFetchProgress(40);
-      setRangeFetchStatus(`Found ${primaryData.length} primary orders...`);
+      // ============================================================
+      // 2️⃣ COMMAND ID = 5
+      // Challan / Balance / Product Details
+      // ============================================================
 
-      // Secondary API
-      setRangeFetchProgress(45);
-      setRangeFetchStatus("Fetching secondary order data...");
+      setRangeFetchProgress(35);
+      setRangeFetchStatus("Fetching delivery data...");
 
       let secondaryData = [];
+
       try {
         const secondaryResponse = await axios.get(
           `${API_ENDPOINTS.secondary.url}?CompanyID=1&ProductCategoryID=0&ProductSubCategoryID=0&MarketingID=0&CustomerID=0&BuyerID=0&JobCardID=0&StartDate=${stDate}&EndDate=${edDate}&CommandID=${API_ENDPOINTS.secondary.commandId}&EmpID=0`,
           {
-            headers: { Authorization: `${apiKey}` },
+            headers: {
+              Authorization: `${apiKey}`,
+            },
             timeout: 300000,
             cancelToken: source.token,
           },
         );
-        secondaryData = secondaryResponse.data || [];
+
+        secondaryData = Array.isArray(secondaryResponse.data)
+          ? secondaryResponse.data
+          : [];
       } catch (secondaryErr) {
-        console.warn("Secondary API fetch failed:", secondaryErr);
+        if (axios.isCancel(secondaryErr)) {
+          throw secondaryErr;
+        }
+
+        console.warn("⚠️ CommandID=5 API failed:", secondaryErr);
       }
 
-      setRangeFetchProgress(55);
+      console.log("🟡 CommandID=5 records:", secondaryData.length);
 
-      // Merge Data
+      // ============================================================
+      // 3️⃣ COMMAND ID = 15
+      // Order Qty / Value / Customer / Buyer / Sales Concern / Section
+      // ============================================================
+
+      setRangeFetchProgress(55);
+      setRangeFetchStatus("Fetching order master data...");
+
+      let orderMasterData = [];
+
+      try {
+        const orderMasterResponse = await axios.get(
+          `${API_ENDPOINTS.orderMaster.url}?CompanyID=1&ProductCategoryID=0&ProductSubCategoryID=0&MarketingID=0&CustomerID=0&BuyerID=0&JobCardID=0&StartDate=${stDate}T00:00:00.000Z&EndDate=${edDate}T06:00:00.000Z&CommandID=${API_ENDPOINTS.orderMaster.commandId}&EmpID=0`,
+          {
+            headers: {
+              Authorization: `${apiKey}`,
+            },
+            timeout: 300000,
+            cancelToken: source.token,
+          },
+        );
+
+        orderMasterData = Array.isArray(orderMasterResponse.data)
+          ? orderMasterResponse.data
+          : [];
+      } catch (orderMasterErr) {
+        if (axios.isCancel(orderMasterErr)) {
+          throw orderMasterErr;
+        }
+
+        console.warn("⚠️ CommandID=15 API failed:", orderMasterErr);
+      }
+
+      console.log("🔵 CommandID=15 records:", orderMasterData.length);
+
+      // ============================================================
+      // 4️⃣ TAG EACH API
+      // ============================================================
+
+      const command1Data = primaryData.map((item) => ({
+        ...item,
+
+        // ⭐ CommandID=1
+        _apiSource: "command1",
+
+        // ⭐ VERY IMPORTANT
+        // ApprovedDate ONLY
+        OrderReceiveDate: item.ApprovedDate || item.approvedDate || "",
+      }));
+
+      const command5Data = secondaryData.map((item) => ({
+        ...item,
+
+        // ⭐ CommandID=5
+        _apiSource: "command5",
+
+        // Do NOT use this API's OrderReceiveDate
+        OrderReceiveDate: "",
+      }));
+
+      const command15Data = orderMasterData.map((item) => ({
+        ...item,
+
+        // ⭐ CommandID=15
+        _apiSource: "command15",
+
+        // Do NOT use CommandID=15 OrderReceiveDate
+        OrderReceiveDate: "",
+      }));
+
+      console.log("🟢 Tagged CommandID=1:", command1Data.length);
+
+      console.log("🟡 Tagged CommandID=5:", command5Data.length);
+
+      console.log("🔵 Tagged CommandID=15:", command15Data.length);
+
+      // ============================================================
+      // 5️⃣ MERGE BY WORK ORDER NO
+      // ============================================================
+
       setRangeFetchProgress(70);
-      setRangeFetchStatus("Merging data...");
+      setRangeFetchStatus("Merging three API data sources...");
 
       const mergedMap = new Map();
 
-      secondaryData.forEach((item) => {
+      // ------------------------------------------------------------
+      // FIRST: CommandID=15
+      // Order MASTER
+      // ------------------------------------------------------------
+
+      command15Data.forEach((item) => {
         const orderNo = item.WorkOrderNo || item.workOrderNo || "";
-        if (orderNo) {
+
+        if (!orderNo) return;
+
+        if (!mergedMap.has(orderNo)) {
           mergedMap.set(orderNo, {
             ...item,
+
+            // ⭐ Do NOT take date from CommandID=15
             OrderReceiveDate: "",
+
+            // Order master
+            TotalBreakDownQTY: Number(item.TotalBreakDownQTY) || 0,
+
+            TotalOrderValue: Number(item.TotalOrderValue) || 0,
+
+            // Delivery
+            ChallanQTY: 0,
+            ChallanValue: 0,
+            BalanceQTY: 0,
+            BalanceValue: 0,
+
+            _apiSource: "command15",
             _merged: false,
           });
         }
       });
 
-      let mergedCount = 0;
-      let primaryOnlyCount = 0;
+      // ------------------------------------------------------------
+      // SECOND: CommandID=5
+      // Delivery / Product details
+      // ------------------------------------------------------------
 
-      primaryData.forEach((item) => {
+      let secondaryMergedCount = 0;
+
+      command5Data.forEach((item) => {
         const orderNo = item.WorkOrderNo || item.workOrderNo || "";
-        if (!orderNo) return;
 
-        const approvedDate =
-          item.ApprovedDate ||
-          item.approvedDate ||
-          item.OrderReceiveDate ||
-          item.orderReceiveDate ||
-          "";
+        if (!orderNo) return;
 
         if (mergedMap.has(orderNo)) {
           const existing = mergedMap.get(orderNo);
-          existing.OrderReceiveDate = approvedDate;
+
+          // --------------------------------------------------------
+          // Keep master data from CommandID=15
+          // --------------------------------------------------------
+
+          if (!existing.CName && item.CName) {
+            existing.CName = item.CName;
+          }
+
+          if (!existing.BuyerName && item.BuyerName) {
+            existing.BuyerName = item.BuyerName;
+          }
+
+          if (!existing.MarketingName && item.MarketingName) {
+            existing.MarketingName = item.MarketingName;
+          }
+
+          if (!existing.ProductCategoryName && item.ProductCategoryName) {
+            existing.ProductCategoryName = item.ProductCategoryName;
+          }
+
+          if (!existing.ProductSubCategoryName && item.ProductSubCategoryName) {
+            existing.ProductSubCategoryName = item.ProductSubCategoryName;
+          }
+
+          // --------------------------------------------------------
+          // Delivery values
+          //
+          // We intentionally SUM Challan values because
+          // CommandID=5 may have multiple rows per WorkOrderNo.
+          // --------------------------------------------------------
+
+          existing.ChallanQTY =
+            Number(existing.ChallanQTY || 0) + Number(item.ChallanQTY || 0);
+
+          existing.ChallanValue =
+            Number(existing.ChallanValue || 0) + Number(item.ChallanValue || 0);
+
+          // --------------------------------------------------------
+          // Keep latest useful detail fields
+          // --------------------------------------------------------
+
+          if (item.ChallanDate) {
+            existing.ChallanDate = item.ChallanDate;
+          }
+
+          if (item.ChallanNo) {
+            existing.ChallanNo = item.ChallanNo;
+          }
+
+          if (item.CustomerPINo) {
+            existing.CustomerPINo = item.CustomerPINo;
+          }
+
+          if (item.CustomerPONo) {
+            existing.CustomerPONo = item.CustomerPONo;
+          }
+
+          if (item.JobCardNo) {
+            existing.JobCardNo = item.JobCardNo;
+          }
+
+          if (item.ItemDescription) {
+            existing.ItemDescription = item.ItemDescription;
+          }
+
+          if (item.Unit) {
+            existing.Unit = item.Unit;
+          }
+
+          if (item.UnitPrice !== undefined) {
+            existing.UnitPrice = Number(item.UnitPrice) || 0;
+          }
+
+          if (item.DeliveryToAddress) {
+            existing.DeliveryToAddress = item.DeliveryToAddress;
+          }
+
+          existing._apiSource = "command15+command5";
+
           existing._merged = true;
-          mergedCount++;
+
+          secondaryMergedCount++;
+        }
+      });
+
+      // ------------------------------------------------------------
+      // THIRD: CommandID=1
+      //
+      // ONLY ApprovedDate is copied.
+      // ------------------------------------------------------------
+
+      let primaryMergedCount = 0;
+      let primaryOnlyCount = 0;
+
+      command1Data.forEach((item) => {
+        const orderNo = item.WorkOrderNo || item.workOrderNo || "";
+
+        if (!orderNo) return;
+
+        const approvedDate = item.ApprovedDate || item.approvedDate || "";
+
+        if (mergedMap.has(orderNo)) {
+          const existing = mergedMap.get(orderNo);
+
+          // ⭐⭐⭐ MOST IMPORTANT ⭐⭐⭐
+          //
+          // OrderReceiveDate = ApprovedDate
+          //
+          // NEVER:
+          // item.OrderReceiveDate
+          //
+
+          existing.OrderReceiveDate = approvedDate;
+
+          existing.ApprovedDate = approvedDate;
+
+          existing._apiSource = `${existing._apiSource}+command1`;
+
+          existing._merged = true;
+
+          primaryMergedCount++;
         } else {
+          // --------------------------------------------------------
+          // If CommandID=15 did not return this order,
+          // still keep CommandID=1 order.
+          // --------------------------------------------------------
+
           mergedMap.set(orderNo, {
+            ...item,
+
             WorkOrderNo: orderNo,
+
             OrderReceiveDate: approvedDate,
+
+            ApprovedDate: approvedDate,
+
+            TotalBreakDownQTY: 0,
             TotalOrderValue: 0,
-            BreakDownQTY: 0,
-            BalanceQTY: 0,
-            BalanceValue: 0,
+
             ChallanQTY: 0,
             ChallanValue: 0,
-            ProductCategoryName: "Uncategorized",
-            ProductSubCategoryName: "",
-            MarketingName: "Unknown",
-            CName: "Unknown",
-            BuyerName: "Unknown",
-            BrandName: "",
-            ItemDescription: "",
-            CustomerPONo: "",
-            DeliveryToAddress: "",
-            CompanyID: 1,
-            ProductCategoryID: 0,
-            MarketingID: 0,
-            TeamLeaderID: 0,
-            SequenceNo: 0,
-            SL: 0,
-            CustomerID: 0,
-            Unit: "",
-            UnitPrice: 0,
-            ChallanDate: null,
-            ChallanNo: null,
-            CustomerPINo: "",
-            JobCardNo: "",
-            FName: "",
-            KeyEntry1: "",
-            KeyEntry1Value: "",
-            KeyEntry2: "",
-            KeyEntry2Value: "",
-            KeyEntry3: "",
-            KeyEntry3Value: "",
-            KeyEntry4: "",
-            KeyEntry4Value: "",
-            KeyEntry5: "",
-            KeyEntry5Value: "",
-            KeyEntry6: "",
-            KeyEntry6Value: "",
-            KeyEntry7: "",
-            KeyEntry7Value: "",
-            KeyEntry8: "",
-            KeyEntry8Value: "",
-            KeyEntry9: "",
-            KeyEntry9Value: "",
-            _source: "primary-only",
+
+            BalanceQTY: 0,
+            BalanceValue: 0,
+
+            ProductCategoryName: item.ProductCategoryName || "Uncategorized",
+
+            ProductSubCategoryName: item.ProductSubCategoryName || "",
+
+            MarketingName: item.MarketingName || "Unknown",
+
+            CName: item.CName || item.CustomerName || "Unknown",
+
+            BuyerName: item.BuyerName || "Unknown",
+
+            _apiSource: "command1",
             _merged: false,
-            _count: 0,
           });
+
           primaryOnlyCount++;
         }
       });
 
-      const mergedData = Array.from(mergedMap.values());
- 
+      // ============================================================
+      // 6️⃣ FINAL CALCULATIONS
+      // ============================================================
 
-      setRangeFetchProgress(80);
+      const mergedData = Array.from(mergedMap.values()).map((item) => {
+        const orderQty = Number(item.TotalBreakDownQTY) || 0;
+
+        const orderValue = Number(item.TotalOrderValue) || 0;
+
+        const challanQty = Number(item.ChallanQTY) || 0;
+
+        const challanValue = Number(item.ChallanValue) || 0;
+
+        return {
+          ...item,
+
+          // --------------------------------------------------------
+          // Order
+          // --------------------------------------------------------
+
+          BreakDownQTY: orderQty,
+
+          TotalBreakDownQTY: orderQty,
+
+          TotalOrderValue: orderValue,
+
+          // --------------------------------------------------------
+          // Delivery
+          // --------------------------------------------------------
+
+          ChallanQTY: challanQty,
+
+          ChallanValue: challanValue,
+
+          // --------------------------------------------------------
+          // Balance
+          //
+          // Calculate from order master, NOT API-5 repeated balances.
+          // --------------------------------------------------------
+
+          BalanceQTY: Math.max(0, orderQty - challanQty),
+
+          BalanceValue: Math.max(0, orderValue - challanValue),
+        };
+      });
+
+      // ============================================================
+      // DEBUG
+      // ============================================================
+
+      console.log("==========================================");
+
+      console.log("✅ FINAL MERGED DATA");
+
+      console.log("CommandID=1:", primaryData.length);
+
+      console.log("CommandID=5:", secondaryData.length);
+
+      console.log("CommandID=15:", orderMasterData.length);
+
+      console.log("Final unique WorkOrders:", mergedData.length);
+
+      console.log("Primary merged:", primaryMergedCount);
+
+      console.log("Primary only:", primaryOnlyCount);
+
+      console.log("Secondary merged:", secondaryMergedCount);
+
+      // ------------------------------------------------------------
+      // Test specific order
+      // ------------------------------------------------------------
+
+      const testOrder = mergedData.find(
+        (x) => x.WorkOrderNo === "SO-003231-2026",
+      );
+
+      if (testOrder) {
+        console.log("🔍 TEST SO-003231-2026:", {
+          WorkOrderNo: testOrder.WorkOrderNo,
+
+          ApprovedDate: testOrder.ApprovedDate,
+
+          OrderReceiveDate: testOrder.OrderReceiveDate,
+
+          TotalBreakDownQTY: testOrder.TotalBreakDownQTY,
+
+          TotalOrderValue: testOrder.TotalOrderValue,
+
+          ChallanQTY: testOrder.ChallanQTY,
+
+          ChallanValue: testOrder.ChallanValue,
+
+          BalanceQTY: testOrder.BalanceQTY,
+
+          BalanceValue: testOrder.BalanceValue,
+
+          _apiSource: testOrder._apiSource,
+        });
+      }
+
+      console.log("==========================================");
+
+      // ============================================================
+      // SAVE
+      // ============================================================
+
+      setRangeFetchProgress(90);
 
       setcndata((prevState) => ({
         ...prevState,
+
         apiData: mergedData,
+
         groupedData: [],
+
         workOrderIdMap: {},
+
         challanReceiveMap: {},
+
         workOrderStatus: "date-range-loaded",
+
         _lastFetch: {
           timestamp: new Date().toISOString(),
+
           startDate: stDate,
+
           endDate: edDate,
+
           orderCount: mergedData.length,
+
           primaryCount: primaryData.length,
+
           secondaryCount: secondaryData.length,
-          mergedCount: mergedCount,
+
+          orderMasterCount: orderMasterData.length,
+
+          mergedCount: primaryMergedCount,
+
           primaryOnlyCount: primaryOnlyCount,
+
           workOrderStatus: "date-range-loaded",
+
           autoLoaded: false,
+
           dateRange: true,
-          apiUsed: "merged-primary-secondary",
+
+          apiUsed: "command1-command5-command15",
         },
       }));
 
       setRangeFetchProgress(100);
+
       setRangeFetchStatus(
         `✅ Loaded ${mergedData.length} unique orders from ${stDate} to ${edDate}!`,
       );
+
       toast.success(
         `✅ Loaded ${mergedData.length} unique orders from ${stDate} to ${edDate}`,
       );
 
       setSelectedYear("All");
       setSelectedMonth("All");
-
     } catch (err) {
-      if (axios.isCancel(err)) return;
-      console.error("Date range fetch error:", err);
+      if (axios.isCancel(err)) {
+        console.log("⚠️ Date range fetch cancelled");
+        return;
+      }
+
+      console.error("❌ Date range fetch error:", err);
+
       toast.error("Failed to fetch data for the selected date range.");
+
       setRangeFetchStatus("❌ Error fetching data");
+
       setIsLoading(false);
     } finally {
       setIsFetchingRange(false);
+
       setRangeFetchProgress(0);
+
       cancelTokenRef.current = null;
+
       setTimeout(() => setRangeFetchStatus(""), 3000);
     }
   };
@@ -915,10 +1277,12 @@ console.log(
               growthChartData={growthChartData}
               getGrowthLabel={getGrowthLabel}
               selectedYear={selectedYear}
-              selectedMonth={selectedMonth} 
+              selectedMonth={selectedMonth}
             />
           )}
-          {activeTab === "sales" && <SalesTab data={data} viewMode={viewMode} chartData={chartData} />}
+          {activeTab === "sales" && (
+            <SalesTab data={data} viewMode={viewMode} chartData={chartData} />
+          )}
           {activeTab === "categories" && <CategoriesTab data={data} />}
           {activeTab === "buyers" && <BuyersTab data={data} />}
           {activeTab === "funnel" && <FunnelTab data={data} />}

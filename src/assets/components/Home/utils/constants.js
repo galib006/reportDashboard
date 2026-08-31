@@ -27,16 +27,28 @@ export const CHART_COLORS = [
   "#84CC16", "#8B5CF6", "#EC4899", "#F59E0B", "#10B981",
 ];
 
-// ✅ সরাসরি URL ব্যবহার করুন (Vite Compatible)
+
 export const API_ENDPOINTS = {
+  // CommandID = 1
+  // ONLY ApprovedDate -> OrderReceiveDate
   primary: {
-    url: 'https://tpl-api.ebs365.info/api/OrderReport/BI_ORDERGetOrderReleatedInformationReport',
+    url: "https://tpl-api.ebs365.info/api/OrderReport/BI_ORDERGetOrderReleatedInformationReport",
     commandId: 1,
   },
+
+  // CommandID = 5
+  // Challan / Balance / Product details
   secondary: {
-    url: 'https://tpl-api.ebs365.info/api/OrderReport/BI_OrderRelatedInformationReport',
+    url: "https://tpl-api.ebs365.info/api/OrderReport/BI_OrderRelatedInformationReport",
     commandId: 5,
-  }
+  },
+
+  // CommandID = 15
+  // Order master information
+  orderMaster: {
+    url: "https://tpl-api.ebs365.info/api/OrderReport/BI_OrderRelatedInformationReport",
+    commandId: 15,
+  },
 };
 
 export const MONTH_ORDER = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];

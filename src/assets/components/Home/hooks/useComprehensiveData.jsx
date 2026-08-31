@@ -217,136 +217,229 @@ export const useComprehensiveData = (
     }
 
     // ============================================================
-    // MERGE PRIMARY + SECONDARY API DATA
+    // MERGE API DATA
     //
-    // IMPORTANT:
-    // One WorkOrderNo = One order-level record.
+    // API SOURCES
+    // ------------------------------------------------------------
+    // command1  = CommandID=1
+    //   ONLY ApprovedDate -> OrderReceiveDate
     //
-    // Primary:
+    // command15 = CommandID=15
     //   Order Qty
     //   Order Value
+    //   Sales Concern
+    //   Customer
+    //   Buyer
+    //   Section
     //
-    // Secondary:
-    //   Challan Qty
-    //   Challan Value
-    //   Balance Qty
-    //   Balance Value
+    // command5  = CommandID=5
+    //   Challan
+    //   Balance
+    //   Product details
+    //
+    // JOIN KEY:
+    //   WorkOrderNo
     // ============================================================
     const mergeApiData = (data) => {
       const mergedMap = new Map();
 
+      // ------------------------------------------------------------
+      // Helpers
+      // ------------------------------------------------------------
+      const getWorkOrderNo = (item) =>
+        item?.WorkOrderNo || item?.workOrderNo || "";
+
+      const getNumber = (value) => {
+        const n = Number(value);
+        return Number.isFinite(n) ? n : 0;
+      };
+
+      const getDate = (value) => {
+        if (!value) return "";
+        return value;
+      };
+
+      // ------------------------------------------------------------
+      // SOURCE DETECTION
+      // ------------------------------------------------------------
+      const getSource = (item) => {
+        if (item?._apiSource) {
+          return item._apiSource;
+        }
+
+        // Backward compatibility
+        if (item?.ApprovedDate !== undefined && item?.CommandID === 1) {
+          return "command1";
+        }
+
+        if (
+          item?.CommandID === 15 ||
+          item?.TotalBreakDownQTY !== undefined ||
+          item?.TotalOrderValue !== undefined
+        ) {
+          return "command15";
+        }
+
+        if (
+          item?.CommandID === 5 ||
+          item?.ChallanQTY !== undefined ||
+          item?.ChallanValue !== undefined ||
+          item?.BalanceQTY !== undefined ||
+          item?.BalanceValue !== undefined
+        ) {
+          return "command5";
+        }
+
+        return "unknown";
+      };
+
+      // ------------------------------------------------------------
+      // CREATE EMPTY ORDER
+      // ------------------------------------------------------------
+      const createEmptyRecord = (orderNo) => ({
+        orderNo,
+
+        // IMPORTANT:
+        // This MUST come from CommandID=1 ApprovedDate
+        orderReceiveDate: "",
+
+        // Date used for dashboard filtering
+        date: null,
+
+        // ----------------------------------------------------------
+        // ORDER LEVEL
+        // ----------------------------------------------------------
+        orderQty: 0,
+        orderValue: 0,
+
+        customerName: "Unknown",
+        marketingName: "Unknown",
+        buyerName: "Unknown",
+        category: "Uncategorized",
+
+        orderStatus: "",
+        rate: 0,
+        pINumber: "",
+        jobCardNo: "",
+        gateOutDate: "",
+        jobBagDate: "",
+        cSName: "",
+
+        // ----------------------------------------------------------
+        // DELIVERY
+        // ----------------------------------------------------------
+        saleQty: 0,
+        saleValue: 0,
+
+        balanceQty: 0,
+        balanceValue: 0,
+
+        breakDownQTY: 0,
+
+        challanDate: null,
+        challanNo: null,
+
+        deliveryToAddress: "",
+
+        // ----------------------------------------------------------
+        // PRODUCT
+        // ----------------------------------------------------------
+        productCategoryName: "",
+        productSubCategoryName: "",
+        itemDescription: "",
+
+        unit: "",
+        unitPrice: 0,
+
+        productDetails: [],
+        subCategories: new Set(),
+
+        source: {
+          command1: false,
+          command5: false,
+          command15: false,
+        },
+      });
+
+      // ============================================================
+      // PROCESS DATA
+      // ============================================================
       data.forEach((item) => {
-        const orderNo = item.WorkOrderNo || item.workOrderNo || "";
+        const orderNo = getWorkOrderNo(item);
 
         if (!orderNo) return;
 
-         const orderReceiveDate = item.ApprovedDate || "";
-        const date = parseAPIDate(orderReceiveDate);
-        // ========================================================
-        // PRIMARY DATA DETECTION
-        // ========================================================
-        const isPrimaryData =
-          (item.TotalBreakDownQTY !== undefined ||
-            item.BreakDownQTY !== undefined ||
-            item.OrderQTY !== undefined) &&
-          (item.TotalOrderValue !== undefined || item.OrderValue !== undefined);
+        const source = getSource(item);
 
-        // ========================================================
-        // PRIMARY VALUES
-        // ========================================================
-        const itemOrderQty = Math.round(
-          Number(
-            item.TotalBreakDownQTY ?? item.BreakDownQTY ?? item.OrderQTY ?? 0,
-          ),
-        );
-
-        const itemOrderValue = Math.round(
-          Number(item.TotalOrderValue ?? item.OrderValue ?? 0),
-        );
-
-        // ========================================================
-        // SECONDARY DATA DETECTION
-        // ========================================================
-        const isSecondaryData =
-          item.ChallanQTY !== undefined ||
-          item.ChallanValue !== undefined ||
-          item.BalanceQTY !== undefined ||
-          item.BalanceValue !== undefined ||
-          item.ProductCategoryName !== undefined ||
-          item.ItemDescription !== undefined;
-
-        // ========================================================
-        // CREATE MERGED RECORD
-        // ========================================================
+        // ----------------------------------------------------------
+        // Create order if not exists
+        // ----------------------------------------------------------
         if (!mergedMap.has(orderNo)) {
-          mergedMap.set(orderNo, {
-            orderNo,
-            orderReceiveDate,
-
-            // ORDER LEVEL
-            orderQty: 0,
-            orderValue: 0,
-
-            customerName: "Unknown",
-            marketingName: "Unknown",
-            buyerName: "Unknown",
-            category: "Uncategorized",
-
-            orderStatus: "",
-            rate: 0,
-            pINumber: "",
-            jobCardNo: "",
-            gateOutDate: "",
-            jobBagDate: "",
-            cSName: "",
-
-            // DELIVERY
-            saleQty: 0,
-            saleValue: 0,
-            balanceQty: 0,
-            balanceValue: 0,
-
-            breakDownQTY: 0,
-
-            challanDate: null,
-            challanNo: null,
-            deliveryToAddress: "",
-
-            productCategoryName: "",
-            productSubCategoryName: "",
-            itemDescription: "",
-
-            unit: "",
-            unitPrice: 0,
-
-            productDetails: [],
-            subCategories: new Set(),
-
-            date,
-
-            source: {
-              primary: false,
-              secondary: false,
-            },
-          });
+          mergedMap.set(orderNo, createEmptyRecord(orderNo));
         }
 
         const existing = mergedMap.get(orderNo);
 
-        // ========================================================
-        // PRIMARY DATA
+        // ==========================================================
+        // COMMAND ID = 1
         //
-        // VERY IMPORTANT:
-        // Order Qty & Order Value are assigned ONCE.
-        // They must NOT be summed for every secondary row.
-        // ========================================================
-        if (isPrimaryData && !existing.source.primary) {
-          existing.orderQty = itemOrderQty;
+        // ONLY ApprovedDate is used as OrderReceiveDate
+        //
+        // NEVER use:
+        // item.OrderReceiveDate
+        // ==========================================================
+        if (source === "command1") {
+          existing.source.command1 = true;
 
-          existing.orderValue = itemOrderValue;
+          const approvedDate = getDate(item.ApprovedDate);
 
-          existing.source.primary = true;
+          if (approvedDate) {
+            existing.orderReceiveDate = approvedDate;
+            existing.date = parseAPIDate(approvedDate);
+          }
 
+          // These are NOT used as order qty/value.
+          // They are intentionally ignored.
+        }
+
+        // ==========================================================
+        // COMMAND ID = 15
+        //
+        // ORDER MASTER DATA
+        // ==========================================================
+        if (source === "command15") {
+          existing.source.command15 = true;
+
+          // --------------------------------------------------------
+          // ORDER QTY
+          //
+          // CommandID=15:
+          // TotalBreakDownQTY
+          // --------------------------------------------------------
+          const qty = getNumber(
+            item.TotalBreakDownQTY ?? item.OrderQTY ?? item.BreakDownQTY,
+          );
+
+          const value = getNumber(item.TotalOrderValue ?? item.OrderValue);
+
+          // --------------------------------------------------------
+          // IMPORTANT
+          // Same WorkOrderNo may appear multiple times.
+          //
+          // Only take the first valid order-level value.
+          // Do NOT add duplicate rows.
+          // --------------------------------------------------------
+          if (existing.orderQty === 0 && qty > 0) {
+            existing.orderQty = Math.round(qty);
+          }
+
+          if (existing.orderValue === 0 && value > 0) {
+            existing.orderValue = value;
+          }
+
+          // --------------------------------------------------------
+          // MASTER INFORMATION
+          // --------------------------------------------------------
           if (item.CName) {
             existing.customerName = item.CName;
           }
@@ -361,14 +454,24 @@ export const useComprehensiveData = (
 
           if (item.ProductCategoryName) {
             existing.category = item.ProductCategoryName;
+            existing.productCategoryName = item.ProductCategoryName;
           }
 
+          if (item.ProductSubCategoryName) {
+            existing.productSubCategoryName = item.ProductSubCategoryName;
+
+            existing.subCategories.add(item.ProductSubCategoryName);
+          }
+
+          // --------------------------------------------------------
+          // OTHER MASTER INFORMATION
+          // --------------------------------------------------------
           if (item.OrderStatus) {
             existing.orderStatus = item.OrderStatus;
           }
 
           if (item.Rate !== undefined) {
-            existing.rate = Number(item.Rate) || 0;
+            existing.rate = getNumber(item.Rate);
           }
 
           if (item.PINumber) {
@@ -390,38 +493,52 @@ export const useComprehensiveData = (
           if (item.CSName) {
             existing.cSName = item.CSName;
           }
+
+          // --------------------------------------------------------
+          // IMPORTANT:
+          //
+          // If CommandID=1 was not returned for some reason,
+          // DO NOT use CommandID=15 OrderReceiveDate.
+          //
+          // Requirement says:
+          // OrderReceiveDate = ApprovedDate ONLY.
+          // --------------------------------------------------------
         }
 
-        // ========================================================
-        // SECONDARY DATA
+        // ==========================================================
+        // COMMAND ID = 5
         //
-        // Secondary values CAN be accumulated because one order
-        // can have multiple challans/products.
-        // ========================================================
-        if (isSecondaryData) {
-          const currentSaleQty = Math.round(Number(item.ChallanQTY) || 0);
+        // CHALLAN / BALANCE / PRODUCT DATA
+        // ==========================================================
+        if (source === "command5") {
+          existing.source.command5 = true;
 
-          const currentSaleValue = Math.round(Number(item.ChallanValue) || 0);
+          const currentSaleQty = Math.round(getNumber(item.ChallanQTY));
 
-          const currentBalanceQty = Math.round(Number(item.BalanceQTY) || 0);
+          const currentSaleValue = getNumber(item.ChallanValue);
 
-          const currentBalanceValue = Math.round(
-            Number(item.BalanceValue) || 0,
-          );
-
+          // --------------------------------------------------------
+          // CHALLAN
+          //
+          // These can legitimately have multiple rows.
+          // --------------------------------------------------------
           existing.saleQty += currentSaleQty;
-
           existing.saleValue += currentSaleValue;
 
-          existing.balanceQty += currentBalanceQty;
+          // --------------------------------------------------------
+          // DO NOT directly SUM API BalanceQTY/BalanceValue.
+          //
+          // API-5 repeats balance across rows.
+          //
+          // Final balance will be:
+          //
+          // Order Qty - Challan Qty
+          // Order Value - Challan Value
+          // --------------------------------------------------------
 
-          existing.balanceValue += currentBalanceValue;
-
-          existing.source.secondary = true;
-
-          // ------------------------------------------------------
-          // FALLBACK MASTER INFORMATION
-          // ------------------------------------------------------
+          // --------------------------------------------------------
+          // FALLBACK MASTER DATA
+          // --------------------------------------------------------
           if (existing.customerName === "Unknown" && item.CName) {
             existing.customerName = item.CName;
           }
@@ -434,16 +551,28 @@ export const useComprehensiveData = (
             existing.buyerName = item.BuyerName;
           }
 
+          // --------------------------------------------------------
+          // PRODUCT
+          // --------------------------------------------------------
+          const productName = item.ItemDescription || "";
+
+          const subCategory = item.ProductSubCategoryName || "";
+
+          const category = item.ProductCategoryName || existing.category || "";
+
           if (item.ProductCategoryName) {
             existing.productCategoryName = item.ProductCategoryName;
 
-            existing.category = item.ProductCategoryName;
+            // Only use this as fallback.
+            if (existing.category === "Uncategorized") {
+              existing.category = item.ProductCategoryName;
+            }
           }
 
-          if (item.ProductSubCategoryName) {
-            existing.productSubCategoryName = item.ProductSubCategoryName;
+          if (subCategory) {
+            existing.productSubCategoryName = subCategory;
 
-            existing.subCategories.add(item.ProductSubCategoryName);
+            existing.subCategories.add(subCategory);
           }
 
           if (item.ItemDescription) {
@@ -459,7 +588,7 @@ export const useComprehensiveData = (
           }
 
           if (item.UnitPrice !== undefined) {
-            existing.unitPrice = Number(item.UnitPrice) || 0;
+            existing.unitPrice = getNumber(item.UnitPrice);
           }
 
           if (item.ChallanNo) {
@@ -470,26 +599,23 @@ export const useComprehensiveData = (
             existing.challanDate = item.ChallanDate;
           }
 
-          // ------------------------------------------------------
+          // --------------------------------------------------------
           // BREAKDOWN QTY
-          // ------------------------------------------------------
-          existing.breakDownQTY += Math.round(Number(item.BreakDownQTY) || 0);
-
-          // ------------------------------------------------------
-          // PRODUCT DETAILS
           //
-          // Product-level values are based on actual product rows.
-          // IMPORTANT: Do NOT use the complete orderQty here.
-          // ------------------------------------------------------
-          const productName = item.ItemDescription || "";
+          // Keep product-level breakdown.
+          // Do NOT use this to change orderQty.
+          // --------------------------------------------------------
+          const breakdownQty = Math.round(getNumber(item.BreakDownQTY));
 
-          const subCategory = item.ProductSubCategoryName || "";
+          existing.breakDownQTY += breakdownQty;
 
-          const category = item.ProductCategoryName || existing.category || "";
-
+          // --------------------------------------------------------
+          // PRODUCT DETAILS
+          // --------------------------------------------------------
           if (productName) {
             const existingProduct = existing.productDetails.find(
-              (p) => p.productName === productName,
+              (p) =>
+                p.productName === productName && p.subCategory === subCategory,
             );
 
             if (existingProduct) {
@@ -497,43 +623,31 @@ export const useComprehensiveData = (
 
               existingProduct.saleValue += currentSaleValue;
 
-              existingProduct.balanceQty += currentBalanceQty;
-
-              existingProduct.balanceValue += currentBalanceValue;
-
-              existingProduct.qty += Math.round(Number(item.BreakDownQTY) || 0);
-
-              // Only add product value if this row
-              // actually contains a product-level order value.
-              if (
-                item.TotalOrderValue !== undefined ||
-                item.OrderValue !== undefined
-              ) {
-                existingProduct.value += Math.round(
-                  Number(item.TotalOrderValue ?? item.OrderValue ?? 0),
-                );
-              }
+              existingProduct.qty += breakdownQty;
             } else {
               existing.productDetails.push({
                 productName,
+
                 subCategory,
+
                 category,
 
-                qty: Math.round(Number(item.BreakDownQTY) || 0),
+                qty: breakdownQty,
 
-                value: Math.round(
-                  Number(item.TotalOrderValue ?? item.OrderValue ?? 0),
-                ),
+                // IMPORTANT:
+                // API-5 is NOT our order-value source.
+                // Therefore product value starts at 0.
+                value: 0,
 
                 saleQty: currentSaleQty,
 
                 saleValue: currentSaleValue,
 
-                balanceQty: currentBalanceQty,
+                balanceQty: 0,
 
-                balanceValue: currentBalanceValue,
+                balanceValue: 0,
 
-                unitPrice: Number(item.UnitPrice) || 0,
+                unitPrice: getNumber(item.UnitPrice),
 
                 unit: item.Unit || "",
 
@@ -543,42 +657,80 @@ export const useComprehensiveData = (
               });
             }
           }
-
-          if (subCategory) {
-            existing.subCategories.add(subCategory);
-          }
         }
       });
 
-      // ==========================================================
-      // FINAL BALANCE NORMALIZATION
-      // ==========================================================
-      //
-      // If API balance values are duplicated across multiple
-      // secondary rows, calculate balance from order - sale.
-      //
-      // This prevents negative/duplicated balance caused by
-      // repeating BalanceValue on every product row.
-      // ==========================================================
+      // ============================================================
+      // FINAL NORMALIZATION
+      // ============================================================
       mergedMap.forEach((record) => {
-        if (record.source.primary && record.source.secondary) {
-          const calculatedBalanceQty = Math.max(
-            0,
-            record.orderQty - record.saleQty,
-          );
+        // ----------------------------------------------------------
+        // BALANCE
+        //
+        // ONLY calculate when order-level data exists.
+        // ----------------------------------------------------------
+        if (record.source.command15) {
+          record.balanceQty = Math.max(0, record.orderQty - record.saleQty);
 
-          const calculatedBalanceValue = Math.max(
+          record.balanceValue = Math.max(
             0,
             record.orderValue - record.saleValue,
           );
-
-          record.balanceQty = calculatedBalanceQty;
-
-          record.balanceValue = calculatedBalanceValue;
         }
+
+        // ----------------------------------------------------------
+        // IMPORTANT:
+        // If CommandID=1 exists, its ApprovedDate wins.
+        // ----------------------------------------------------------
+        if (record.source.command1) {
+          const approvedDate = record.orderReceiveDate;
+
+          record.date = parseAPIDate(approvedDate);
+        }
+
+        // ----------------------------------------------------------
+        // Product balance
+        // ----------------------------------------------------------
+        record.productDetails = record.productDetails.map((product) => ({
+          ...product,
+
+          balanceQty: Math.max(
+            0,
+            Number(product.qty || 0) - Number(product.saleQty || 0),
+          ),
+
+          balanceValue: Math.max(
+            0,
+            Number(product.value || 0) - Number(product.saleValue || 0),
+          ),
+        }));
       });
 
-      return Array.from(mergedMap.values());
+      // ============================================================
+      // DEBUG
+      // ============================================================
+      const result = Array.from(mergedMap.values());
+
+      console.log("🔵 FINAL MERGED DATA:", result);
+
+      console.log("🔵 FINAL ORDER COUNT:", result.length);
+
+      console.log(
+        "🔵 COMMAND 1 ORDERS:",
+        result.filter((x) => x.source.command1).length,
+      );
+
+      console.log(
+        "🔵 COMMAND 15 ORDERS:",
+        result.filter((x) => x.source.command15).length,
+      );
+
+      console.log(
+        "🔵 COMMAND 5 ORDERS:",
+        result.filter((x) => x.source.command5).length,
+      );
+
+      return result;
     };
 
     // ============================================================
