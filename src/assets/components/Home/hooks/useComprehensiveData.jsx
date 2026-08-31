@@ -263,29 +263,96 @@ export const useComprehensiveData = (
       // SOURCE DETECTION
       // ------------------------------------------------------------
       const getSource = (item) => {
-        if (item?._apiSource) {
-          return item._apiSource;
+        if (!item) return "unknown";
+
+        // ============================================================
+        // 1. EXPLICIT COMMAND ID
+        // ============================================================
+        const commandId =
+          item.CommandID ??
+          item.commandId ??
+          item._commandId ??
+          item._commandID;
+
+        if (Number(commandId) === 1) {
+          return "command1";
         }
 
-        // Backward compatibility
-        if (item?.ApprovedDate !== undefined && item?.CommandID === 1) {
+        if (Number(commandId) === 5) {
+          return "command5";
+        }
+
+        if (Number(commandId) === 15) {
+          return "command15";
+        }
+
+        // ============================================================
+        // 2. API SOURCE
+        //
+        // Different versions of index.jsx may tag source as:
+        // command1 / command5 / command15
+        // primary / secondary
+        // ============================================================
+        const apiSource = String(item._apiSource || "").toLowerCase();
+
+        if (
+          apiSource === "command1" ||
+          apiSource === "cmd1" ||
+          apiSource === "1"
+        ) {
           return "command1";
         }
 
         if (
-          item?.CommandID === 15 ||
-          item?.TotalBreakDownQTY !== undefined ||
-          item?.TotalOrderValue !== undefined
+          apiSource === "command5" ||
+          apiSource === "cmd5" ||
+          apiSource === "5"
+        ) {
+          return "command5";
+        }
+
+        if (
+          apiSource === "command15" ||
+          apiSource === "cmd15" ||
+          apiSource === "15"
         ) {
           return "command15";
         }
 
+        // ============================================================
+        // 3. FIELD-BASED DETECTION
+        // ============================================================
+
+        // CommandID=1
+        // ApprovedDate is the important identifier
+        if (item.ApprovedDate !== undefined) {
+          // If this row also has TotalOrderValue / TotalBreakDownQTY,
+          // don't automatically classify it here.
+          //
+          // Explicit CommandID/source should always win.
+          if (
+            item.TotalOrderValue === undefined &&
+            item.TotalBreakDownQTY === undefined
+          ) {
+            return "command1";
+          }
+        }
+
+        // CommandID=15
         if (
-          item?.CommandID === 5 ||
-          item?.ChallanQTY !== undefined ||
-          item?.ChallanValue !== undefined ||
-          item?.BalanceQTY !== undefined ||
-          item?.BalanceValue !== undefined
+          item.TotalBreakDownQTY !== undefined ||
+          item.TotalOrderValue !== undefined
+        ) {
+          return "command15";
+        }
+
+        // CommandID=5
+        if (
+          item.ChallanQTY !== undefined ||
+          item.ChallanValue !== undefined ||
+          item.BalanceQTY !== undefined ||
+          item.BalanceValue !== undefined ||
+          item.ItemDescription !== undefined
         ) {
           return "command5";
         }
@@ -362,6 +429,25 @@ export const useComprehensiveData = (
       });
 
       // ============================================================
+      // DEBUG SOURCE DETECTION
+      // ============================================================
+      console.log(
+        "🧪 SOURCE SAMPLE:",
+        data.slice(0, 10).map((item) => ({
+          WorkOrderNo: item.WorkOrderNo,
+          CommandID: item.CommandID,
+          commandId: item.commandId,
+          _commandId: item._commandId,
+          _apiSource: item._apiSource,
+          OrderQTY: item.OrderQTY,
+          OrderValue: item.OrderValue,
+          TotalBreakDownQTY: item.TotalBreakDownQTY,
+          TotalOrderValue: item.TotalOrderValue,
+          ChallanQTY: item.ChallanQTY,
+          ChallanValue: item.ChallanValue,
+        })),
+      );
+      // ============================================================
       // PROCESS DATA
       // ============================================================
       data.forEach((item) => {
@@ -417,24 +503,17 @@ export const useComprehensiveData = (
           // TotalBreakDownQTY
           // --------------------------------------------------------
           const qty = getNumber(
-            item.TotalBreakDownQTY ?? item.OrderQTY ?? item.BreakDownQTY,
+            item.TotalBreakDownQTY ?? item.OrderQTY ?? item.BreakDownQTY ?? 0,
           );
 
-          const value = getNumber(item.TotalOrderValue ?? item.OrderValue);
+          const value = getNumber(item.TotalOrderValue ?? item.OrderValue ?? 0);
 
-          // --------------------------------------------------------
-          // IMPORTANT
-          // Same WorkOrderNo may appear multiple times.
-          //
-          // Only take the first valid order-level value.
-          // Do NOT add duplicate rows.
-          // --------------------------------------------------------
-          if (existing.orderQty === 0 && qty > 0) {
-            existing.orderQty = Math.round(qty);
+          if (qty > 0) {
+            existing.orderQty = Math.max(existing.orderQty, Math.round(qty));
           }
 
-          if (existing.orderValue === 0 && value > 0) {
-            existing.orderValue = value;
+          if (value > 0) {
+            existing.orderValue = Math.max(existing.orderValue, value);
           }
 
           // --------------------------------------------------------
