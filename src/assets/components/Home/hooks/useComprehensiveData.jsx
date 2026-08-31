@@ -262,103 +262,53 @@ export const useComprehensiveData = (
       // ------------------------------------------------------------
       // SOURCE DETECTION
       // ------------------------------------------------------------
-      const getSource = (item) => {
-        if (!item) return "unknown";
+     const getSource = (item) => {
+  if (!item) return "unknown";
 
-        // ============================================================
-        // 1. EXPLICIT COMMAND ID
-        // ============================================================
-        const commandId =
-          item.CommandID ??
-          item.commandId ??
-          item._commandId ??
-          item._commandID;
+  const commandId =
+    item.CommandID ??
+    item.commandId ??
+    item._commandId ??
+    item._commandID;
 
-        if (Number(commandId) === 1) {
-          return "command1";
-        }
+  if (Number(commandId) === 1) return "command1";
+  if (Number(commandId) === 5) return "command5";
+  if (Number(commandId) === 15) return "command15";
 
-        if (Number(commandId) === 5) {
-          return "command5";
-        }
+  const apiSource = String(item._apiSource || "").toLowerCase();
 
-        if (Number(commandId) === 15) {
-          return "command15";
-        }
+  if (["command1", "cmd1", "1"].includes(apiSource)) {
+    return "command1";
+  }
 
-        // ============================================================
-        // 2. API SOURCE
-        //
-        // Different versions of index.jsx may tag source as:
-        // command1 / command5 / command15
-        // primary / secondary
-        // ============================================================
-        const apiSource = String(item._apiSource || "").toLowerCase();
+  if (["command5", "cmd5", "5"].includes(apiSource)) {
+    return "command5";
+  }
 
-        if (
-          apiSource === "command1" ||
-          apiSource === "cmd1" ||
-          apiSource === "1"
-        ) {
-          return "command1";
-        }
+  if (["command15", "cmd15", "15"].includes(apiSource)) {
+    return "command15";
+  }
 
-        if (
-          apiSource === "command5" ||
-          apiSource === "cmd5" ||
-          apiSource === "5"
-        ) {
-          return "command5";
-        }
+  // ============================================================
+  // IMPORTANT:
+  // This API response contains ALL fields in the same row.
+  // Therefore do NOT classify it as command1 just because
+  // ApprovedDate exists.
+  // ============================================================
 
-        if (
-          apiSource === "command15" ||
-          apiSource === "cmd15" ||
-          apiSource === "15"
-        ) {
-          return "command15";
-        }
+  if (
+    item.OrderQTY !== undefined ||
+    item.OrderValue !== undefined ||
+    item.ChallanQTY !== undefined ||
+    item.ChallanValue !== undefined ||
+    item.BalanceQTY !== undefined ||
+    item.BalanceValue !== undefined
+  ) {
+    return "combined";
+  }
 
-        // ============================================================
-        // 3. FIELD-BASED DETECTION
-        // ============================================================
-
-        // CommandID=1
-        // ApprovedDate is the important identifier
-        if (item.ApprovedDate !== undefined) {
-          // If this row also has TotalOrderValue / TotalBreakDownQTY,
-          // don't automatically classify it here.
-          //
-          // Explicit CommandID/source should always win.
-          if (
-            item.TotalOrderValue === undefined &&
-            item.TotalBreakDownQTY === undefined
-          ) {
-            return "command1";
-          }
-        }
-
-        // CommandID=15
-        if (
-          item.TotalBreakDownQTY !== undefined ||
-          item.TotalOrderValue !== undefined
-        ) {
-          return "command15";
-        }
-
-        // CommandID=5
-        if (
-          item.ChallanQTY !== undefined ||
-          item.ChallanValue !== undefined ||
-          item.BalanceQTY !== undefined ||
-          item.BalanceValue !== undefined ||
-          item.ItemDescription !== undefined
-        ) {
-          return "command5";
-        }
-
-        return "unknown";
-      };
+  return "unknown";
+};
 
       // ------------------------------------------------------------
       // CREATE EMPTY ORDER
@@ -450,341 +400,129 @@ export const useComprehensiveData = (
       // ============================================================
       // PROCESS DATA
       // ============================================================
-      data.forEach((item) => {
-        const orderNo = getWorkOrderNo(item);
-
-        if (!orderNo) return;
-
-        const source = getSource(item);
-
-        // ----------------------------------------------------------
-        // Create order if not exists
-        // ----------------------------------------------------------
-        if (!mergedMap.has(orderNo)) {
-          mergedMap.set(orderNo, createEmptyRecord(orderNo));
-        }
-
-        const existing = mergedMap.get(orderNo);
-
-        // ==========================================================
-        // COMMAND ID = 1
-        //
-        // ONLY ApprovedDate is used as OrderReceiveDate
-        //
-        // NEVER use:
-        // item.OrderReceiveDate
-        // ==========================================================
-        if (source === "command1") {
-          existing.source.command1 = true;
-
-          const approvedDate = getDate(item.ApprovedDate);
-
-          if (approvedDate) {
-            existing.orderReceiveDate = approvedDate;
-            existing.date = parseAPIDate(approvedDate);
-          }
-
-          // These are NOT used as order qty/value.
-          // They are intentionally ignored.
-        }
-
-        // ==========================================================
-        // COMMAND ID = 15
-        //
-        // ORDER MASTER DATA
-        // ==========================================================
-        if (source === "command15") {
-          existing.source.command15 = true;
-
-          // --------------------------------------------------------
-          // ORDER QTY
-          //
-          // CommandID=15:
-          // TotalBreakDownQTY
-          // --------------------------------------------------------
-          const qty = getNumber(
-            item.TotalBreakDownQTY ?? item.OrderQTY ?? item.BreakDownQTY ?? 0,
-          );
-
-          const value = getNumber(item.TotalOrderValue ?? item.OrderValue ?? 0);
-
-          if (qty > 0) {
-            existing.orderQty = Math.max(existing.orderQty, Math.round(qty));
-          }
-
-          if (value > 0) {
-            existing.orderValue = Math.max(existing.orderValue, value);
-          }
-
-          // --------------------------------------------------------
-          // MASTER INFORMATION
-          // --------------------------------------------------------
-          if (item.CName) {
-            existing.customerName = item.CName;
-          }
-
-          if (item.MarketingName) {
-            existing.marketingName = item.MarketingName;
-          }
-
-          if (item.BuyerName) {
-            existing.buyerName = item.BuyerName;
-          }
-
-          if (item.ProductCategoryName) {
-            existing.category = item.ProductCategoryName;
-            existing.productCategoryName = item.ProductCategoryName;
-          }
-
-          if (item.ProductSubCategoryName) {
-            existing.productSubCategoryName = item.ProductSubCategoryName;
-
-            existing.subCategories.add(item.ProductSubCategoryName);
-          }
-
-          // --------------------------------------------------------
-          // OTHER MASTER INFORMATION
-          // --------------------------------------------------------
-          if (item.OrderStatus) {
-            existing.orderStatus = item.OrderStatus;
-          }
-
-          if (item.Rate !== undefined) {
-            existing.rate = getNumber(item.Rate);
-          }
-
-          if (item.PINumber) {
-            existing.pINumber = item.PINumber;
-          }
-
-          if (item.JobCardNo) {
-            existing.jobCardNo = item.JobCardNo;
-          }
-
-          if (item.GateOutDate) {
-            existing.gateOutDate = item.GateOutDate;
-          }
-
-          if (item.JobBagDate) {
-            existing.jobBagDate = item.JobBagDate;
-          }
-
-          if (item.CSName) {
-            existing.cSName = item.CSName;
-          }
-
-          // --------------------------------------------------------
-          // IMPORTANT:
-          //
-          // If CommandID=1 was not returned for some reason,
-          // DO NOT use CommandID=15 OrderReceiveDate.
-          //
-          // Requirement says:
-          // OrderReceiveDate = ApprovedDate ONLY.
-          // --------------------------------------------------------
-        }
-
-        // ==========================================================
-        // COMMAND ID = 5
-        //
-        // CHALLAN / BALANCE / PRODUCT DATA
-        // ==========================================================
-        if (source === "command5") {
-          existing.source.command5 = true;
-
-          const currentSaleQty = Math.round(getNumber(item.ChallanQTY));
-
-          const currentSaleValue = getNumber(item.ChallanValue);
-
-          // --------------------------------------------------------
-          // CHALLAN
-          //
-          // These can legitimately have multiple rows.
-          // --------------------------------------------------------
-          existing.saleQty += currentSaleQty;
-          existing.saleValue += currentSaleValue;
-
-          // --------------------------------------------------------
-          // DO NOT directly SUM API BalanceQTY/BalanceValue.
-          //
-          // API-5 repeats balance across rows.
-          //
-          // Final balance will be:
-          //
-          // Order Qty - Challan Qty
-          // Order Value - Challan Value
-          // --------------------------------------------------------
-
-          // --------------------------------------------------------
-          // FALLBACK MASTER DATA
-          // --------------------------------------------------------
-          if (existing.customerName === "Unknown" && item.CName) {
-            existing.customerName = item.CName;
-          }
-
-          if (existing.marketingName === "Unknown" && item.MarketingName) {
-            existing.marketingName = item.MarketingName;
-          }
-
-          if (existing.buyerName === "Unknown" && item.BuyerName) {
-            existing.buyerName = item.BuyerName;
-          }
-
-          // --------------------------------------------------------
-          // PRODUCT
-          // --------------------------------------------------------
-          const productName = item.ItemDescription || "";
-
-          const subCategory = item.ProductSubCategoryName || "";
-
-          const category = item.ProductCategoryName || existing.category || "";
-
-          if (item.ProductCategoryName) {
-            existing.productCategoryName = item.ProductCategoryName;
-
-            // Only use this as fallback.
-            if (existing.category === "Uncategorized") {
-              existing.category = item.ProductCategoryName;
-            }
-          }
-
-          if (subCategory) {
-            existing.productSubCategoryName = subCategory;
-
-            existing.subCategories.add(subCategory);
-          }
-
-          if (item.ItemDescription) {
-            existing.itemDescription = item.ItemDescription;
-          }
-
-          if (item.DeliveryToAddress) {
-            existing.deliveryToAddress = item.DeliveryToAddress;
-          }
-
-          if (item.Unit) {
-            existing.unit = item.Unit;
-          }
-
-          if (item.UnitPrice !== undefined) {
-            existing.unitPrice = getNumber(item.UnitPrice);
-          }
-
-          if (item.ChallanNo) {
-            existing.challanNo = item.ChallanNo;
-          }
-
-          if (item.ChallanDate) {
-            existing.challanDate = item.ChallanDate;
-          }
-
-          // --------------------------------------------------------
-          // BREAKDOWN QTY
-          //
-          // Keep product-level breakdown.
-          // Do NOT use this to change orderQty.
-          // --------------------------------------------------------
-          const breakdownQty = Math.round(getNumber(item.BreakDownQTY));
-
-          existing.breakDownQTY += breakdownQty;
-
-          // --------------------------------------------------------
-          // PRODUCT DETAILS
-          // --------------------------------------------------------
-          if (productName) {
-            const existingProduct = existing.productDetails.find(
-              (p) =>
-                p.productName === productName && p.subCategory === subCategory,
-            );
-
-            if (existingProduct) {
-              existingProduct.saleQty += currentSaleQty;
-
-              existingProduct.saleValue += currentSaleValue;
-
-              existingProduct.qty += breakdownQty;
-            } else {
-              existing.productDetails.push({
-                productName,
-
-                subCategory,
-
-                category,
-
-                qty: breakdownQty,
-
-                // IMPORTANT:
-                // API-5 is NOT our order-value source.
-                // Therefore product value starts at 0.
-                value: 0,
-
-                saleQty: currentSaleQty,
-
-                saleValue: currentSaleValue,
-
-                balanceQty: 0,
-
-                balanceValue: 0,
-
-                unitPrice: getNumber(item.UnitPrice),
-
-                unit: item.Unit || "",
-
-                challanNo: item.ChallanNo || "",
-
-                challanDate: item.ChallanDate || "",
-              });
-            }
-          }
-        }
-      });
+     data.forEach((item) => {
+  const orderNo = getWorkOrderNo(item);
+
+  if (!orderNo) return;
+
+  if (!mergedMap.has(orderNo)) {
+    mergedMap.set(orderNo, createEmptyRecord(orderNo));
+  }
+
+  const existing = mergedMap.get(orderNo);
+
+  // ============================================================
+  // ORDER DATE
+  // ============================================================
+  if (item.ApprovedDate) {
+    existing.orderReceiveDate = item.ApprovedDate;
+    existing.date = parseAPIDate(item.ApprovedDate);
+  }
+
+  // ============================================================
+  // ORDER QTY
+  // ============================================================
+  const orderQty = getNumber(item.OrderQTY);
+
+  if (orderQty > 0) {
+    existing.orderQty = Math.max(existing.orderQty, orderQty);
+  }
+
+  // ============================================================
+  // ORDER VALUE
+  // ============================================================
+  const orderValue = getNumber(item.OrderValue);
+
+  if (orderValue > 0) {
+    existing.orderValue = Math.max(existing.orderValue, orderValue);
+  }
+
+  // ============================================================
+  // MASTER DATA
+  // ============================================================
+  if (item.CustomerName) {
+    existing.customerName = item.CustomerName;
+  }
+
+  if (item.Marketing) {
+    existing.marketingName = item.Marketing;
+  }
+
+  if (item.BuyerName) {
+    existing.buyerName = item.BuyerName;
+  }
+
+  if (item.SectionName) {
+    existing.category = item.SectionName;
+  }
+
+  if (item.PINumber) {
+    existing.pINumber = item.PINumber;
+  }
+
+  if (item.JobCardNo) {
+    existing.jobCardNo = item.JobCardNo;
+  }
+
+  if (item.JobBagDate) {
+    existing.jobBagDate = item.JobBagDate;
+  }
+
+  if (item.GateOutDate) {
+    existing.gateOutDate = item.GateOutDate;
+  }
+
+  if (item.CSName) {
+    existing.cSName = item.CSName;
+  }
+
+  if (item.OrderStatus) {
+    existing.orderStatus = item.OrderStatus;
+  }
+
+  if (item.Rate !== undefined) {
+    existing.rate = getNumber(item.Rate);
+  }
+
+  // ============================================================
+  // CHALLAN
+  // ============================================================
+  existing.saleQty += Math.round(
+    getNumber(item.ChallanQTY)
+  );
+
+  existing.saleValue += getNumber(
+    item.ChallanValue
+  );
+
+  // ============================================================
+  // BREAKDOWN
+  // ============================================================
+  existing.breakDownQTY += Math.round(
+    getNumber(item.BreakDownQTY)
+  );
+});
 
       // ============================================================
       // FINAL NORMALIZATION
       // ============================================================
       mergedMap.forEach((record) => {
-        // ----------------------------------------------------------
-        // BALANCE
-        //
-        // ONLY calculate when order-level data exists.
-        // ----------------------------------------------------------
-        if (record.source.command15) {
-          record.balanceQty = Math.max(0, record.orderQty - record.saleQty);
+  record.balanceQty = Math.max(
+    0,
+    record.orderQty - record.saleQty
+  );
 
-          record.balanceValue = Math.max(
-            0,
-            record.orderValue - record.saleValue,
-          );
-        }
+  record.balanceValue = Math.max(
+    0,
+    record.orderValue - record.saleValue
+  );
 
-        // ----------------------------------------------------------
-        // IMPORTANT:
-        // If CommandID=1 exists, its ApprovedDate wins.
-        // ----------------------------------------------------------
-        if (record.source.command1) {
-          const approvedDate = record.orderReceiveDate;
-
-          record.date = parseAPIDate(approvedDate);
-        }
-
-        // ----------------------------------------------------------
-        // Product balance
-        // ----------------------------------------------------------
-        record.productDetails = record.productDetails.map((product) => ({
-          ...product,
-
-          balanceQty: Math.max(
-            0,
-            Number(product.qty || 0) - Number(product.saleQty || 0),
-          ),
-
-          balanceValue: Math.max(
-            0,
-            Number(product.value || 0) - Number(product.saleValue || 0),
-          ),
-        }));
-      });
-
+  if (record.orderReceiveDate) {
+    record.date = parseAPIDate(
+      record.orderReceiveDate
+    );
+  }
+});
       // ============================================================
       // DEBUG
       // ============================================================
