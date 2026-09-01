@@ -68,9 +68,18 @@ function Home() {
     loading: contextLoading,
     apiKey,
   } = useContext(GetDataContext);
+  
   const apiData = useMemo(() => cndata?.apiData || [], [cndata]);
+  const actualSalesData = useMemo(() => cndata?.actualSalesData || [], [cndata]);
+  
   console.log("🔍 FIRST API ITEM:", apiData?.[0]);
   console.log("🔍 API KEYS:", apiData?.[0] ? Object.keys(apiData[0]) : []);
+  console.log("🔍 ACTUAL SALES DATA (CommandID=3):", actualSalesData?.length || 0);
+  if (actualSalesData?.length > 0) {
+    console.log("🔍 First Actual Sale:", actualSalesData[0]);
+    console.log("🔍 Actual Sale Keys:", Object.keys(actualSalesData[0]));
+    console.log("✅ ChallanDate present:", !!actualSalesData[0].ChallanDate);
+  }
 
   // ============================================================
   // State
@@ -101,18 +110,18 @@ function Home() {
   const cancelTokenRef = useRef(null);
 
   // ============================================================
-  // Data
+  // Data - Pass actualSalesData to the hook
   // ============================================================
   const data = useComprehensiveData(
     apiData,
+    actualSalesData,
     selectedYear,
     selectedMonth,
     selectedMarketing,
     viewMode,
   );
   console.log("Comprehensive Data:", data);
-
-  console.log("📊 Order Map Data:", data.orderMapData);
+  console.log("📊 Sales by Date:", data.salesByDate?.length || 0);
 
   // ============================================================
   // Memoized Values
@@ -178,99 +187,107 @@ function Home() {
   }, [apiData]);
 
   // ============================================================
-  // KPI Config
+  // KPI Config - Updated to use sales from Actual Sales (CommandID=3)
   // ============================================================
-  const kpiConfig = [
-    {
-      id: "orders",
-      title: "Total Orders",
-      value: data.totalOrders,
-      icon: FaShoppingCart,
-      color: COLORS.primary,
-      subtitle: `${data.totalCustomers} customers`,
-    },
-    {
-      id: "orderValue",
-      title: "Total Order Value",
-      value: formatCurrency(data.totals.orderValue),
-      icon: RiMoneyDollarCircleFill,
-      color: COLORS.indigo,
-      subtitle: formatCompactCurrency(data.totals.orderValue),
-    },
-    {
-      id: "avgOrderValue",
-      title: "Avg Order Value",
-      value: formatCurrency(data.performanceMetrics?.avgOrderValue || 0),
-      icon: FaDollarSign,
-      color: COLORS.cyan,
-      subtitle: `per order`,
-    },
-    {
-      id: "salesValue",
-      title: "Sales Revenue",
-      value: formatCurrency(data.totals.saleValue),
-      icon: FaMoneyBillWave,
-      color: COLORS.emerald,
-      subtitle: formatCompactCurrency(data.totals.saleValue),
-      growth: data.salesGrowth,
-    },
-    {
-      id: "salesQty",
-      title: "Sales Qty",
-      value: formatNumber(data.totals.saleQty),
-      icon: TbTruckDelivery,
-      color: COLORS.success,
-      subtitle: `${data.deliveryPercent.toFixed(0)}% delivered`,
-    },
-    {
-      id: "balance",
-      title: "Balance Qty",
-      value: formatNumber(data.totals.balanceQty),
-      icon: FaBoxOpen,
-      color: COLORS.danger,
-      subtitle: `${((data.totals.balanceQty / (data.totals.orderQty || 1)) * 100).toFixed(0)}% pending`,
-    },
-    {
-      id: "deliveryRate",
-      title: "Delivery Rate",
-      value: `${data.deliveryPercent.toFixed(0)}%`,
-      icon: FaPercentage,
-      color: getStatusColor(data.deliveryPercent),
-      subtitle: `${data.valuePercent.toFixed(0)}% value`,
-    },
-    {
-      id: "marketing",
-      title: "Sales Persons",
-      value: data.totalMarketing,
-      icon: FaUserTie,
-      color: COLORS.violet,
-      subtitle: `active sellers`,
-    },
-    {
-      id: "categories",
-      title: "Categories",
-      value: data.totalCategories,
-      icon: FaTag,
-      color: COLORS.teal,
-      subtitle: `${data.categoryData.reduce((sum, c) => sum + (c.subCategories || 0), 0)} sub-categories`,
-    },
-    {
-      id: "buyers",
-      title: "Buyers",
-      value: data.totalBuyers,
-      icon: FaStore,
-      color: COLORS.orange,
-      subtitle: `active buyers`,
-    },
-    {
-      id: "customerValue",
-      title: "Avg Customer Value",
-      value: formatCurrency(data.performanceMetrics?.avgCustomerValue || 0),
-      icon: FaUsers,
-      color: COLORS.pink,
-      subtitle: `per customer`,
-    },
-  ];
+  const kpiConfig = useMemo(() => {
+    const saleValue = data.totals?.saleValue || 0;
+    const saleQty = data.totals?.saleQty || 0;
+    const orderValue = data.totals?.orderValue || 0;
+    const orderQty = data.totals?.orderQty || 0;
+    const balanceQty = data.totals?.balanceQty || 0;
+    
+    return [
+      {
+        id: "orders",
+        title: "Total Orders",
+        value: data.totalOrders || 0,
+        icon: FaShoppingCart,
+        color: COLORS.primary,
+        subtitle: `${data.totalCustomers || 0} customers`,
+      },
+      {
+        id: "orderValue",
+        title: "Total Order Value",
+        value: formatCurrency(orderValue),
+        icon: RiMoneyDollarCircleFill,
+        color: COLORS.indigo,
+        subtitle: formatCompactCurrency(orderValue),
+      },
+      {
+        id: "avgOrderValue",
+        title: "Avg Order Value",
+        value: formatCurrency(data.performanceMetrics?.avgOrderValue || 0),
+        icon: FaDollarSign,
+        color: COLORS.cyan,
+        subtitle: `per order`,
+      },
+      {
+        id: "salesValue",
+        title: "Actual Sales Revenue",
+        value: formatCurrency(saleValue),
+        icon: FaMoneyBillWave,
+        color: COLORS.emerald,
+        subtitle: `Based on ChallanDate (CommandID=3)`,
+        growth: data.salesGrowth || 0,
+      },
+      {
+        id: "salesQty",
+        title: "Actual Sales Qty",
+        value: formatNumber(saleQty),
+        icon: TbTruckDelivery,
+        color: COLORS.success,
+        subtitle: `${(data.deliveryPercent || 0).toFixed(0)}% delivered`,
+      },
+      {
+        id: "balance",
+        title: "Balance Qty",
+        value: formatNumber(balanceQty),
+        icon: FaBoxOpen,
+        color: COLORS.danger,
+        subtitle: `${orderQty > 0 ? ((balanceQty / orderQty) * 100).toFixed(0) : 0}% pending`,
+      },
+      {
+        id: "deliveryRate",
+        title: "Delivery Rate",
+        value: `${(data.deliveryPercent || 0).toFixed(0)}%`,
+        icon: FaPercentage,
+        color: getStatusColor(data.deliveryPercent || 0),
+        subtitle: `${(data.valuePercent || 0).toFixed(0)}% value`,
+      },
+      {
+        id: "marketing",
+        title: "Sales Persons",
+        value: data.totalMarketing || 0,
+        icon: FaUserTie,
+        color: COLORS.violet,
+        subtitle: `active sellers`,
+      },
+      {
+        id: "categories",
+        title: "Categories",
+        value: data.totalCategories || 0,
+        icon: FaTag,
+        color: COLORS.teal,
+        subtitle: `${data.categoryData?.reduce((sum, c) => sum + (c.subCategories || 0), 0) || 0} sub-categories`,
+      },
+      {
+        id: "buyers",
+        title: "Buyers",
+        value: data.totalBuyers || 0,
+        icon: FaStore,
+        color: COLORS.orange,
+        subtitle: `active buyers`,
+      },
+      {
+        id: "customerValue",
+        title: "Avg Customer Value",
+        value: formatCurrency(data.performanceMetrics?.avgCustomerValue || 0),
+        icon: FaUsers,
+        color: COLORS.pink,
+        subtitle: `per customer`,
+      },
+    ];
+  }, [data]);
 
   // ============================================================
   // Tab Components Mapping
@@ -291,6 +308,68 @@ function Home() {
   // ============================================================
   // ✅ API Functions
   // ============================================================
+  
+  // Fetch Actual Sales Data (CommandID=3)
+  const fetchActualSales = async (startDate, endDate, signal) => {
+    if (!apiKey) {
+      console.warn("No API key available for Actual Sales fetch");
+      return [];
+    }
+    
+    try {
+      // Format dates for API
+      const formatDate = (date) => {
+        const d = new Date(date);
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, "0");
+        const day = String(d.getDate()).padStart(2, "0");
+        return `${year}-${month}-${day}`;
+      };
+      
+      const stDate = formatDate(startDate);
+      const edDate = formatDate(endDate);
+      
+      const url = `${API_ENDPOINTS.actualSales.url}?CompanyID=1&ProductCategoryID=0&ProductSubCategoryID=0&MarketingID=0&CustomerID=0&BuyerID=0&JobCardID=0&StartDate=${stDate}T00:00:00.000Z&EndDate=${edDate}T23:59:59.000Z&CommandID=${API_ENDPOINTS.actualSales.commandId}&EmpID=0`;
+      
+      console.log(`📡 Fetching Actual Sales (CommandID=3) from ${stDate} to ${edDate}`);
+      
+      const response = await axios.get(url, {
+        headers: { Authorization: `${apiKey}` },
+        timeout: 300000,
+        signal: signal,
+      });
+      
+      const data = response.data || [];
+      console.log(`✅ Actual Sales (CommandID=3): ${data.length} records`);
+      
+      // Log first record for debugging
+      if (data.length > 0) {
+        console.log("🔍 First Actual Sales Record:", data[0]);
+        console.log("🔍 Actual Sales Keys:", Object.keys(data[0]));
+        if (data[0].ChallanDate) {
+          console.log("✅ ChallanDate found:", data[0].ChallanDate);
+        } else {
+          console.warn("⚠️ ChallanDate NOT found in actual sales data");
+        }
+        if (data[0].ChallanQTY !== undefined) {
+          console.log("✅ ChallanQTY found:", data[0].ChallanQTY);
+        }
+        if (data[0].ChallanValue !== undefined) {
+          console.log("✅ ChallanValue found:", data[0].ChallanValue);
+        }
+      }
+      
+      return data;
+    } catch (err) {
+      if (err.name === 'AbortError' || err.name === 'CanceledError') {
+        console.log('🛑 Actual Sales fetch cancelled');
+        return [];
+      }
+      console.error('❌ Actual Sales API (CommandID=3) failed:', err.message);
+      return [];
+    }
+  };
+
   const fetchCurrentMonthData = async (force = false) => {
     if (autoLoadRef.current && !force) return;
     if (
@@ -318,43 +397,45 @@ function Home() {
     setAutoLoadStatus("Loading current month data...");
     setIsLoading(true);
 
-    const source = axios.CancelToken.source();
-    cancelTokenRef.current = source;
+    const controller = new AbortController();
+    const signal = controller.signal;
+    cancelTokenRef.current = controller;
 
     try {
       const { stDate, edDate, month, year } = getCurrentMonthDates();
       setAutoLoadProgress(5);
       setAutoLoadStatus(`Fetching orders for ${month} ${year}...`);
-      setAutoLoadStatus("");
 
+      // 1. Fetch Primary Order Data (CommandID=1)
+      setAutoLoadProgress(10);
+      setAutoLoadStatus("Fetching order data...");
+      
       const primaryResponse = await axios.get(
         `${API_ENDPOINTS.primary.url}?CompanyID=1&ProductCategoryID=0&ProductSubCategoryID=0&MarketingID=0&CustomerID=0&BuyerID=0&StartDate=${stDate}&EndDate=${edDate}&CommandID=${API_ENDPOINTS.primary.commandId}&EmpID=0`,
         {
           headers: { Authorization: `${apiKey}` },
           timeout: 300000,
-          cancelToken: source.token,
+          signal: signal,
         },
       );
 
       const primaryData = primaryResponse.data || [];
-      setAutoLoadProgress(30);
+      setAutoLoadProgress(25);
 
       if (!Array.isArray(primaryData) || primaryData.length === 0) {
-        toast.warning(`No data found for ${stDate} to ${edDate}.`);
+        toast.warning(`No order data found for ${stDate} to ${edDate}.`);
         setIsLoading(false);
-        setIsAutoLoading(false);  
+        setIsAutoLoading(false);
         setIsFetchingRange(false);
         setRangeFetchStatus("");
         return;
       }
 
-      setAutoLoadProgress(40);
-      setAutoLoadStatus(
-        `Found ${primaryData.length} orders from primary API...`,
-      );
+      setAutoLoadProgress(30);
+      setAutoLoadStatus(`Found ${primaryData.length} orders from primary API...`);
 
-      // Secondary API
-      setAutoLoadProgress(50);
+      // 2. Fetch Secondary Data (CommandID=5)
+      setAutoLoadProgress(40);
       setAutoLoadStatus("Fetching supporting data from secondary API...");
 
       let secondaryData = [];
@@ -364,22 +445,30 @@ function Home() {
           {
             headers: { Authorization: `${apiKey}` },
             timeout: 300000,
-            cancelToken: source.token,
+            signal: signal,
           },
         );
         secondaryData = secondaryResponse.data || [];
       } catch (secondaryErr) {
+        if (secondaryErr.name === 'AbortError') throw secondaryErr;
         console.warn("Secondary API fetch failed:", secondaryErr);
       }
 
-      setAutoLoadProgress(55);
-      setAutoLoadStatus(
-        `Found ${secondaryData.length} orders from secondary API...`,
-      );
+      setAutoLoadProgress(50);
+      setAutoLoadStatus(`Found ${secondaryData.length} records from secondary API...`);
 
-      // Merge Data
-      setAutoLoadProgress(60);
-      setAutoLoadStatus("Merging data from both APIs...");
+      // 3. Fetch Actual Sales Data (CommandID=3)
+      setAutoLoadProgress(55);
+      setAutoLoadStatus("Fetching actual sales data (CommandID=3)...");
+      
+      const actualSales = await fetchActualSales(stDate, edDate, signal);
+      
+      setAutoLoadProgress(65);
+      setAutoLoadStatus(`Found ${actualSales.length} actual sales records...`);
+
+      // 4. Merge Data
+      setAutoLoadProgress(70);
+      setAutoLoadStatus("Merging data from all APIs...");
 
       const primaryMap = new Map();
       primaryData.forEach((item) => {
@@ -419,20 +508,17 @@ function Home() {
 
       const mergedData = Array.from(primaryMap.values());
 
-      setAutoLoadProgress(75);
-      setAutoLoadStatus(
-        `Merged ${mergedData.length} unique orders (${mergedCount} enriched from secondary)...`,
-      );
+      setAutoLoadProgress(80);
+      setAutoLoadStatus(`Merged ${mergedData.length} unique orders...`);
 
       setAutoLoadProgress(90);
-      setAutoLoadStatus("Processing data...");
-
-      setAutoLoadProgress(95);
       setAutoLoadStatus("Updating dashboard...");
 
+      // Store both order data AND actual sales data in context
       setcndata((prevState) => ({
         ...prevState,
         apiData: mergedData,
+        actualSalesData: actualSales,
         groupedData: [],
         workOrderIdMap: {},
         challanReceiveMap: {},
@@ -446,29 +532,37 @@ function Home() {
           orderCount: mergedData.length,
           primaryCount: primaryData.length,
           secondaryCount: secondaryData.length,
+          actualSalesCount: actualSales.length,
           mergedCount: mergedCount,
           workOrderStatus: "auto-loaded",
           autoLoaded: true,
-          apiUsed: "merged-primary-secondary",
+          apiUsed: "merged-primary-secondary-actualSales",
         },
       }));
 
       setIsLoading(false);
       setAutoLoadProgress(100);
       setAutoLoadStatus(
-        `✅ Loaded ${mergedData.length} unique orders (${primaryData.length} primary + ${secondaryData.length} secondary) for ${month} ${year}!`,
+        `✅ Loaded ${mergedData.length} orders + ${actualSales.length} actual sales records for ${month} ${year}!`,
       );
       setAutoLoadAttempted(true);
-      toast.success(
-        `✅ Loaded ${mergedData.length} unique orders for ${month} ${year}`,
-      );
+      
+      if (actualSales.length > 0) {
+        toast.success(
+          `✅ Loaded ${mergedData.length} orders + ${actualSales.length} sales for ${month} ${year}`,
+        );
+      } else {
+        toast.warning(
+          `✅ Loaded ${mergedData.length} orders but NO actual sales data found for ${month} ${year}`,
+        );
+      }
 
       setIsLoading(false);
     } catch (err) {
-      if (axios.isCancel(err)) {
-        setIsAutoLoading(false); 
+      if (err.name === 'AbortError' || err.name === 'CanceledError') {
+        setIsAutoLoading(false);
         return;
-      }      
+      }
       console.error("Date range fetch error:", err);
       toast.error("Failed to fetch data for the selected date range.");
       setAutoLoadStatus("❌ Error fetching data");
@@ -478,16 +572,16 @@ function Home() {
       setIsFetchingRange(false);
       setRangeFetchProgress(0);
       cancelTokenRef.current = null;
-      setTimeout(() =>{ setAutoLoadStatus(false)}, 3000);
+      setTimeout(() => setAutoLoadStatus(""), 3000);
     }
   };
 
   const fetchDataByDateRange = async (startDate, endDate) => {
-    // Cancel any previous request first
     if (cancelTokenRef.current) {
-      cancelTokenRef.current.cancel("New request started");
+      cancelTokenRef.current.abort();
       cancelTokenRef.current = null;
     }
+    
     setIsLoading(true);
     setIsFetchingRange(true);
     setRangeFetchProgress(0);
@@ -519,21 +613,20 @@ function Home() {
     setRangeFetchProgress(0);
     setRangeFetchStatus("Preparing to fetch data...");
 
-    const source = axios.CancelToken.source();
-    cancelTokenRef.current = source;
+    const controller = new AbortController();
+    const signal = controller.signal;
+    cancelTokenRef.current = controller;
 
     try {
-      setRangeFetchProgress(15);
+      setRangeFetchProgress(10);
       setRangeFetchStatus("Fetching approved order data...");
 
       const primaryResponse = await axios.get(
         `${API_ENDPOINTS.primary.url}?CompanyID=1&ProductCategoryID=0&ProductSubCategoryID=0&MarketingID=0&CustomerID=0&BuyerID=0&StartDate=${stDate}&EndDate=${edDate}&CommandID=${API_ENDPOINTS.primary.commandId}&EmpID=0`,
         {
-          headers: {
-            Authorization: `${apiKey}`,
-          },
+          headers: { Authorization: `${apiKey}` },
           timeout: 300000,
-          cancelToken: source.token,
+          signal: signal,
         },
       );
 
@@ -553,7 +646,7 @@ function Home() {
         return;
       }
 
-      setRangeFetchProgress(35);
+      setRangeFetchProgress(25);
       setRangeFetchStatus("Fetching delivery data...");
 
       let secondaryData = [];
@@ -562,11 +655,9 @@ function Home() {
         const secondaryResponse = await axios.get(
           `${API_ENDPOINTS.secondary.url}?CompanyID=1&ProductCategoryID=0&ProductSubCategoryID=0&MarketingID=0&CustomerID=0&BuyerID=0&JobCardID=0&StartDate=${stDate}&EndDate=${edDate}&CommandID=${API_ENDPOINTS.secondary.commandId}&EmpID=0`,
           {
-            headers: {
-              Authorization: `${apiKey}`,
-            },
+            headers: { Authorization: `${apiKey}` },
             timeout: 300000,
-            cancelToken: source.token,
+            signal: signal,
           },
         );
 
@@ -574,15 +665,13 @@ function Home() {
           ? secondaryResponse.data
           : [];
       } catch (secondaryErr) {
-        if (axios.isCancel(secondaryErr)) {
-          throw secondaryErr;
-        }
+        if (secondaryErr.name === 'AbortError') throw secondaryErr;
         console.warn("⚠️ CommandID=5 API failed:", secondaryErr);
       }
 
       console.log("🟡 CommandID=5 records:", secondaryData.length);
 
-      setRangeFetchProgress(55);
+      setRangeFetchProgress(40);
       setRangeFetchStatus("Fetching order master data...");
 
       let orderMasterData = [];
@@ -591,11 +680,9 @@ function Home() {
         const orderMasterResponse = await axios.get(
           `${API_ENDPOINTS.orderMaster.url}?CompanyID=1&ProductCategoryID=0&ProductSubCategoryID=0&MarketingID=0&CustomerID=0&BuyerID=0&JobCardID=0&StartDate=${stDate}T00:00:00.000Z&EndDate=${edDate}T06:00:00.000Z&CommandID=${API_ENDPOINTS.orderMaster.commandId}&EmpID=0`,
           {
-            headers: {
-              Authorization: `${apiKey}`,
-            },
+            headers: { Authorization: `${apiKey}` },
             timeout: 300000,
-            cancelToken: source.token,
+            signal: signal,
           },
         );
 
@@ -603,13 +690,21 @@ function Home() {
           ? orderMasterResponse.data
           : [];
       } catch (orderMasterErr) {
-        if (axios.isCancel(orderMasterErr)) {
-          throw orderMasterErr;
-        }
+        if (orderMasterErr.name === 'AbortError') throw orderMasterErr;
         console.warn("⚠️ CommandID=15 API failed:", orderMasterErr);
       }
 
       console.log("🔵 CommandID=15 records:", orderMasterData.length);
+
+      // 4. Fetch Actual Sales Data (CommandID=3)
+      setRangeFetchProgress(50);
+      setRangeFetchStatus("Fetching actual sales data (CommandID=3)...");
+
+      const actualSalesDataResponse = await fetchActualSales(stDate, edDate, signal);
+      console.log("🟣 Actual Sales (CommandID=3):", actualSalesDataResponse.length);
+
+      setRangeFetchProgress(55);
+      setRangeFetchStatus("Processing actual sales data...");
 
       // Tag each API
       const command1Data = primaryData.map((item) => ({
@@ -633,9 +728,10 @@ function Home() {
       console.log("🟢 Tagged CommandID=1:", command1Data.length);
       console.log("🟡 Tagged CommandID=5:", command5Data.length);
       console.log("🔵 Tagged CommandID=15:", command15Data.length);
+      console.log("🟣 Actual Sales (CommandID=3):", actualSalesDataResponse.length);
 
-      setRangeFetchProgress(70);
-      setRangeFetchStatus("Merging three API data sources...");
+      setRangeFetchProgress(65);
+      setRangeFetchStatus("Merging data sources...");
 
       const mergedMap = new Map();
 
@@ -790,35 +886,17 @@ function Home() {
       console.log("CommandID=1:", primaryData.length);
       console.log("CommandID=5:", secondaryData.length);
       console.log("CommandID=15:", orderMasterData.length);
+      console.log("CommandID=3 (Actual Sales):", actualSalesDataResponse.length);
       console.log("Final unique WorkOrders:", mergedData.length);
-      console.log("Primary merged:", primaryMergedCount);
-      console.log("Primary only:", primaryOnlyCount);
-      console.log("Secondary merged:", secondaryMergedCount);
-
-      const testOrder = mergedData.find(
-        (x) => x.WorkOrderNo === "SO-003231-2026",
-      );
-      if (testOrder) {
-        console.log("🔍 TEST SO-003231-2026:", {
-          WorkOrderNo: testOrder.WorkOrderNo,
-          ApprovedDate: testOrder.ApprovedDate,
-          OrderReceiveDate: testOrder.OrderReceiveDate,
-          TotalBreakDownQTY: testOrder.TotalBreakDownQTY,
-          TotalOrderValue: testOrder.TotalOrderValue,
-          ChallanQTY: testOrder.ChallanQTY,
-          ChallanValue: testOrder.ChallanValue,
-          BalanceQTY: testOrder.BalanceQTY,
-          BalanceValue: testOrder.BalanceValue,
-          _apiSource: testOrder._apiSource,
-        });
-      }
       console.log("==========================================");
 
-      setRangeFetchProgress(90);
+      setRangeFetchProgress(85);
 
+      // Store both order data AND actual sales data in context
       setcndata((prevState) => ({
         ...prevState,
         apiData: mergedData,
+        actualSalesData: actualSalesDataResponse,
         groupedData: [],
         workOrderIdMap: {},
         challanReceiveMap: {},
@@ -831,40 +909,48 @@ function Home() {
           primaryCount: primaryData.length,
           secondaryCount: secondaryData.length,
           orderMasterCount: orderMasterData.length,
+          actualSalesCount: actualSalesDataResponse.length,
           mergedCount: primaryMergedCount,
           primaryOnlyCount: primaryOnlyCount,
           workOrderStatus: "date-range-loaded",
           autoLoaded: false,
           dateRange: true,
-          apiUsed: "command1-command5-command15",
+          apiUsed: "command1-command5-command15-actualSales",
         },
       }));
 
       setRangeFetchProgress(100);
       setRangeFetchStatus(
-        `✅ Loaded ${mergedData.length} unique orders from ${stDate} to ${edDate}!`,
+        `✅ Loaded ${mergedData.length} orders + ${actualSalesDataResponse.length} actual sales from ${stDate} to ${edDate}!`,
       );
-      toast.success(
-        `✅ Loaded ${mergedData.length} unique orders from ${stDate} to ${edDate}`,
-      );
+      
+      if (actualSalesDataResponse.length > 0) {
+        toast.success(
+          `✅ Loaded ${mergedData.length} orders + ${actualSalesDataResponse.length} actual sales`,
+        );
+      } else {
+        toast.warning(
+          `✅ Loaded ${mergedData.length} orders but NO actual sales data found`,
+        );
+      }
 
       setSelectedYear("All");
       setSelectedMonth("All");
       setIsLoading(false);
       setIsAutoLoading(false);
     } catch (err) {
-      if (axios.isCancel(err)) {
+      if (err.name === 'AbortError' || err.name === 'CanceledError') {
         console.log("🛑 Date range request cancelled");
         setRangeFetchStatus("🛑 Request cancelled");
-         setIsAutoLoading(false);
+        setIsAutoLoading(false);
         return;
       }
 
       console.error("Date range fetch error:", err);
       toast.error("Failed to fetch data for the selected date range.");
       setRangeFetchStatus("❌ Error fetching data");
-       setIsLoading(false);
-       setIsAutoLoading(false);
+      setIsLoading(false);
+      setIsAutoLoading(false);
     } finally {
       setIsLoading(false);
       setIsFetchingRange(false);
@@ -945,36 +1031,35 @@ function Home() {
 
   // Auto-load on mount
   useEffect(() => {
-  const shouldAutoLoad = () => {
-    if (autoLoadAttempted || !apiKey || autoLoadRef.current) return false;
-    if (cndata?.apiData && cndata.apiData.length > 0 && cndata?._lastFetch) {
-      const hoursSinceLastFetch =
-        (new Date() - new Date(cndata._lastFetch.timestamp)) /
-        (1000 * 60 * 60);
-      if (hoursSinceLastFetch < 1) {
-        setAutoLoadAttempted(true);
-        return false;
+    const shouldAutoLoad = () => {
+      if (autoLoadAttempted || !apiKey || autoLoadRef.current) return false;
+      if (cndata?.apiData && cndata.apiData.length > 0 && cndata?._lastFetch) {
+        const hoursSinceLastFetch =
+          (new Date() - new Date(cndata._lastFetch.timestamp)) /
+          (1000 * 60 * 60);
+        if (hoursSinceLastFetch < 1) {
+          setAutoLoadAttempted(true);
+          return false;
+        }
       }
-    }
-    return true;
-  };
+      return true;
+    };
 
-  let timeoutId;
-  if (shouldAutoLoad()) {
-    timeoutId = setTimeout(() => fetchCurrentMonthData(false), 1000);
-  }
+    let timeoutId;
+    if (shouldAutoLoad()) {
+      timeoutId = setTimeout(() => fetchCurrentMonthData(false), 1000);
+    }
 
-  return () => {
-    if (timeoutId) {
-      clearTimeout(timeoutId);
-    }
-    // ✅ Cancel any ongoing request
-    if (cancelTokenRef.current) {
-      cancelTokenRef.current.cancel("Component unmounted");
-      cancelTokenRef.current = null;
-    }
-  };
-}, [apiKey, cndata, autoLoadAttempted]);
+    return () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+      if (cancelTokenRef.current) {
+        cancelTokenRef.current.abort();
+        cancelTokenRef.current = null;
+      }
+    };
+  }, [apiKey, cndata, autoLoadAttempted]);
 
   // ============================================================
   // Chart Helpers
