@@ -325,6 +325,7 @@ function Home() {
       const { stDate, edDate, month, year } = getCurrentMonthDates();
       setAutoLoadProgress(5);
       setAutoLoadStatus(`Fetching orders for ${month} ${year}...`);
+      setAutoLoadStatus("");
 
       const primaryResponse = await axios.get(
         `${API_ENDPOINTS.primary.url}?CompanyID=1&ProductCategoryID=0&ProductSubCategoryID=0&MarketingID=0&CustomerID=0&BuyerID=0&StartDate=${stDate}&EndDate=${edDate}&CommandID=${API_ENDPOINTS.primary.commandId}&EmpID=0`,
@@ -341,6 +342,7 @@ function Home() {
       if (!Array.isArray(primaryData) || primaryData.length === 0) {
         toast.warning(`No data found for ${stDate} to ${edDate}.`);
         setIsLoading(false);
+        setIsAutoLoading(false);  
         setIsFetchingRange(false);
         setRangeFetchStatus("");
         return;
@@ -463,16 +465,20 @@ function Home() {
 
       setIsLoading(false);
     } catch (err) {
-      if (axios.isCancel(err)) return;
+      if (axios.isCancel(err)) {
+        setIsAutoLoading(false); 
+        return;
+      }      
       console.error("Date range fetch error:", err);
       toast.error("Failed to fetch data for the selected date range.");
       setAutoLoadStatus("❌ Error fetching data");
       setIsLoading(false);
+      setIsAutoLoading(false);
     } finally {
       setIsFetchingRange(false);
       setRangeFetchProgress(0);
       cancelTokenRef.current = null;
-      setTimeout(() => setAutoLoadStatus(""), 3000);
+      setTimeout(() =>{ setAutoLoadStatus(false)}, 3000);
     }
   };
 
@@ -845,16 +851,20 @@ function Home() {
       setSelectedYear("All");
       setSelectedMonth("All");
       setIsLoading(false);
+      setIsAutoLoading(false);
     } catch (err) {
       if (axios.isCancel(err)) {
         console.log("🛑 Date range request cancelled");
         setRangeFetchStatus("🛑 Request cancelled");
+         setIsAutoLoading(false);
         return;
       }
 
       console.error("Date range fetch error:", err);
       toast.error("Failed to fetch data for the selected date range.");
       setRangeFetchStatus("❌ Error fetching data");
+       setIsLoading(false);
+       setIsAutoLoading(false);
     } finally {
       setIsLoading(false);
       setIsFetchingRange(false);
@@ -862,6 +872,7 @@ function Home() {
       cancelTokenRef.current = null;
       setTimeout(() => {
         setRangeFetchStatus("");
+        setIsAutoLoading(false);
       }, 3000);
     }
   };
@@ -934,24 +945,36 @@ function Home() {
 
   // Auto-load on mount
   useEffect(() => {
-    const shouldAutoLoad = () => {
-      if (autoLoadAttempted || !apiKey || autoLoadRef.current) return false;
-      if (cndata?.apiData && cndata.apiData.length > 0 && cndata?._lastFetch) {
-        const hoursSinceLastFetch =
-          (new Date() - new Date(cndata._lastFetch.timestamp)) /
-          (1000 * 60 * 60);
-        if (hoursSinceLastFetch < 1) {
-          setAutoLoadAttempted(true);
-          return false;
-        }
+  const shouldAutoLoad = () => {
+    if (autoLoadAttempted || !apiKey || autoLoadRef.current) return false;
+    if (cndata?.apiData && cndata.apiData.length > 0 && cndata?._lastFetch) {
+      const hoursSinceLastFetch =
+        (new Date() - new Date(cndata._lastFetch.timestamp)) /
+        (1000 * 60 * 60);
+      if (hoursSinceLastFetch < 1) {
+        setAutoLoadAttempted(true);
+        return false;
       }
-      return true;
-    };
-
-    if (shouldAutoLoad()) {
-      setTimeout(() => fetchCurrentMonthData(false), 1000);
     }
-  }, [apiKey, cndata, autoLoadAttempted]);
+    return true;
+  };
+
+  let timeoutId;
+  if (shouldAutoLoad()) {
+    timeoutId = setTimeout(() => fetchCurrentMonthData(false), 1000);
+  }
+
+  return () => {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+    // ✅ Cancel any ongoing request
+    if (cancelTokenRef.current) {
+      cancelTokenRef.current.cancel("Component unmounted");
+      cancelTokenRef.current = null;
+    }
+  };
+}, [apiKey, cndata, autoLoadAttempted]);
 
   // ============================================================
   // Chart Helpers
