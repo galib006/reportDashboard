@@ -7,7 +7,7 @@ import { AnimatePresence } from "framer-motion";
 import axios from "axios";
 
 // Utils
-import { COLORS, API_ENDPOINTS } from "./utils/constants"; // ✅ API_ENDPOINTS ইম্পোর্ট করুন
+import { COLORS, API_ENDPOINTS } from "./utils/constants";
 import {
   formatCurrency,
   formatNumber,
@@ -99,8 +99,6 @@ function Home() {
 
   const autoLoadRef = useRef(false);
   const cancelTokenRef = useRef(null);
-
-  // ❌ এখান থেকে process.env সরান - API_ENDPOINTS ইম্পোর্ট করা আছে
 
   // ============================================================
   // Data
@@ -291,7 +289,7 @@ function Home() {
   };
 
   // ============================================================
-  // ✅ API Functions - ইম্পোর্ট করা API_ENDPOINTS ব্যবহার করুন
+  // ✅ API Functions
   // ============================================================
   const fetchCurrentMonthData = async (force = false) => {
     if (autoLoadRef.current && !force) return;
@@ -328,7 +326,6 @@ function Home() {
       setAutoLoadProgress(5);
       setAutoLoadStatus(`Fetching orders for ${month} ${year}...`);
 
-      // ✅ ইম্পোর্ট করা API_ENDPOINTS ব্যবহার করুন
       const primaryResponse = await axios.get(
         `${API_ENDPOINTS.primary.url}?CompanyID=1&ProductCategoryID=0&ProductSubCategoryID=0&MarketingID=0&CustomerID=0&BuyerID=0&StartDate=${stDate}&EndDate=${edDate}&CommandID=${API_ENDPOINTS.primary.commandId}&EmpID=0`,
         {
@@ -342,10 +339,10 @@ function Home() {
       setAutoLoadProgress(30);
 
       if (!Array.isArray(primaryData) || primaryData.length === 0) {
-        toast.warning(`No data found for ${month} ${year}.`);
-        setIsAutoLoading(false);
-        autoLoadRef.current = false;
-        setAutoLoadAttempted(true);
+        toast.warning(`No data found for ${stDate} to ${edDate}.`);
+        setIsLoading(false);
+        setIsFetchingRange(false);
+        setRangeFetchStatus("");
         return;
       }
 
@@ -360,7 +357,6 @@ function Home() {
 
       let secondaryData = [];
       try {
-        // ✅ ইম্পোর্ট করা API_ENDPOINTS ব্যবহার করুন
         const secondaryResponse = await axios.get(
           `${API_ENDPOINTS.secondary.url}?CompanyID=1&ProductCategoryID=0&ProductSubCategoryID=0&MarketingID=0&CustomerID=0&BuyerID=0&JobCardID=0&StartDate=${stDate}&EndDate=${edDate}&CommandID=${API_ENDPOINTS.secondary.commandId}&EmpID=0`,
           {
@@ -481,13 +477,20 @@ function Home() {
   };
 
   const fetchDataByDateRange = async (startDate, endDate) => {
+    // Cancel any previous request first
+    if (cancelTokenRef.current) {
+      cancelTokenRef.current.cancel("New request started");
+      cancelTokenRef.current = null;
+    }
     setIsLoading(true);
+    setIsFetchingRange(true);
+    setRangeFetchProgress(0);
+    setRangeFetchStatus("Preparing to fetch data...");
 
     const formatLocalDate = (date) => {
       const year = date.getFullYear();
       const month = String(date.getMonth() + 1).padStart(2, "0");
       const day = String(date.getDate()).padStart(2, "0");
-
       return `${year}-${month}-${day}`;
     };
 
@@ -499,6 +502,9 @@ function Home() {
     if (!apiKey) {
       toast.error("API key not available");
       setIsLoading(false);
+      setIsFetchingRange(false);
+      setRangeFetchProgress(0);
+      setRangeFetchStatus("");
       return;
     }
 
@@ -511,11 +517,6 @@ function Home() {
     cancelTokenRef.current = source;
 
     try {
-      // ============================================================
-      // 1️⃣ COMMAND ID = 1
-      // ONLY ApprovedDate will be used as OrderReceiveDate
-      // ============================================================
-
       setRangeFetchProgress(15);
       setRangeFetchStatus("Fetching approved order data...");
 
@@ -540,17 +541,11 @@ function Home() {
         toast.warning(
           `No approved order data found for ${stDate} to ${edDate}.`,
         );
-
         setIsFetchingRange(false);
         setRangeFetchStatus("");
         setIsLoading(false);
         return;
       }
-
-      // ============================================================
-      // 2️⃣ COMMAND ID = 5
-      // Challan / Balance / Product Details
-      // ============================================================
 
       setRangeFetchProgress(35);
       setRangeFetchStatus("Fetching delivery data...");
@@ -576,16 +571,10 @@ function Home() {
         if (axios.isCancel(secondaryErr)) {
           throw secondaryErr;
         }
-
         console.warn("⚠️ CommandID=5 API failed:", secondaryErr);
       }
 
       console.log("🟡 CommandID=5 records:", secondaryData.length);
-
-      // ============================================================
-      // 3️⃣ COMMAND ID = 15
-      // Order Qty / Value / Customer / Buyer / Sales Concern / Section
-      // ============================================================
 
       setRangeFetchProgress(55);
       setRangeFetchStatus("Fetching order master data...");
@@ -611,457 +600,269 @@ function Home() {
         if (axios.isCancel(orderMasterErr)) {
           throw orderMasterErr;
         }
-
         console.warn("⚠️ CommandID=15 API failed:", orderMasterErr);
       }
 
       console.log("🔵 CommandID=15 records:", orderMasterData.length);
 
-      // ============================================================
-      // 4️⃣ TAG EACH API
-      // ============================================================
-
+      // Tag each API
       const command1Data = primaryData.map((item) => ({
         ...item,
-
-        // ⭐ CommandID=1
         _apiSource: "command1",
-
-        // ⭐ VERY IMPORTANT
-        // ApprovedDate ONLY
         OrderReceiveDate: item.ApprovedDate || item.approvedDate || "",
       }));
 
       const command5Data = secondaryData.map((item) => ({
         ...item,
-
-        // ⭐ CommandID=5
         _apiSource: "command5",
-
-        // Do NOT use this API's OrderReceiveDate
         OrderReceiveDate: "",
       }));
 
       const command15Data = orderMasterData.map((item) => ({
         ...item,
-
-        // ⭐ CommandID=15
         _apiSource: "command15",
-
-        // Do NOT use CommandID=15 OrderReceiveDate
         OrderReceiveDate: "",
       }));
 
       console.log("🟢 Tagged CommandID=1:", command1Data.length);
-
       console.log("🟡 Tagged CommandID=5:", command5Data.length);
-
       console.log("🔵 Tagged CommandID=15:", command15Data.length);
-
-      // ============================================================
-      // 5️⃣ MERGE BY WORK ORDER NO
-      // ============================================================
 
       setRangeFetchProgress(70);
       setRangeFetchStatus("Merging three API data sources...");
 
       const mergedMap = new Map();
 
-      // ------------------------------------------------------------
-      // FIRST: CommandID=15
-      // Order MASTER
-      // ------------------------------------------------------------
-
+      // First: CommandID=15 - Order MASTER
       command15Data.forEach((item) => {
         const orderNo = item.WorkOrderNo || item.workOrderNo || "";
-
         if (!orderNo) return;
 
         if (!mergedMap.has(orderNo)) {
           mergedMap.set(orderNo, {
             ...item,
-
-            // ⭐ Do NOT take date from CommandID=15
             OrderReceiveDate: "",
-
-            // Order master
             TotalBreakDownQTY: Number(item.TotalBreakDownQTY) || 0,
-
             TotalOrderValue: Number(item.TotalOrderValue) || 0,
-
-            // Delivery
             ChallanQTY: 0,
             ChallanValue: 0,
             BalanceQTY: 0,
             BalanceValue: 0,
-
             _apiSource: "command15",
             _merged: false,
           });
         }
       });
 
-      // ------------------------------------------------------------
-      // SECOND: CommandID=5
-      // Delivery / Product details
-      // ------------------------------------------------------------
-
+      // Second: CommandID=5 - Delivery / Product details
       let secondaryMergedCount = 0;
 
       command5Data.forEach((item) => {
         const orderNo = item.WorkOrderNo || item.workOrderNo || "";
-
         if (!orderNo) return;
 
         if (mergedMap.has(orderNo)) {
           const existing = mergedMap.get(orderNo);
 
-          // --------------------------------------------------------
-          // Keep master data from CommandID=15
-          // --------------------------------------------------------
-
           if (!existing.CName && item.CName) {
             existing.CName = item.CName;
           }
-
           if (!existing.BuyerName && item.BuyerName) {
             existing.BuyerName = item.BuyerName;
           }
-
           if (!existing.MarketingName && item.MarketingName) {
             existing.MarketingName = item.MarketingName;
           }
-
           if (!existing.ProductCategoryName && item.ProductCategoryName) {
             existing.ProductCategoryName = item.ProductCategoryName;
           }
-
           if (!existing.ProductSubCategoryName && item.ProductSubCategoryName) {
             existing.ProductSubCategoryName = item.ProductSubCategoryName;
           }
 
-          // --------------------------------------------------------
-          // Delivery values
-          //
-          // We intentionally SUM Challan values because
-          // CommandID=5 may have multiple rows per WorkOrderNo.
-          // --------------------------------------------------------
-
           existing.ChallanQTY =
             Number(existing.ChallanQTY || 0) + Number(item.ChallanQTY || 0);
-
           existing.ChallanValue =
             Number(existing.ChallanValue || 0) + Number(item.ChallanValue || 0);
-
-          // --------------------------------------------------------
-          // Keep latest useful detail fields
-          // --------------------------------------------------------
 
           if (item.ChallanDate) {
             existing.ChallanDate = item.ChallanDate;
           }
-
           if (item.ChallanNo) {
             existing.ChallanNo = item.ChallanNo;
           }
-
           if (item.CustomerPINo) {
             existing.CustomerPINo = item.CustomerPINo;
           }
-
           if (item.CustomerPONo) {
             existing.CustomerPONo = item.CustomerPONo;
           }
-
           if (item.JobCardNo) {
             existing.JobCardNo = item.JobCardNo;
           }
-
           if (item.ItemDescription) {
             existing.ItemDescription = item.ItemDescription;
           }
-
           if (item.Unit) {
             existing.Unit = item.Unit;
           }
-
           if (item.UnitPrice !== undefined) {
             existing.UnitPrice = Number(item.UnitPrice) || 0;
           }
-
           if (item.DeliveryToAddress) {
             existing.DeliveryToAddress = item.DeliveryToAddress;
           }
 
           existing._apiSource = "command15+command5";
-
           existing._merged = true;
-
           secondaryMergedCount++;
         }
       });
 
-      // ------------------------------------------------------------
-      // THIRD: CommandID=1
-      //
-      // ONLY ApprovedDate is copied.
-      // ------------------------------------------------------------
-
+      // Third: CommandID=1 - ONLY ApprovedDate
       let primaryMergedCount = 0;
       let primaryOnlyCount = 0;
 
       command1Data.forEach((item) => {
         const orderNo = item.WorkOrderNo || item.workOrderNo || "";
-
         if (!orderNo) return;
 
         const approvedDate = item.ApprovedDate || item.approvedDate || "";
 
         if (mergedMap.has(orderNo)) {
           const existing = mergedMap.get(orderNo);
-
-          // ⭐⭐⭐ MOST IMPORTANT ⭐⭐⭐
-          //
-          // OrderReceiveDate = ApprovedDate
-          //
-          // NEVER:
-          // item.OrderReceiveDate
-          //
-
           existing.OrderReceiveDate = approvedDate;
-
           existing.ApprovedDate = approvedDate;
-
           existing._apiSource = `${existing._apiSource}+command1`;
-
           existing._merged = true;
-
           primaryMergedCount++;
         } else {
-          // --------------------------------------------------------
-          // If CommandID=15 did not return this order,
-          // still keep CommandID=1 order.
-          // --------------------------------------------------------
-
           mergedMap.set(orderNo, {
             ...item,
-
             WorkOrderNo: orderNo,
-
             OrderReceiveDate: approvedDate,
-
             ApprovedDate: approvedDate,
-
             TotalBreakDownQTY: 0,
             TotalOrderValue: 0,
-
             ChallanQTY: 0,
             ChallanValue: 0,
-
             BalanceQTY: 0,
             BalanceValue: 0,
-
             ProductCategoryName: item.ProductCategoryName || "Uncategorized",
-
             ProductSubCategoryName: item.ProductSubCategoryName || "",
-
             MarketingName: item.MarketingName || "Unknown",
-
             CName: item.CName || item.CustomerName || "Unknown",
-
             BuyerName: item.BuyerName || "Unknown",
-
             _apiSource: "command1",
             _merged: false,
           });
-
           primaryOnlyCount++;
         }
       });
 
-      // ============================================================
-      // 6️⃣ FINAL CALCULATIONS
-      // ============================================================
-
+      // Final calculations
       const mergedData = Array.from(mergedMap.values()).map((item) => {
         const orderQty = Number(item.TotalBreakDownQTY) || 0;
-
         const orderValue = Number(item.TotalOrderValue) || 0;
-
         const challanQty = Number(item.ChallanQTY) || 0;
-
         const challanValue = Number(item.ChallanValue) || 0;
 
         return {
           ...item,
-
-          // --------------------------------------------------------
-          // Order
-          // --------------------------------------------------------
-
           BreakDownQTY: orderQty,
-
           TotalBreakDownQTY: orderQty,
-
           TotalOrderValue: orderValue,
-
-          // --------------------------------------------------------
-          // Delivery
-          // --------------------------------------------------------
-
           ChallanQTY: challanQty,
-
           ChallanValue: challanValue,
-
-          // --------------------------------------------------------
-          // Balance
-          //
-          // Calculate from order master, NOT API-5 repeated balances.
-          // --------------------------------------------------------
-
           BalanceQTY: Math.max(0, orderQty - challanQty),
-
           BalanceValue: Math.max(0, orderValue - challanValue),
         };
       });
 
-      // ============================================================
-      // DEBUG
-      // ============================================================
-
       console.log("==========================================");
-
       console.log("✅ FINAL MERGED DATA");
-
       console.log("CommandID=1:", primaryData.length);
-
       console.log("CommandID=5:", secondaryData.length);
-
       console.log("CommandID=15:", orderMasterData.length);
-
       console.log("Final unique WorkOrders:", mergedData.length);
-
       console.log("Primary merged:", primaryMergedCount);
-
       console.log("Primary only:", primaryOnlyCount);
-
       console.log("Secondary merged:", secondaryMergedCount);
-
-      // ------------------------------------------------------------
-      // Test specific order
-      // ------------------------------------------------------------
 
       const testOrder = mergedData.find(
         (x) => x.WorkOrderNo === "SO-003231-2026",
       );
-
       if (testOrder) {
         console.log("🔍 TEST SO-003231-2026:", {
           WorkOrderNo: testOrder.WorkOrderNo,
-
           ApprovedDate: testOrder.ApprovedDate,
-
           OrderReceiveDate: testOrder.OrderReceiveDate,
-
           TotalBreakDownQTY: testOrder.TotalBreakDownQTY,
-
           TotalOrderValue: testOrder.TotalOrderValue,
-
           ChallanQTY: testOrder.ChallanQTY,
-
           ChallanValue: testOrder.ChallanValue,
-
           BalanceQTY: testOrder.BalanceQTY,
-
           BalanceValue: testOrder.BalanceValue,
-
           _apiSource: testOrder._apiSource,
         });
       }
-
       console.log("==========================================");
-
-      // ============================================================
-      // SAVE
-      // ============================================================
 
       setRangeFetchProgress(90);
 
       setcndata((prevState) => ({
         ...prevState,
-
         apiData: mergedData,
-
         groupedData: [],
-
         workOrderIdMap: {},
-
         challanReceiveMap: {},
-
         workOrderStatus: "date-range-loaded",
-
         _lastFetch: {
           timestamp: new Date().toISOString(),
-
           startDate: stDate,
-
           endDate: edDate,
-
           orderCount: mergedData.length,
-
           primaryCount: primaryData.length,
-
           secondaryCount: secondaryData.length,
-
           orderMasterCount: orderMasterData.length,
-
           mergedCount: primaryMergedCount,
-
           primaryOnlyCount: primaryOnlyCount,
-
           workOrderStatus: "date-range-loaded",
-
           autoLoaded: false,
-
           dateRange: true,
-
           apiUsed: "command1-command5-command15",
         },
       }));
 
       setRangeFetchProgress(100);
-
       setRangeFetchStatus(
         `✅ Loaded ${mergedData.length} unique orders from ${stDate} to ${edDate}!`,
       );
-
       toast.success(
         `✅ Loaded ${mergedData.length} unique orders from ${stDate} to ${edDate}`,
       );
 
       setSelectedYear("All");
       setSelectedMonth("All");
+      setIsLoading(false);
     } catch (err) {
       if (axios.isCancel(err)) {
-        console.log("⚠️ Date range fetch cancelled");
+        console.log("🛑 Date range request cancelled");
+        setRangeFetchStatus("🛑 Request cancelled");
         return;
       }
 
-      console.error("❌ Date range fetch error:", err);
-
+      console.error("Date range fetch error:", err);
       toast.error("Failed to fetch data for the selected date range.");
-
       setRangeFetchStatus("❌ Error fetching data");
-
-      setIsLoading(false);
     } finally {
+      setIsLoading(false);
       setIsFetchingRange(false);
-
       setRangeFetchProgress(0);
-
       cancelTokenRef.current = null;
-
-      setTimeout(() => setRangeFetchStatus(""), 3000);
+      setTimeout(() => {
+        setRangeFetchStatus("");
+      }, 3000);
     }
   };
 
