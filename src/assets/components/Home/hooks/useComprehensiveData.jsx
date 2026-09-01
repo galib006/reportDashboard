@@ -14,6 +14,7 @@ import { COLORS, CHART_COLORS } from "../utils/constants";
 
 export const useComprehensiveData = (
   apiData,
+  actualSalesData,
   selectedYear,
   selectedMonth,
   selectedMarketing,
@@ -23,6 +24,7 @@ export const useComprehensiveData = (
     // ============================================================
     // PREDICTION FUNCTION
     // ============================================================
+    const actualSalesByDate = new Map();
     const calculatePrediction = (dataArray, currentIndex, mode) => {
       if (!dataArray || dataArray.length === 0) return 0;
 
@@ -530,15 +532,29 @@ export const useComprehensiveData = (
               rowKey,
               item
             );
-
+            
             // CHALLAN
-            existing.saleQty += Math.round(
-              getNumber(item.ChallanQTY)
-            );
 
-            existing.saleValue +=
-              getNumber(item.ChallanValue);
+            const saleDate = parseAPIDate(item.ChallanDate);
 
+              if (saleDate) {
+                const dayKey =
+                  `${saleDate.getFullYear()}-${String(
+                    saleDate.getMonth() + 1
+                  ).padStart(2, "0")}-${String(
+                    saleDate.getDate()
+                  ).padStart(2, "0")}`;
+
+                const existing = actualSalesByDate.get(dayKey) || {
+                  saleQty: 0,
+                  saleValue: 0,
+                };
+
+                existing.saleQty += Number(item.ChallanQTY) || 0;
+                existing.saleValue += Number(item.ChallanValue) || 0;
+
+                actualSalesByDate.set(dayKey, existing);
+              }
             // BREAKDOWN QTY
             existing.breakDownQTY += Math.round(
               getNumber(item.BreakDownQTY)

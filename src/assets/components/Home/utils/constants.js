@@ -49,6 +49,10 @@ export const API_ENDPOINTS = {
     url: "https://tpl-api.ebs365.info/api/OrderReport/BI_OrderRelatedInformationReport",
     commandId: 15,
   },
+  actualSales: {
+  url: "https://tpl-api.ebs365.info/api/OrderReport/BI_OrderRelatedInformationReport",
+  commandId: 3,
+},
 };
 
 export const MONTH_ORDER = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
