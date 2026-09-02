@@ -72,7 +72,6 @@ function Home() {
   const apiData = useMemo(() => cndata?.apiData || [], [cndata]);
   const actualSalesData = useMemo(() => cndata?.actualSalesData || [], [cndata]);
   
-  console.log("🔍 FIRST API ITEM:", apiData?.[0]);
   console.log("🔍 API KEYS:", apiData?.[0] ? Object.keys(apiData[0]) : []);
   console.log("🔍 ACTUAL SALES DATA (CommandID=3):", actualSalesData?.length || 0);
   if (actualSalesData?.length > 0) {
@@ -1180,14 +1179,16 @@ function Home() {
         <AnimatePresence mode="wait">
           {activeTab === "overview" && (
             <OverviewTab
-              data={data}
-              viewMode={viewMode}
-              chartData={chartData}
-              growthChartData={growthChartData}
-              getGrowthLabel={getGrowthLabel}
-              selectedYear={selectedYear}
-              selectedMonth={selectedMonth}
-            />
+            data={data}
+            apiData={apiData}
+            viewMode={viewMode}
+            chartData={chartData}
+            growthChartData={growthChartData}
+            getGrowthLabel={getGrowthLabel}
+            selectedYear={selectedYear}
+            selectedMonth={selectedMonth}
+            selectedMarketing={selectedMarketing}
+          />
           )}
           {activeTab === "sales" && (
             <SalesTab data={data} viewMode={viewMode} chartData={chartData} />
