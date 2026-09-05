@@ -69,6 +69,47 @@ import { RiMoneyDollarCircleFill } from "react-icons/ri";
 import { TbTruckDelivery } from "react-icons/tb";
 
 const normalizeLocalData = (data) => {
+  const formatDateKey = (value) => {
+  if (!value) return "";
+
+  const text = String(value).trim();
+
+  // YYYY-MM-DD / YYYY/MM/DD / ISO date
+  const match = text.match(
+    /^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/
+  );
+
+  if (match) {
+    return `${match[1]}-${String(match[2]).padStart(2, "0")}-${String(
+      match[3]
+    ).padStart(2, "0")}`;
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+
+  return `${date.getFullYear()}-${String(
+    date.getMonth() + 1
+  ).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+};
+
+const filterByDateRange = (data, dateField, startDate, endDate) => {
+  if (!Array.isArray(data)) return [];
+
+  const startKey = formatDateKey(startDate);
+  const endKey = formatDateKey(endDate);
+
+  return data.filter((item) => {
+    const itemKey = formatDateKey(item?.[dateField]);
+
+    if (!itemKey) return false;
+
+    return itemKey >= startKey && itemKey <= endKey;
+  });
+};
   if (Array.isArray(data)) {
     return data;
   }
@@ -351,6 +392,680 @@ function Home() {
     }));
   }
 
+
+
+
+
+
+
+
+
+
+
+const fetchDataByDateRange = async (startDate, endDate) => {
+  // ==========================================
+  // LOCAL DATA MODE
+  // ==========================================
+  if (USE_LOCAL_DATA) {
+    console.log("🟢 LOCAL MODE: Date range fetch");
+
+    try {
+      setIsLoading(true);
+      setIsFetchingRange(true);
+      setRangeFetchProgress(0);
+      setRangeFetchStatus("Loading selected date range...");
+
+      // ==========================================
+      // DATE KEY HELPER
+      // ==========================================
+
+      const formatDateKey = (value) => {
+        if (!value) return "";
+
+        const text = String(value).trim();
+
+        // YYYY-MM-DD / YYYY/MM/DD / ISO
+        const match = text.match(
+          /^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/
+        );
+
+        if (match) {
+          return `${match[1]}-${String(match[2]).padStart(2, "0")}-${String(
+            match[3]
+          ).padStart(2, "0")}`;
+        }
+
+        const d = new Date(value);
+
+        if (Number.isNaN(d.getTime())) {
+          return "";
+        }
+
+        return `${d.getFullYear()}-${String(
+          d.getMonth() + 1
+        ).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      };
+
+      const startKey = formatDateKey(startDate);
+      const endKey = formatDateKey(endDate);
+
+      console.log("=========================================");
+      console.log("📅 SELECTED DATE RANGE");
+      console.log("Start:", startKey);
+      console.log("End:", endKey);
+      console.log("=========================================");
+
+      // ==========================================
+      // LOAD LOCAL JSON
+      // ==========================================
+
+      const allCommand1 = normalizeLocalData(commandId1);
+      const allCommand5 = normalizeLocalData(commandId5);
+      const allCommand15 = normalizeLocalData(commandId15);
+      const allCommand3 = normalizeLocalData(commandId3);
+
+      console.log("📦 TOTAL LOCAL DATA");
+      console.log("CommandID=1:", allCommand1.length);
+      console.log("CommandID=5:", allCommand5.length);
+      console.log("CommandID=15:", allCommand15.length);
+      console.log("CommandID=3:", allCommand3.length);
+
+      setRangeFetchProgress(20);
+
+      // ==========================================
+      // COMMAND 1
+      // ApprovedDate = Order Date
+      // ==========================================
+
+      const command1Filtered = allCommand1.filter((item) => {
+        const date =
+          item.ApprovedDate ||
+          item.approvedDate ||
+          "";
+
+        const key = formatDateKey(date);
+
+        return key && key >= startKey && key <= endKey;
+      });
+
+      // ==========================================
+      // COMMAND 3
+      // ChallanDate = Actual Sales Date
+      // ==========================================
+
+      const command3Filtered = allCommand3.filter((item) => {
+        const date =
+          item.ChallanDate ||
+          item.challanDate ||
+          "";
+
+        const key = formatDateKey(date);
+
+        return key && key >= startKey && key <= endKey;
+      });
+
+      // ==========================================
+      // COMMAND 5
+      // ChallanDate = Delivery/Sales Date
+      // ==========================================
+
+      const command5Filtered = allCommand5.filter((item) => {
+        const date =
+          item.ChallanDate ||
+          item.challanDate ||
+          "";
+
+        const key = formatDateKey(date);
+
+        return key && key >= startKey && key <= endKey;
+      });
+
+      // ==========================================
+      // COMMAND 15
+      //
+      // IMPORTANT:
+      // Command 15-এর date field যদি ApprovedDate হয়,
+      // তাহলে সেটা use হবে.
+      // ==========================================
+
+      const command15Filtered = allCommand15.filter((item) => {
+        const date =
+          item.ApprovedDate ||
+          item.approvedDate ||
+          item.OrderReceiveDate ||
+          item.orderReceiveDate ||
+          "";
+
+        const key = formatDateKey(date);
+
+        return key && key >= startKey && key <= endKey;
+      });
+
+      // ==========================================
+      // CONSOLE - FILTERED DATA ONLY
+      // ==========================================
+
+      console.log("=========================================");
+      console.log("✅ FILTERED LOCAL DATA");
+      console.log("=========================================");
+
+      console.log(
+        "🟢 CommandID=1:",
+        command1Filtered.length,
+        command1Filtered
+      );
+
+      console.log(
+        "🟡 CommandID=5:",
+        command5Filtered.length,
+        command5Filtered
+      );
+
+      console.log(
+        "🔵 CommandID=15:",
+        command15Filtered.length,
+        command15Filtered
+      );
+
+      console.log(
+        "🟣 CommandID=3:",
+        command3Filtered.length,
+        command3Filtered
+      );
+
+      console.log("=========================================");
+
+      setRangeFetchProgress(40);
+
+      // ==========================================
+      // TAG COMMAND 15
+      // ==========================================
+
+      const command15Data = command15Filtered.map((item) => ({
+        ...item,
+
+        _apiSource: "command15",
+        CommandID: 15,
+
+        OrderReceiveDate:
+          item.ApprovedDate ||
+          item.approvedDate ||
+          item.OrderReceiveDate ||
+          "",
+      }));
+
+      // ==========================================
+      // TAG COMMAND 5
+      // ==========================================
+
+      const command5Data = command5Filtered.map((item) => ({
+        ...item,
+
+        _apiSource: "command5",
+        CommandID: 5,
+
+        // Command 5-এর date OrderReceiveDate হিসেবে use হবে না
+        OrderReceiveDate: "",
+      }));
+
+      // ==========================================
+      // TAG COMMAND 1
+      // ==========================================
+
+      const command1Data = command1Filtered.map((item) => ({
+        ...item,
+
+        _apiSource: "command1",
+        CommandID: 1,
+
+        // Command 1 ApprovedDate MUST WIN
+        OrderReceiveDate:
+          item.ApprovedDate ||
+          item.approvedDate ||
+          "",
+      }));
+
+      // ==========================================
+      // TAG COMMAND 3
+      // ==========================================
+
+      const command3Data = command3Filtered.map((item) => ({
+        ...item,
+
+        _apiSource: "command3",
+        CommandID: 3,
+      }));
+
+      setRangeFetchProgress(55);
+
+      // ==========================================
+      // MERGE BY WORK ORDER
+      // ==========================================
+
+      const mergedMap = new Map();
+
+      // ------------------------------------------
+      // FIRST: COMMAND 15
+      // ------------------------------------------
+
+      command15Data.forEach((item) => {
+        const workOrderNo =
+          item.WorkOrderNo ||
+          item.workOrderNo ||
+          "";
+
+        if (!workOrderNo) return;
+
+        mergedMap.set(workOrderNo, {
+          ...item,
+
+          WorkOrderNo: workOrderNo,
+
+          _apiSource: "command15",
+          CommandID: 15,
+
+          TotalBreakDownQTY:
+            Number(
+              item.TotalBreakDownQTY ||
+              item.OrderQTY ||
+              item.BreakDownQTY ||
+              0
+            ),
+
+          TotalOrderValue:
+            Number(
+              item.TotalOrderValue ||
+              item.OrderValue ||
+              0
+            ),
+
+          ChallanQTY: 0,
+          ChallanValue: 0,
+
+          BalanceQTY: 0,
+          BalanceValue: 0,
+        });
+      });
+
+      // ------------------------------------------
+      // SECOND: COMMAND 5
+      // ------------------------------------------
+
+      command5Data.forEach((item) => {
+        const workOrderNo =
+          item.WorkOrderNo ||
+          item.workOrderNo ||
+          "";
+
+        if (!workOrderNo) return;
+
+        const existing = mergedMap.get(workOrderNo);
+
+        if (existing) {
+          // Customer
+          if (!existing.CName && item.CName) {
+            existing.CName = item.CName;
+          }
+
+          // Buyer
+          if (!existing.BuyerName && item.BuyerName) {
+            existing.BuyerName = item.BuyerName;
+          }
+
+          // Marketing
+          if (!existing.MarketingName && item.MarketingName) {
+            existing.MarketingName = item.MarketingName;
+          }
+
+          // Category
+          if (
+            !existing.ProductCategoryName &&
+            item.ProductCategoryName
+          ) {
+            existing.ProductCategoryName =
+              item.ProductCategoryName;
+          }
+
+          // Subcategory
+          if (
+            !existing.ProductSubCategoryName &&
+            item.ProductSubCategoryName
+          ) {
+            existing.ProductSubCategoryName =
+              item.ProductSubCategoryName;
+          }
+
+          // Challan Qty
+          existing.ChallanQTY =
+            Number(existing.ChallanQTY || 0) +
+            Number(item.ChallanQTY || 0);
+
+          // Challan Value
+          existing.ChallanValue =
+            Number(existing.ChallanValue || 0) +
+            Number(item.ChallanValue || 0);
+
+          // Challan information
+          if (item.ChallanDate) {
+            existing.ChallanDate = item.ChallanDate;
+          }
+
+          if (item.ChallanNo) {
+            existing.ChallanNo = item.ChallanNo;
+          }
+
+          if (item.CustomerPINo) {
+            existing.CustomerPINo = item.CustomerPINo;
+          }
+
+          if (item.CustomerPONo) {
+            existing.CustomerPONo = item.CustomerPONo;
+          }
+
+          if (item.JobCardNo) {
+            existing.JobCardNo = item.JobCardNo;
+          }
+
+          if (item.ItemDescription) {
+            existing.ItemDescription =
+              item.ItemDescription;
+          }
+
+          if (item.Unit) {
+            existing.Unit = item.Unit;
+          }
+
+          if (item.UnitPrice !== undefined) {
+            existing.UnitPrice =
+              Number(item.UnitPrice) || 0;
+          }
+
+          if (item.DeliveryToAddress) {
+            existing.DeliveryToAddress =
+              item.DeliveryToAddress;
+          }
+
+          existing._apiSource =
+            "command15+command5";
+
+          existing._merged = true;
+        }
+      });
+
+      // ------------------------------------------
+      // THIRD: COMMAND 1
+      // ------------------------------------------
+
+      command1Data.forEach((item) => {
+        const workOrderNo =
+          item.WorkOrderNo ||
+          item.workOrderNo ||
+          "";
+
+        if (!workOrderNo) return;
+
+        const approvedDate =
+          item.ApprovedDate ||
+          item.approvedDate ||
+          "";
+
+        const existing = mergedMap.get(workOrderNo);
+
+        if (existing) {
+          // Command 1 date MUST WIN
+          existing.ApprovedDate = approvedDate;
+
+          existing.OrderReceiveDate =
+            approvedDate;
+
+          existing._apiSource =
+            `${existing._apiSource}+command1`;
+
+          existing.CommandID = 1;
+
+          existing._merged = true;
+        } else {
+          mergedMap.set(workOrderNo, {
+            ...item,
+
+            WorkOrderNo: workOrderNo,
+
+            ApprovedDate: approvedDate,
+
+            OrderReceiveDate: approvedDate,
+
+            TotalBreakDownQTY: 0,
+            TotalOrderValue: 0,
+
+            ChallanQTY: 0,
+            ChallanValue: 0,
+
+            BalanceQTY: 0,
+            BalanceValue: 0,
+
+            ProductCategoryName:
+              item.ProductCategoryName ||
+              "Uncategorized",
+
+            ProductSubCategoryName:
+              item.ProductSubCategoryName ||
+              "",
+
+            MarketingName:
+              item.MarketingName ||
+              "Unknown",
+
+            CName:
+              item.CName ||
+              item.CustomerName ||
+              "Unknown",
+
+            BuyerName:
+              item.BuyerName ||
+              "Unknown",
+
+            _apiSource: "command1",
+
+            CommandID: 1,
+
+            _merged: false,
+          });
+        }
+      });
+
+      setRangeFetchProgress(75);
+
+      // ==========================================
+      // FINAL CALCULATIONS
+      // ==========================================
+
+      const mergedData =
+        Array.from(mergedMap.values()).map((item) => {
+          const orderQty =
+            Number(item.TotalBreakDownQTY) || 0;
+
+          const orderValue =
+            Number(item.TotalOrderValue) || 0;
+
+          const challanQty =
+            Number(item.ChallanQTY) || 0;
+
+          const challanValue =
+            Number(item.ChallanValue) || 0;
+
+          return {
+            ...item,
+
+            BreakDownQTY: orderQty,
+
+            TotalBreakDownQTY: orderQty,
+
+            TotalOrderValue: orderValue,
+
+            ChallanQTY: challanQty,
+
+            ChallanValue: challanValue,
+
+            BalanceQTY: Math.max(
+              0,
+              orderQty - challanQty
+            ),
+
+            BalanceValue: Math.max(
+              0,
+              orderValue - challanValue
+            ),
+          };
+        });
+
+      // ==========================================
+      // FINAL CONSOLE
+      // ==========================================
+
+      console.log("=========================================");
+      console.log("🎯 FINAL DATE RANGE RESULT");
+      console.log("=========================================");
+
+      console.log(
+        "📅 Range:",
+        startKey,
+        "→",
+        endKey
+      );
+
+      console.log(
+        "🟢 CommandID=1:",
+        command1Data.length
+      );
+
+      console.log(
+        "🟡 CommandID=5:",
+        command5Data.length
+      );
+
+      console.log(
+        "🔵 CommandID=15:",
+        command15Data.length
+      );
+
+      console.log(
+        "🟣 CommandID=3:",
+        command3Data.length
+      );
+
+      console.log(
+        "🔗 Final unique WorkOrders:",
+        mergedData.length
+      );
+
+      console.log(
+        "📊 FINAL MERGED DATA:",
+        mergedData
+      );
+
+      console.log("=========================================");
+
+      // ==========================================
+      // SAVE TO CONTEXT
+      // ==========================================
+
+      setcndata((prevState) => ({
+        ...prevState,
+
+        apiData: mergedData,
+
+        actualSalesData: command3Data,
+
+        groupedData: [],
+
+        workOrderIdMap: {},
+
+        challanReceiveMap: {},
+
+        workOrderStatus:
+          "date-range-loaded",
+
+        _lastFetch: {
+          timestamp:
+            new Date().toISOString(),
+
+          startDate: startKey,
+
+          endDate: endKey,
+
+          orderCount:
+            mergedData.length,
+
+          primaryCount:
+            command1Data.length,
+
+          secondaryCount:
+            command5Data.length,
+
+          orderMasterCount:
+            command15Data.length,
+
+          actualSalesCount:
+            command3Data.length,
+
+          workOrderStatus:
+            "date-range-loaded",
+
+          autoLoaded: false,
+
+          dateRange: true,
+
+          apiUsed:
+            "local-command1-command5-command15-command3",
+        },
+      }));
+
+      setRangeFetchProgress(100);
+
+      setRangeFetchStatus(
+        `✅ Loaded ${mergedData.length} orders + ${command3Data.length} actual sales from ${startKey} to ${endKey}`
+      );
+
+      setSelectedYear("All");
+      setSelectedMonth("All");
+
+      if (command3Data.length > 0) {
+        toast.success(
+          `✅ Loaded ${mergedData.length} orders + ${command3Data.length} actual sales`
+        );
+      } else {
+        toast.warning(
+          `✅ Loaded ${mergedData.length} orders but no actual sales found`
+        );
+      }
+
+    } catch (error) {
+      console.error(
+        "❌ Local date range error:",
+        error
+      );
+
+      setRangeFetchStatus(
+        "❌ Local data loading failed"
+      );
+
+      toast.error(
+        "Failed to load selected date range."
+      );
+    } finally {
+      setIsLoading(false);
+      setIsFetchingRange(false);
+      setRangeFetchProgress(0);
+      setTimeout(() => {
+        setRangeFetchStatus("");
+      }, 3000);
+    }
+
+    return;
+  }
+
+
+
   // ==========================================
   // ONLINE API MODE
   // ==========================================
@@ -451,6 +1166,10 @@ if (!apiKey) {
 // FILTER LOCAL DATA BY SELECTED DATE RANGE
 // ==========================================
 
+// ==========================================
+// FILTER LOCAL DATA BY SELECTED DATE RANGE
+// ==========================================
+
 const filteredCommand1 = filterByDateRange(
   primaryData,
   "ApprovedDate",
@@ -465,24 +1184,28 @@ const filteredCommand3 = filterByDateRange(
   endDate
 );
 
-console.log("==========================================");
+console.log("=========================================");
 console.log("📅 SELECTED DATE RANGE");
-console.log("==========================================");
-console.log("Start:", startDate);
-console.log("End:", endDate);
+console.log(
+  formatDateKey(startDate),
+  "to",
+  formatDateKey(endDate)
+);
+console.log("=========================================");
 
 console.log(
-  "🟢 Command 1 filtered:",
+  "🟢 CommandID=1 filtered:",
   filteredCommand1.length,
   filteredCommand1
 );
 
 console.log(
-  "🟣 Command 3 filtered:",
+  "🟣 CommandID=3 filtered:",
   filteredCommand3.length,
   filteredCommand3
 );
-console.log("==========================================");
+
+console.log("=========================================");
 
 
 
@@ -778,625 +1501,646 @@ console.log("==========================================");
     }
   };
 
-  const fetchDataByDateRange = async (startDate, endDate) => {
-     // ==========================================
-  // LOCAL DATA MODE
-  // ==========================================
-  if (USE_LOCAL_DATA) {
-    console.log("🟢 LOCAL MODE: Date range fetch");
 
-    try {
-      setIsLoading(true);
-      setAutoLoadStatus("Loading local data...");
-      setAutoLoadProgress(10);
 
-      const primaryData =
-        normalizeLocalData(commandId1);
 
-      const secondaryData =
-        normalizeLocalData(commandId5);
 
-      const orderMasterData =
-        normalizeLocalData(commandId15);
 
-      const actualSales =
-        normalizeLocalData(commandId3);
 
-      console.log("📦 Local Command 1:", primaryData.length);
-      console.log("📦 Local Command 5:", secondaryData.length);
-      console.log("📦 Local Command 15:", orderMasterData.length);
-      console.log("📦 Local Command 3:", actualSales.length);
 
-      // ==========================================
-      // SAME SOURCE TAGGING AS ONLINE API
-      // ==========================================
 
-       const command1Tagged = filteredCommand1.map((item) => ({
-        ...item,
 
-        _apiSource: "command1",
-        CommandID: 1,
 
-        OrderReceiveDate:
-          item.ApprovedDate ||
-          item.approvedDate ||
-          "",
-      }));
 
-      const command5Tagged = secondaryData.map((item) => ({
-        ...item,
 
-        _apiSource: "command5",
-        CommandID: 5,
 
-        // IMPORTANT:
-        // Command 5-এর date ব্যবহার করা হবে না
-        OrderReceiveDate: "",
-      }));
 
-      const command15Tagged = orderMasterData.map((item) => ({
-        ...item,
 
-        _apiSource: "command15",
-        CommandID: 15,
 
-        OrderReceiveDate: "",
-      }));
 
-       const command3Tagged = filteredCommand3.map((item) => ({
-        ...item,
 
-        _apiSource: "command3",
-        CommandID: 3,
-      }));
 
-      setAutoLoadProgress(30);
 
-      // ==========================================
-      // MERGE COMMAND 15
-      // ==========================================
 
-      const mergedMap = new Map();
 
-      command15Tagged.forEach((item) => {
-        const workOrderNo =
-          item.WorkOrderNo ||
-          item.workOrderNo ||
-          "";
 
-        if (!workOrderNo) return;
 
-        mergedMap.set(workOrderNo, {
-          ...item,
-          _apiSource: "command15",
-          CommandID: 15,
-        });
-      });
 
-      // ==========================================
-      // MERGE COMMAND 5
-      // ==========================================
 
-      command5Tagged.forEach((item) => {
-        const workOrderNo =
-          item.WorkOrderNo ||
-          item.workOrderNo ||
-          "";
 
-        if (!workOrderNo) return;
 
-        const existing = mergedMap.get(workOrderNo);
 
-        if (existing) {
-          mergedMap.set(workOrderNo, {
-            ...existing,
-            ...item,
 
-            _apiSource: "command15+command5",
-            CommandID: 5,
+  // const fetchDataByDateRange = async (startDate, endDate) => {
+  //    // ==========================================
+  // // LOCAL DATA MODE
+  // // ==========================================
+  // if (USE_LOCAL_DATA) {
+  //   console.log("🟢 LOCAL MODE: Date range fetch");
 
-            OrderReceiveDate:
-              existing.OrderReceiveDate || "",
-          });
-        } else {
-          mergedMap.set(workOrderNo, {
-            ...item,
+  //   try {
+  //     setIsLoading(true);
+  //     setAutoLoadStatus("Loading local data...");
+  //     setAutoLoadProgress(10);
 
-            _apiSource: "command5",
-            CommandID: 5,
+  //     const primaryData =
+  //       normalizeLocalData(commandId1);
 
-            OrderReceiveDate: "",
-          });
-        }
-      });
+  //     const secondaryData =
+  //       normalizeLocalData(commandId5);
 
-      // ==========================================
-      // MERGE COMMAND 1
-      // ==========================================
+  //     const orderMasterData =
+  //       normalizeLocalData(commandId15);
 
-      command1Tagged.forEach((item) => {
-        const workOrderNo =
-          item.WorkOrderNo ||
-          item.workOrderNo ||
-          "";
+  //     const actualSales =
+  //       normalizeLocalData(commandId3);
 
-        if (!workOrderNo) return;
+  //     console.log("📦 Local Command 1:", primaryData.length);
+  //     console.log("📦 Local Command 5:", secondaryData.length);
+  //     console.log("📦 Local Command 15:", orderMasterData.length);
+  //     console.log("📦 Local Command 3:", actualSales.length);
 
-        const existing = mergedMap.get(workOrderNo);
+  //     // ==========================================
+  //     // SAME SOURCE TAGGING AS ONLINE API
+  //     // ==========================================
 
-        if (existing) {
-          mergedMap.set(workOrderNo, {
-            ...existing,
-            ...item,
+  //      const command1Tagged = filteredCommand1.map((item) => ({
+  //       ...item,
 
-            // Command 1 ApprovedDate MUST WIN
-            ApprovedDate:
-              item.ApprovedDate ||
-              item.approvedDate ||
-              existing.ApprovedDate ||
-              "",
+  //       _apiSource: "command1",
+  //       CommandID: 1,
 
-            OrderReceiveDate:
-              item.ApprovedDate ||
-              item.approvedDate ||
-              "",
+  //       OrderReceiveDate:
+  //         item.ApprovedDate ||
+  //         item.approvedDate ||
+  //         "",
+  //     }));
 
-            _apiSource: "command15+command5+command1",
-            CommandID: 1,
-          });
-        } else {
-          mergedMap.set(workOrderNo, {
-            ...item,
+  //     const command5Tagged = secondaryData.map((item) => ({
+  //       ...item,
 
-            _apiSource: "command1",
-            CommandID: 1,
+  //       _apiSource: "command5",
+  //       CommandID: 5,
 
-            OrderReceiveDate:
-              item.ApprovedDate ||
-              item.approvedDate ||
-              "",
-          });
-        }
-      });
+  //       // IMPORTANT:
+  //       // Command 5-এর date ব্যবহার করা হবে না
+  //       OrderReceiveDate: "",
+  //     }));
 
-      setAutoLoadProgress(80);
+  //     const command15Tagged = orderMasterData.map((item) => ({
+  //       ...item,
 
-      const mergedData =
-        Array.from(mergedMap.values());
+  //       _apiSource: "command15",
+  //       CommandID: 15,
 
-      // ==========================================
-      // SAVE TO CONTEXT
-      // ==========================================
+  //       OrderReceiveDate: "",
+  //     }));
 
-      setcndata({
-        apiData: mergedData,
-        actualSalesData: command3Tagged,
-      });
+  //      const command3Tagged = filteredCommand3.map((item) => ({
+  //       ...item,
 
-      setAutoLoadProgress(100);
-      setAutoLoadStatus("Local data loaded");
+  //       _apiSource: "command3",
+  //       CommandID: 3,
+  //     }));
 
-      console.log("=================================");
-      console.log("✅ LOCAL DATA FETCH COMPLETE");
-      console.log("=================================");
-      console.log("Command 1:", command1Tagged.length);
-      console.log("Command 5:", command5Tagged.length);
-      console.log("Command 15:", command15Tagged.length);
-      console.log("Command 3:", command3Tagged.length);
-      console.log("Merged:", mergedData.length);
-      console.log("=================================");
+  //     setAutoLoadProgress(30);
 
-    } catch (error) {
-      console.error(
-        "❌ Local date range error:",
-        error
-      );
+  //     // ==========================================
+  //     // MERGE COMMAND 15
+  //     // ==========================================
 
-      setAutoLoadStatus(
-        "Local data loading failed"
-      );
-    } finally {
-      setIsLoading(false);
-      setAutoLoadProgress(100);
-    }
+  //     const mergedMap = new Map();
 
-    return;
-  }
-    if (cancelTokenRef.current) {
-      cancelTokenRef.current.abort();
-      cancelTokenRef.current = null;
-    }
-    console.log("========================================");
-console.log("🟢 LOCAL DATA MODE");
-console.log("========================================");
+  //     command15Tagged.forEach((item) => {
+  //       const workOrderNo =
+  //         item.WorkOrderNo ||
+  //         item.workOrderNo ||
+  //         "";
 
-console.log("📦 Command 1 Data:", commandId1);
-console.log("📦 Command 3 Data:", commandId3);
-console.log("📦 Command 5 Data:", commandId5);
-console.log("📦 Command 15 Data:", commandId15);
+  //       if (!workOrderNo) return;
 
-console.log("========================================");
+  //       mergedMap.set(workOrderNo, {
+  //         ...item,
+  //         _apiSource: "command15",
+  //         CommandID: 15,
+  //       });
+  //     });
+
+  //     // ==========================================
+  //     // MERGE COMMAND 5
+  //     // ==========================================
+
+  //     command5Tagged.forEach((item) => {
+  //       const workOrderNo =
+  //         item.WorkOrderNo ||
+  //         item.workOrderNo ||
+  //         "";
+
+  //       if (!workOrderNo) return;
+
+  //       const existing = mergedMap.get(workOrderNo);
+
+  //       if (existing) {
+  //         mergedMap.set(workOrderNo, {
+  //           ...existing,
+  //           ...item,
+
+  //           _apiSource: "command15+command5",
+  //           CommandID: 5,
+
+  //           OrderReceiveDate:
+  //             existing.OrderReceiveDate || "",
+  //         });
+  //       } else {
+  //         mergedMap.set(workOrderNo, {
+  //           ...item,
+
+  //           _apiSource: "command5",
+  //           CommandID: 5,
+
+  //           OrderReceiveDate: "",
+  //         });
+  //       }
+  //     });
+
+  //     // ==========================================
+  //     // MERGE COMMAND 1
+  //     // ==========================================
+
+  //     command1Tagged.forEach((item) => {
+  //       const workOrderNo =
+  //         item.WorkOrderNo ||
+  //         item.workOrderNo ||
+  //         "";
+
+  //       if (!workOrderNo) return;
+
+  //       const existing = mergedMap.get(workOrderNo);
+
+  //       if (existing) {
+  //         mergedMap.set(workOrderNo, {
+  //           ...existing,
+  //           ...item,
+
+  //           // Command 1 ApprovedDate MUST WIN
+  //           ApprovedDate:
+  //             item.ApprovedDate ||
+  //             item.approvedDate ||
+  //             existing.ApprovedDate ||
+  //             "",
+
+  //           OrderReceiveDate:
+  //             item.ApprovedDate ||
+  //             item.approvedDate ||
+  //             "",
+
+  //           _apiSource: "command15+command5+command1",
+  //           CommandID: 1,
+  //         });
+  //       } else {
+  //         mergedMap.set(workOrderNo, {
+  //           ...item,
+
+  //           _apiSource: "command1",
+  //           CommandID: 1,
+
+  //           OrderReceiveDate:
+  //             item.ApprovedDate ||
+  //             item.approvedDate ||
+  //             "",
+  //         });
+  //       }
+  //     });
+
+  //     setAutoLoadProgress(80);
+
+  //     const mergedData =
+  //       Array.from(mergedMap.values());
+
+  //     // ==========================================
+  //     // SAVE TO CONTEXT
+  //     // ==========================================
+
+  //     setcndata({
+  //       apiData: mergedData,
+  //       actualSalesData: command3Tagged,
+  //     });
+
+  //     setAutoLoadProgress(100);
+  //     setAutoLoadStatus("Local data loaded");
+
+  //     console.log("=================================");
+  //     console.log("✅ LOCAL DATA FETCH COMPLETE");
+  //     console.log("=================================");
+  //     console.log("Command 1:", command1Tagged.length);
+  //     console.log("Command 5:", command5Tagged.length);
+  //     console.log("Command 15:", command15Tagged.length);
+  //     console.log("Command 3:", command3Tagged.length);
+  //     console.log("Merged:", mergedData.length);
+  //     console.log("=================================");
+
+  //   } catch (error) {
+  //     console.error(
+  //       "❌ Local date range error:",
+  //       error
+  //     );
+
+  //     setAutoLoadStatus(
+  //       "Local data loading failed"
+  //     );
+  //   } finally {
+  //     setIsLoading(false);
+  //     setAutoLoadProgress(100);
+  //   }
+
+  //   return;
+  // }
+  //   if (cancelTokenRef.current) {
+  //     cancelTokenRef.current.abort();
+  //     cancelTokenRef.current = null;
+  //   }
+
     
-    setIsLoading(true);
-    setIsFetchingRange(true);
-    setRangeFetchProgress(0);
-    setRangeFetchStatus("Preparing to fetch data...");
+  //   setIsLoading(true);
+  //   setIsFetchingRange(true);
+  //   setRangeFetchProgress(0);
+  //   setRangeFetchStatus("Preparing to fetch data...");
 
-    const formatLocalDate = (date) => {
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, "0");
-      const day = String(date.getDate()).padStart(2, "0");
-      return `${year}-${month}-${day}`;
-    };
+  //   const formatLocalDate = (date) => {
+  //     const year = date.getFullYear();
+  //     const month = String(date.getMonth() + 1).padStart(2, "0");
+  //     const day = String(date.getDate()).padStart(2, "0");
+  //     return `${year}-${month}-${day}`;
+  //   };
 
-    const stDate = formatLocalDate(startDate);
-    const edDate = formatLocalDate(endDate);
+  //   const stDate = formatLocalDate(startDate);
+  //   const edDate = formatLocalDate(endDate);
 
-    console.log("📅 Selected Dates:", stDate, "to", edDate);
+  //   console.log("📅 Selected Dates:", stDate, "to", edDate);
 
-    if (!apiKey) {
-      toast.error("API key not available");
-      setIsLoading(false);
-      setIsFetchingRange(false);
-      setRangeFetchProgress(0);
-      setRangeFetchStatus("");
-      return;
-    }
+  //   if (!apiKey) {
+  //     toast.error("API key not available");
+  //     setIsLoading(false);
+  //     setIsFetchingRange(false);
+  //     setRangeFetchProgress(0);
+  //     setRangeFetchStatus("");
+  //     return;
+  //   }
 
-    setShowDatePicker(false);
-    setIsFetchingRange(true);
-    setRangeFetchProgress(0);
-    setRangeFetchStatus("Preparing to fetch data...");
+  //   setShowDatePicker(false);
+  //   setIsFetchingRange(true);
+  //   setRangeFetchProgress(0);
+  //   setRangeFetchStatus("Preparing to fetch data...");
 
-    const controller = new AbortController();
-    const signal = controller.signal;
-    cancelTokenRef.current = controller;
+  //   const controller = new AbortController();
+  //   const signal = controller.signal;
+  //   cancelTokenRef.current = controller;
 
-    try {
-      setRangeFetchProgress(10);
-      setRangeFetchStatus("Fetching approved order data...");
+  //   try {
+  //     setRangeFetchProgress(10);
+  //     setRangeFetchStatus("Fetching approved order data...");
 
-      const primaryResponse = await axios.get(
-        `${API_ENDPOINTS.primary.url}?CompanyID=1&ProductCategoryID=0&ProductSubCategoryID=0&MarketingID=0&CustomerID=0&BuyerID=0&StartDate=${stDate}&EndDate=${edDate}&CommandID=${API_ENDPOINTS.primary.commandId}&EmpID=0`,
-        {
-          headers: { Authorization: `${apiKey}` },
-          timeout: 300000,
-          signal: signal,
-        },
-      );
+  //     const primaryResponse = await axios.get(
+  //       `${API_ENDPOINTS.primary.url}?CompanyID=1&ProductCategoryID=0&ProductSubCategoryID=0&MarketingID=0&CustomerID=0&BuyerID=0&StartDate=${stDate}&EndDate=${edDate}&CommandID=${API_ENDPOINTS.primary.commandId}&EmpID=0`,
+  //       {
+  //         headers: { Authorization: `${apiKey}` },
+  //         timeout: 300000,
+  //         signal: signal,
+  //       },
+  //     );
 
-      const primaryData = Array.isArray(primaryResponse.data)
-        ? primaryResponse.data
-        : [];
+  //     const primaryData = Array.isArray(primaryResponse.data)
+  //       ? primaryResponse.data
+  //       : [];
 
-      console.log("🟢 CommandID=1 records:", primaryData.length);
+  //     console.log("🟢 CommandID=1 records:", primaryData.length);
 
-      if (primaryData.length === 0) {
-        toast.warning(
-          `No approved order data found for ${stDate} to ${edDate}.`,
-        );
-        setIsFetchingRange(false);
-        setRangeFetchStatus("");
-        setIsLoading(false);
-        return;
-      }
+  //     if (primaryData.length === 0) {
+  //       toast.warning(
+  //         `No approved order data found for ${stDate} to ${edDate}.`,
+  //       );
+  //       setIsFetchingRange(false);
+  //       setRangeFetchStatus("");
+  //       setIsLoading(false);
+  //       return;
+  //     }
 
-      setRangeFetchProgress(25);
-      setRangeFetchStatus("Fetching delivery data...");
+  //     setRangeFetchProgress(25);
+  //     setRangeFetchStatus("Fetching delivery data...");
 
-      let secondaryData = [];
+  //     let secondaryData = [];
 
-      try {
-        const secondaryResponse = await axios.get(
-          `${API_ENDPOINTS.secondary.url}?CompanyID=1&ProductCategoryID=0&ProductSubCategoryID=0&MarketingID=0&CustomerID=0&BuyerID=0&JobCardID=0&StartDate=${stDate}&EndDate=${edDate}&CommandID=${API_ENDPOINTS.secondary.commandId}&EmpID=0`,
-          {
-            headers: { Authorization: `${apiKey}` },
-            timeout: 300000,
-            signal: signal,
-          },
-        );
+  //     try {
+  //       const secondaryResponse = await axios.get(
+  //         `${API_ENDPOINTS.secondary.url}?CompanyID=1&ProductCategoryID=0&ProductSubCategoryID=0&MarketingID=0&CustomerID=0&BuyerID=0&JobCardID=0&StartDate=${stDate}&EndDate=${edDate}&CommandID=${API_ENDPOINTS.secondary.commandId}&EmpID=0`,
+  //         {
+  //           headers: { Authorization: `${apiKey}` },
+  //           timeout: 300000,
+  //           signal: signal,
+  //         },
+  //       );
 
-        secondaryData = Array.isArray(secondaryResponse.data)
-          ? secondaryResponse.data
-          : [];
-      } catch (secondaryErr) {
-        if (secondaryErr.name === 'AbortError') throw secondaryErr;
-        console.warn("⚠️ CommandID=5 API failed:", secondaryErr);
-      }
+  //       secondaryData = Array.isArray(secondaryResponse.data)
+  //         ? secondaryResponse.data
+  //         : [];
+  //     } catch (secondaryErr) {
+  //       if (secondaryErr.name === 'AbortError') throw secondaryErr;
+  //       console.warn("⚠️ CommandID=5 API failed:", secondaryErr);
+  //     }
 
-      console.log("🟡 CommandID=5 records:", secondaryData.length);
+  //     console.log("🟡 CommandID=5 records:", secondaryData.length);
 
-      setRangeFetchProgress(40);
-      setRangeFetchStatus("Fetching order master data...");
+  //     setRangeFetchProgress(40);
+  //     setRangeFetchStatus("Fetching order master data...");
 
-      let orderMasterData = [];
+  //     let orderMasterData = [];
 
-      try {
-        const orderMasterResponse = await axios.get(
-          `${API_ENDPOINTS.orderMaster.url}?CompanyID=1&ProductCategoryID=0&ProductSubCategoryID=0&MarketingID=0&CustomerID=0&BuyerID=0&JobCardID=0&StartDate=${stDate}T00:00:00.000Z&EndDate=${edDate}T06:00:00.000Z&CommandID=${API_ENDPOINTS.orderMaster.commandId}&EmpID=0`,
-          {
-            headers: { Authorization: `${apiKey}` },
-            timeout: 300000,
-            signal: signal,
-          },
-        );
+  //     try {
+  //       const orderMasterResponse = await axios.get(
+  //         `${API_ENDPOINTS.orderMaster.url}?CompanyID=1&ProductCategoryID=0&ProductSubCategoryID=0&MarketingID=0&CustomerID=0&BuyerID=0&JobCardID=0&StartDate=${stDate}T00:00:00.000Z&EndDate=${edDate}T06:00:00.000Z&CommandID=${API_ENDPOINTS.orderMaster.commandId}&EmpID=0`,
+  //         {
+  //           headers: { Authorization: `${apiKey}` },
+  //           timeout: 300000,
+  //           signal: signal,
+  //         },
+  //       );
 
-        orderMasterData = Array.isArray(orderMasterResponse.data)
-          ? orderMasterResponse.data
-          : [];
-      } catch (orderMasterErr) {
-        if (orderMasterErr.name === 'AbortError') throw orderMasterErr;
-        console.warn("⚠️ CommandID=15 API failed:", orderMasterErr);
-      }
+  //       orderMasterData = Array.isArray(orderMasterResponse.data)
+  //         ? orderMasterResponse.data
+  //         : [];
+  //     } catch (orderMasterErr) {
+  //       if (orderMasterErr.name === 'AbortError') throw orderMasterErr;
+  //       console.warn("⚠️ CommandID=15 API failed:", orderMasterErr);
+  //     }
 
-      console.log("🔵 CommandID=15 records:", orderMasterData.length);
+  //     console.log("🔵 CommandID=15 records:", orderMasterData.length);
 
-      // 4. Fetch Actual Sales Data (CommandID=3)
-      setRangeFetchProgress(50);
-      setRangeFetchStatus("Fetching actual sales data (CommandID=3)...");
+  //     // 4. Fetch Actual Sales Data (CommandID=3)
+  //     setRangeFetchProgress(50);
+  //     setRangeFetchStatus("Fetching actual sales data (CommandID=3)...");
 
-      const actualSalesDataResponse = await fetchActualSales(stDate, edDate, signal);
-      console.log("🟣 Actual Sales (CommandID=3):", actualSalesDataResponse.length);
+  //     const actualSalesDataResponse = await fetchActualSales(stDate, edDate, signal);
+  //     console.log("🟣 Actual Sales (CommandID=3):", actualSalesDataResponse.length);
 
-      setRangeFetchProgress(55);
-      setRangeFetchStatus("Processing actual sales data...");
+  //     setRangeFetchProgress(55);
+  //     setRangeFetchStatus("Processing actual sales data...");
 
-      // Tag each API
-      const command1Data = primaryData.map((item) => ({
-        ...item,
-        _apiSource: "command1",
-        OrderReceiveDate: item.ApprovedDate || item.approvedDate || "",
-      }));
+  //     // Tag each API
+  //     const command1Data = primaryData.map((item) => ({
+  //       ...item,
+  //       _apiSource: "command1",
+  //       OrderReceiveDate: item.ApprovedDate || item.approvedDate || "",
+  //     }));
 
-      const command5Data = secondaryData.map((item) => ({
-        ...item,
-        _apiSource: "command5",
-        OrderReceiveDate: "",
-      }));
+  //     const command5Data = secondaryData.map((item) => ({
+  //       ...item,
+  //       _apiSource: "command5",
+  //       OrderReceiveDate: "",
+  //     }));
 
-      const command15Data = orderMasterData.map((item) => ({
-        ...item,
-        _apiSource: "command15",
-        OrderReceiveDate: "",
-      }));
+  //     const command15Data = orderMasterData.map((item) => ({
+  //       ...item,
+  //       _apiSource: "command15",
+  //       OrderReceiveDate: "",
+  //     }));
 
-      console.log("🟢 Tagged CommandID=1:", command1Data.length);
-      console.log("🟡 Tagged CommandID=5:", command5Data.length);
-      console.log("🔵 Tagged CommandID=15:", command15Data.length);
-      console.log("🟣 Actual Sales (CommandID=3):", actualSalesDataResponse.length);
+  //     console.log("🟢 Tagged CommandID=1:", command1Data.length);
+  //     console.log("🟡 Tagged CommandID=5:", command5Data.length);
+  //     console.log("🔵 Tagged CommandID=15:", command15Data.length);
+  //     console.log("🟣 Actual Sales (CommandID=3):", actualSalesDataResponse.length);
 
-      setRangeFetchProgress(65);
-      setRangeFetchStatus("Merging data sources...");
+  //     setRangeFetchProgress(65);
+  //     setRangeFetchStatus("Merging data sources...");
 
-      const mergedMap = new Map();
+  //     const mergedMap = new Map();
 
-      // First: CommandID=15 - Order MASTER
-      command15Data.forEach((item) => {
-        const orderNo = item.WorkOrderNo || item.workOrderNo || "";
-        if (!orderNo) return;
+  //     // First: CommandID=15 - Order MASTER
+  //     command15Data.forEach((item) => {
+  //       const orderNo = item.WorkOrderNo || item.workOrderNo || "";
+  //       if (!orderNo) return;
 
-        if (!mergedMap.has(orderNo)) {
-          mergedMap.set(orderNo, {
-            ...item,
-            OrderReceiveDate: "",
-            TotalBreakDownQTY: Number(item.TotalBreakDownQTY) || 0,
-            TotalOrderValue: Number(item.TotalOrderValue) || 0,
-            ChallanQTY: 0,
-            ChallanValue: 0,
-            BalanceQTY: 0,
-            BalanceValue: 0,
-            _apiSource: "command15",
-            _merged: false,
-          });
-        }
-      });
+  //       if (!mergedMap.has(orderNo)) {
+  //         mergedMap.set(orderNo, {
+  //           ...item,
+  //           OrderReceiveDate: "",
+  //           TotalBreakDownQTY: Number(item.TotalBreakDownQTY) || 0,
+  //           TotalOrderValue: Number(item.TotalOrderValue) || 0,
+  //           ChallanQTY: 0,
+  //           ChallanValue: 0,
+  //           BalanceQTY: 0,
+  //           BalanceValue: 0,
+  //           _apiSource: "command15",
+  //           _merged: false,
+  //         });
+  //       }
+  //     });
 
-      // Second: CommandID=5 - Delivery / Product details
-      let secondaryMergedCount = 0;
+  //     // Second: CommandID=5 - Delivery / Product details
+  //     let secondaryMergedCount = 0;
 
-      command5Data.forEach((item) => {
-        const orderNo = item.WorkOrderNo || item.workOrderNo || "";
-        if (!orderNo) return;
+  //     command5Data.forEach((item) => {
+  //       const orderNo = item.WorkOrderNo || item.workOrderNo || "";
+  //       if (!orderNo) return;
 
-        if (mergedMap.has(orderNo)) {
-          const existing = mergedMap.get(orderNo);
+  //       if (mergedMap.has(orderNo)) {
+  //         const existing = mergedMap.get(orderNo);
 
-          if (!existing.CName && item.CName) {
-            existing.CName = item.CName;
-          }
-          if (!existing.BuyerName && item.BuyerName) {
-            existing.BuyerName = item.BuyerName;
-          }
-          if (!existing.MarketingName && item.MarketingName) {
-            existing.MarketingName = item.MarketingName;
-          }
-          if (!existing.ProductCategoryName && item.ProductCategoryName) {
-            existing.ProductCategoryName = item.ProductCategoryName;
-          }
-          if (!existing.ProductSubCategoryName && item.ProductSubCategoryName) {
-            existing.ProductSubCategoryName = item.ProductSubCategoryName;
-          }
+  //         if (!existing.CName && item.CName) {
+  //           existing.CName = item.CName;
+  //         }
+  //         if (!existing.BuyerName && item.BuyerName) {
+  //           existing.BuyerName = item.BuyerName;
+  //         }
+  //         if (!existing.MarketingName && item.MarketingName) {
+  //           existing.MarketingName = item.MarketingName;
+  //         }
+  //         if (!existing.ProductCategoryName && item.ProductCategoryName) {
+  //           existing.ProductCategoryName = item.ProductCategoryName;
+  //         }
+  //         if (!existing.ProductSubCategoryName && item.ProductSubCategoryName) {
+  //           existing.ProductSubCategoryName = item.ProductSubCategoryName;
+  //         }
 
-          existing.ChallanQTY =
-            Number(existing.ChallanQTY || 0) + Number(item.ChallanQTY || 0);
-          existing.ChallanValue =
-            Number(existing.ChallanValue || 0) + Number(item.ChallanValue || 0);
+  //         existing.ChallanQTY =
+  //           Number(existing.ChallanQTY || 0) + Number(item.ChallanQTY || 0);
+  //         existing.ChallanValue =
+  //           Number(existing.ChallanValue || 0) + Number(item.ChallanValue || 0);
 
-          if (item.ChallanDate) {
-            existing.ChallanDate = item.ChallanDate;
-          }
-          if (item.ChallanNo) {
-            existing.ChallanNo = item.ChallanNo;
-          }
-          if (item.CustomerPINo) {
-            existing.CustomerPINo = item.CustomerPINo;
-          }
-          if (item.CustomerPONo) {
-            existing.CustomerPONo = item.CustomerPONo;
-          }
-          if (item.JobCardNo) {
-            existing.JobCardNo = item.JobCardNo;
-          }
-          if (item.ItemDescription) {
-            existing.ItemDescription = item.ItemDescription;
-          }
-          if (item.Unit) {
-            existing.Unit = item.Unit;
-          }
-          if (item.UnitPrice !== undefined) {
-            existing.UnitPrice = Number(item.UnitPrice) || 0;
-          }
-          if (item.DeliveryToAddress) {
-            existing.DeliveryToAddress = item.DeliveryToAddress;
-          }
+  //         if (item.ChallanDate) {
+  //           existing.ChallanDate = item.ChallanDate;
+  //         }
+  //         if (item.ChallanNo) {
+  //           existing.ChallanNo = item.ChallanNo;
+  //         }
+  //         if (item.CustomerPINo) {
+  //           existing.CustomerPINo = item.CustomerPINo;
+  //         }
+  //         if (item.CustomerPONo) {
+  //           existing.CustomerPONo = item.CustomerPONo;
+  //         }
+  //         if (item.JobCardNo) {
+  //           existing.JobCardNo = item.JobCardNo;
+  //         }
+  //         if (item.ItemDescription) {
+  //           existing.ItemDescription = item.ItemDescription;
+  //         }
+  //         if (item.Unit) {
+  //           existing.Unit = item.Unit;
+  //         }
+  //         if (item.UnitPrice !== undefined) {
+  //           existing.UnitPrice = Number(item.UnitPrice) || 0;
+  //         }
+  //         if (item.DeliveryToAddress) {
+  //           existing.DeliveryToAddress = item.DeliveryToAddress;
+  //         }
 
-          existing._apiSource = "command15+command5";
-          existing._merged = true;
-          secondaryMergedCount++;
-        }
-      });
+  //         existing._apiSource = "command15+command5";
+  //         existing._merged = true;
+  //         secondaryMergedCount++;
+  //       }
+  //     });
 
-      // Third: CommandID=1 - ONLY ApprovedDate
-      let primaryMergedCount = 0;
-      let primaryOnlyCount = 0;
+  //     // Third: CommandID=1 - ONLY ApprovedDate
+  //     let primaryMergedCount = 0;
+  //     let primaryOnlyCount = 0;
 
-      command1Data.forEach((item) => {
-        const orderNo = item.WorkOrderNo || item.workOrderNo || "";
-        if (!orderNo) return;
+  //     command1Data.forEach((item) => {
+  //       const orderNo = item.WorkOrderNo || item.workOrderNo || "";
+  //       if (!orderNo) return;
 
-        const approvedDate = item.ApprovedDate || item.approvedDate || "";
+  //       const approvedDate = item.ApprovedDate || item.approvedDate || "";
 
-        if (mergedMap.has(orderNo)) {
-          const existing = mergedMap.get(orderNo);
-          existing.OrderReceiveDate = approvedDate;
-          existing.ApprovedDate = approvedDate;
-          existing._apiSource = `${existing._apiSource}+command1`;
-          existing._merged = true;
-          primaryMergedCount++;
-        } else {
-          mergedMap.set(orderNo, {
-            ...item,
-            WorkOrderNo: orderNo,
-            OrderReceiveDate: approvedDate,
-            ApprovedDate: approvedDate,
-            TotalBreakDownQTY: 0,
-            TotalOrderValue: 0,
-            ChallanQTY: 0,
-            ChallanValue: 0,
-            BalanceQTY: 0,
-            BalanceValue: 0,
-            ProductCategoryName: item.ProductCategoryName || "Uncategorized",
-            ProductSubCategoryName: item.ProductSubCategoryName || "",
-            MarketingName: item.MarketingName || "Unknown",
-            CName: item.CName || item.CustomerName || "Unknown",
-            BuyerName: item.BuyerName || "Unknown",
-            _apiSource: "command1",
-            _merged: false,
-          });
-          primaryOnlyCount++;
-        }
-      });
+  //       if (mergedMap.has(orderNo)) {
+  //         const existing = mergedMap.get(orderNo);
+  //         existing.OrderReceiveDate = approvedDate;
+  //         existing.ApprovedDate = approvedDate;
+  //         existing._apiSource = `${existing._apiSource}+command1`;
+  //         existing._merged = true;
+  //         primaryMergedCount++;
+  //       } else {
+  //         mergedMap.set(orderNo, {
+  //           ...item,
+  //           WorkOrderNo: orderNo,
+  //           OrderReceiveDate: approvedDate,
+  //           ApprovedDate: approvedDate,
+  //           TotalBreakDownQTY: 0,
+  //           TotalOrderValue: 0,
+  //           ChallanQTY: 0,
+  //           ChallanValue: 0,
+  //           BalanceQTY: 0,
+  //           BalanceValue: 0,
+  //           ProductCategoryName: item.ProductCategoryName || "Uncategorized",
+  //           ProductSubCategoryName: item.ProductSubCategoryName || "",
+  //           MarketingName: item.MarketingName || "Unknown",
+  //           CName: item.CName || item.CustomerName || "Unknown",
+  //           BuyerName: item.BuyerName || "Unknown",
+  //           _apiSource: "command1",
+  //           _merged: false,
+  //         });
+  //         primaryOnlyCount++;
+  //       }
+  //     });
 
-      // Final calculations
-      const mergedData = Array.from(mergedMap.values()).map((item) => {
-        const orderQty = Number(item.TotalBreakDownQTY) || 0;
-        const orderValue = Number(item.TotalOrderValue) || 0;
-        const challanQty = Number(item.ChallanQTY) || 0;
-        const challanValue = Number(item.ChallanValue) || 0;
+  //     // Final calculations
+  //     const mergedData = Array.from(mergedMap.values()).map((item) => {
+  //       const orderQty = Number(item.TotalBreakDownQTY) || 0;
+  //       const orderValue = Number(item.TotalOrderValue) || 0;
+  //       const challanQty = Number(item.ChallanQTY) || 0;
+  //       const challanValue = Number(item.ChallanValue) || 0;
 
-        return {
-          ...item,
-          BreakDownQTY: orderQty,
-          TotalBreakDownQTY: orderQty,
-          TotalOrderValue: orderValue,
-          ChallanQTY: challanQty,
-          ChallanValue: challanValue,
-          BalanceQTY: Math.max(0, orderQty - challanQty),
-          BalanceValue: Math.max(0, orderValue - challanValue),
-        };
-      });
+  //       return {
+  //         ...item,
+  //         BreakDownQTY: orderQty,
+  //         TotalBreakDownQTY: orderQty,
+  //         TotalOrderValue: orderValue,
+  //         ChallanQTY: challanQty,
+  //         ChallanValue: challanValue,
+  //         BalanceQTY: Math.max(0, orderQty - challanQty),
+  //         BalanceValue: Math.max(0, orderValue - challanValue),
+  //       };
+  //     });
 
-      console.log("==========================================");
-      console.log("✅ FINAL MERGED DATA");
-      console.log("CommandID=1:", primaryData.length);
-      console.log("CommandID=5:", secondaryData.length);
-      console.log("CommandID=15:", orderMasterData.length);
-      console.log("CommandID=3 (Actual Sales):", actualSalesDataResponse.length);
-      console.log("Final unique WorkOrders:", mergedData.length);
-      console.log("==========================================");
+  //     console.log("==========================================");
+  //     console.log("✅ FINAL MERGED DATA");
+  //     console.log("CommandID=1:", primaryData.length);
+  //     console.log("CommandID=5:", secondaryData.length);
+  //     console.log("CommandID=15:", orderMasterData.length);
+  //     console.log("CommandID=3 (Actual Sales):", actualSalesDataResponse.length);
+  //     console.log("Final unique WorkOrders:", mergedData.length);
+  //     console.log("==========================================");
 
-      setRangeFetchProgress(85);
+  //     setRangeFetchProgress(85);
 
-      // Store both order data AND actual sales data in context
-      setcndata((prevState) => ({
-        ...prevState,
-        apiData: mergedData,
-        actualSalesData: actualSalesDataResponse,
-        groupedData: [],
-        workOrderIdMap: {},
-        challanReceiveMap: {},
-        workOrderStatus: "date-range-loaded",
-        _lastFetch: {
-          timestamp: new Date().toISOString(),
-          startDate: stDate,
-          endDate: edDate,
-          orderCount: mergedData.length,
-          primaryCount: primaryData.length,
-          secondaryCount: secondaryData.length,
-          orderMasterCount: orderMasterData.length,
-          actualSalesCount: actualSalesDataResponse.length,
-          mergedCount: primaryMergedCount,
-          primaryOnlyCount: primaryOnlyCount,
-          workOrderStatus: "date-range-loaded",
-          autoLoaded: false,
-          dateRange: true,
-          apiUsed: "command1-command5-command15-actualSales",
-        },
-      }));
+  //     // Store both order data AND actual sales data in context
+  //     setcndata((prevState) => ({
+  //       ...prevState,
+  //       apiData: mergedData,
+  //       actualSalesData: actualSalesDataResponse,
+  //       groupedData: [],
+  //       workOrderIdMap: {},
+  //       challanReceiveMap: {},
+  //       workOrderStatus: "date-range-loaded",
+  //       _lastFetch: {
+  //         timestamp: new Date().toISOString(),
+  //         startDate: stDate,
+  //         endDate: edDate,
+  //         orderCount: mergedData.length,
+  //         primaryCount: primaryData.length,
+  //         secondaryCount: secondaryData.length,
+  //         orderMasterCount: orderMasterData.length,
+  //         actualSalesCount: actualSalesDataResponse.length,
+  //         mergedCount: primaryMergedCount,
+  //         primaryOnlyCount: primaryOnlyCount,
+  //         workOrderStatus: "date-range-loaded",
+  //         autoLoaded: false,
+  //         dateRange: true,
+  //         apiUsed: "command1-command5-command15-actualSales",
+  //       },
+  //     }));
 
-      setRangeFetchProgress(100);
-      setRangeFetchStatus(
-        `✅ Loaded ${mergedData.length} orders + ${actualSalesDataResponse.length} actual sales from ${stDate} to ${edDate}!`,
-      );
+  //     setRangeFetchProgress(100);
+  //     setRangeFetchStatus(
+  //       `✅ Loaded ${mergedData.length} orders + ${actualSalesDataResponse.length} actual sales from ${stDate} to ${edDate}!`,
+  //     );
       
-      if (actualSalesDataResponse.length > 0) {
-        toast.success(
-          `✅ Loaded ${mergedData.length} orders + ${actualSalesDataResponse.length} actual sales`,
-        );
-      } else {
-        toast.warning(
-          `✅ Loaded ${mergedData.length} orders but NO actual sales data found`,
-        );
-      }
+  //     if (actualSalesDataResponse.length > 0) {
+  //       toast.success(
+  //         `✅ Loaded ${mergedData.length} orders + ${actualSalesDataResponse.length} actual sales`,
+  //       );
+  //     } else {
+  //       toast.warning(
+  //         `✅ Loaded ${mergedData.length} orders but NO actual sales data found`,
+  //       );
+  //     }
 
-      setSelectedYear("All");
-      setSelectedMonth("All");
-      setIsLoading(false);
-      setIsAutoLoading(false);
-    } catch (err) {
-      if (err.name === 'AbortError' || err.name === 'CanceledError') {
-        console.log("🛑 Date range request cancelled");
-        setRangeFetchStatus("🛑 Request cancelled");
-        setIsAutoLoading(false);
-        return;
-      }
+  //     setSelectedYear("All");
+  //     setSelectedMonth("All");
+  //     setIsLoading(false);
+  //     setIsAutoLoading(false);
+  //   } catch (err) {
+  //     if (err.name === 'AbortError' || err.name === 'CanceledError') {
+  //       console.log("🛑 Date range request cancelled");
+  //       setRangeFetchStatus("🛑 Request cancelled");
+  //       setIsAutoLoading(false);
+  //       return;
+  //     }
 
-      console.error("Date range fetch error:", err);
-      toast.error("Failed to fetch data for the selected date range.");
-      setRangeFetchStatus("❌ Error fetching data");
-      setIsLoading(false);
-      setIsAutoLoading(false);
-    } finally {
-      setIsLoading(false);
-      setIsFetchingRange(false);
-      setRangeFetchProgress(0);
-      cancelTokenRef.current = null;
-      setTimeout(() => {
-        setRangeFetchStatus("");
-        setIsAutoLoading(false);
-      }, 3000);
-    }
-  };
+  //     console.error("Date range fetch error:", err);
+  //     toast.error("Failed to fetch data for the selected date range.");
+  //     setRangeFetchStatus("❌ Error fetching data");
+  //     setIsLoading(false);
+  //     setIsAutoLoading(false);
+  //   } finally {
+  //     setIsLoading(false);
+  //     setIsFetchingRange(false);
+  //     setRangeFetchProgress(0);
+  //     cancelTokenRef.current = null;
+  //     setTimeout(() => {
+  //       setRangeFetchStatus("");
+  //       setIsAutoLoading(false);
+  //     }, 3000);
+  //   }
+  // };
 
   // ============================================================
   // Handlers
