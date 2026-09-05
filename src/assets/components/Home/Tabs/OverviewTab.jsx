@@ -195,6 +195,8 @@ const OverviewTab = ({
   // dailyData is based on orderReceiveDate in the hook.
   // ============================================================
 
+  
+
   const filteredApiData = useMemo(() => {
     if (!Array.isArray(apiData)) {
       return [];
@@ -233,6 +235,7 @@ const OverviewTab = ({
     selectedMonth,
     selectedMarketing,
   ]);
+  console.log("apiData", apiData);
 
   // ============================================================
   // DAILY ORDERS
@@ -284,14 +287,14 @@ const OverviewTab = ({
 
       const orderQty =
         Number(
-          item.BreakDownQTY ??
-            item.TotalBreakDownQTY ??
+          item.OrderQTY ??
+            item.OrderQTY ??
             0
         ) || 0;
 
       const orderValue =
         Number(
-          item.TotalOrderValue ??
+          item.OrderValue ??
             item.OrderValue ??
             0
         ) || 0;
@@ -311,6 +314,7 @@ const OverviewTab = ({
     selectedMonth,
   ]);
 
+  console.log("filterdata", filteredApiData);
   // ============================================================
   // DAILY SALES
   //

@@ -144,7 +144,7 @@ function Home() {
     console.log("🔍 Actual Sale Keys:", Object.keys(actualSalesData[0]));
     console.log("✅ ChallanDate present:", !!actualSalesData[0].ChallanDate);
   }
-
+console.log("cndata:", cndata);
   // ============================================================
   // State
   // ============================================================
@@ -185,6 +185,7 @@ function Home() {
     viewMode,
   );
   console.log("Comprehensive Data:", data);
+  console.log("apiData to UseComprehensiveData:", apiData);
 
   // ============================================================
   // Memoized Values
