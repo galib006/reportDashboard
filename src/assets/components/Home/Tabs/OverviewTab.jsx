@@ -65,6 +65,7 @@ const OverviewTab = ({
   selectedYear = "All",
   selectedMonth = "All",
   selectedMarketing = "All",
+   dateRange,
 }) => {
   // ============================================================
   // DATE HELPERS
@@ -119,9 +120,22 @@ const OverviewTab = ({
   const dateMatchesFilter = (dateKey) => {
     if (!dateKey) return false;
 
-    const [year, month] = dateKey
+    const [year, month, day] = dateKey
       .split("-")
       .map(Number);
+     if (dateRange?.startDate && dateRange?.endDate) {
+      const start = new Date(dateRange.startDate);
+      const end = new Date(dateRange.endDate);
+      
+      // Reset time to compare only dates
+      start.setHours(0, 0, 0, 0);
+      end.setHours(23, 59, 59, 999);
+      
+      const checkDate = new Date(year, month - 1, day);
+      
+      // Return true ONLY if the date is within the selected range
+      return checkDate >= start && checkDate <= end;
+    }
 
     const yearMatches =
       selectedYear === "All" ||
@@ -387,106 +401,74 @@ const OverviewTab = ({
   // order date is different.
   // ============================================================
 
-  const dailyReport = useMemo(() => {
-    const dates = new Set();
+// In OverviewTab.jsx, after creating dailyReport (around line 180)
+const dailyReport = useMemo(() => {
+  const dates = new Set();
 
-    dailyOrderMap.forEach((_, date) => {
-      dates.add(date);
+  dailyOrderMap.forEach((_, date) => {
+    dates.add(date);
+  });
+
+  dailySaleMap.forEach((_, date) => {
+    dates.add(date);
+  });
+
+  const sortedDates = Array.from(dates).sort();
+
+  let cumulativeOrderQty = 0;
+  let cumulativeOrderValue = 0;
+  let cumulativeSaleQty = 0;
+  let cumulativeSaleValue = 0;
+
+  const report = sortedDates.map((date) => {
+    const order = dailyOrderMap.get(date) || { orderQty: 0, orderValue: 0 };
+    const sale = dailySaleMap.get(date) || { saleQty: 0, saleValue: 0 };
+
+    cumulativeOrderQty += order.orderQty;
+    cumulativeOrderValue += order.orderValue;
+    cumulativeSaleQty += sale.saleQty;
+    cumulativeSaleValue += sale.saleValue;
+
+    const balanceQty = Math.max(0, cumulativeOrderQty - cumulativeSaleQty);
+    const balanceValue = Math.max(0, cumulativeOrderValue - cumulativeSaleValue);
+    const deliveryRate = cumulativeOrderQty > 0 
+      ? Math.min(100, (cumulativeSaleQty / cumulativeOrderQty) * 100) 
+      : 0;
+
+    return {
+      date,
+      name: formatDate(date),
+      orderQty: order.orderQty,
+      orderValue: order.orderValue,
+      saleQty: sale.saleQty,
+      saleValue: sale.saleValue,
+      balanceQty,
+      balanceValue,
+      deliveryRate,
+      cumulativeOrderQty,
+      cumulativeOrderValue,
+      cumulativeSaleQty,
+      cumulativeSaleValue,
+    };
+  });
+
+  // 🔥 NEW: Filter the report to only include dates in the selected range
+  if (dateRange?.startDate && dateRange?.endDate) {
+    const start = new Date(dateRange.startDate);
+    const end = new Date(dateRange.endDate);
+    start.setHours(0, 0, 0, 0);
+    end.setHours(23, 59, 59, 999);
+
+    return report.filter((item) => {
+      const [year, month, day] = item.date.split("-").map(Number);
+      const checkDate = new Date(year, month - 1, day);
+      return checkDate >= start && checkDate <= end;
     });
+  }
 
-    dailySaleMap.forEach((_, date) => {
-      dates.add(date);
-    });
-
-    const sortedDates = Array.from(dates).sort();
-
-    let cumulativeOrderQty = 0;
-    let cumulativeOrderValue = 0;
-
-    let cumulativeSaleQty = 0;
-    let cumulativeSaleValue = 0;
-
-    return sortedDates.map((date) => {
-      const order =
-        dailyOrderMap.get(date) || {
-          orderQty: 0,
-          orderValue: 0,
-        };
-
-      const sale =
-        dailySaleMap.get(date) || {
-          saleQty: 0,
-          saleValue: 0,
-        };
-
-      cumulativeOrderQty +=
-        order.orderQty;
-
-      cumulativeOrderValue +=
-        order.orderValue;
-
-      cumulativeSaleQty +=
-        sale.saleQty;
-
-      cumulativeSaleValue +=
-        sale.saleValue;
-
-      /*
-       * Balance is cumulative:
-       *
-       * Total Orders up to this date
-       * -
-       * Total Sales up to this date
-       */
-
-      const balanceQty = Math.max(
-        0,
-        cumulativeOrderQty -
-          cumulativeSaleQty
-      );
-
-      const balanceValue = Math.max(
-        0,
-        cumulativeOrderValue -
-          cumulativeSaleValue
-      );
-
-      const deliveryRate =
-        cumulativeOrderQty > 0
-          ? Math.min(
-              100,
-              (cumulativeSaleQty /
-                cumulativeOrderQty) *
-                100
-            )
-          : 0;
-
-      return {
-        date,
-        name: formatDate(date),
-
-        orderQty: order.orderQty,
-        orderValue: order.orderValue,
-
-        saleQty: sale.saleQty,
-        saleValue: sale.saleValue,
-
-        balanceQty,
-        balanceValue,
-
-        deliveryRate,
-
-        cumulativeOrderQty,
-        cumulativeOrderValue,
-
-        cumulativeSaleQty,
-        cumulativeSaleValue,
-      };
-    });
-  }, [
-    dailyOrderMap,
-    dailySaleMap,
-  ]);
+  return report;
+}, [dailyOrderMap, dailySaleMap, dateRange]); 
+  console.log("dailyReport", dailyReport);
 
   // ============================================================
   // TOTAL ACTUAL SALES FROM CHALLAN DATE

@@ -1,5 +1,10 @@
 // src/assets/components/Home/utils/constants.js
 
+import commandId1 from "../../../api/command1.json";
+import commandId2 from "../../../api/command2.json";
+import commandId3 from "../../../api/command3.json";
+import commandId15 from "../../../api/command15.json";
+
 export const COLORS = {
   primary: "#4F46E5",
   secondary: "#7C3AED",
@@ -27,40 +32,65 @@ export const CHART_COLORS = [
   "#84CC16", "#8B5CF6", "#EC4899", "#F59E0B", "#10B981",
 ];
 
+
+// ============================================================
+// LOCAL JSON DATA
+// ============================================================
+
+export const LOCAL_API_DATA = {
+  command1: commandId1,
+  command2: commandId2,
+  command3: commandId3,
+  command15: commandId15,
+};
+
+
+// ============================================================
+// DATA SOURCE MODE
+// ============================================================
+
+// true  = local JSON files
+// false = live API
+export const USE_LOCAL_DATA = true;
+
+
+// ============================================================
+// API ENDPOINTS
+// ============================================================
+
 export const API_ENDPOINTS = {
-  // CommandID = 1
-  // ONLY ApprovedDate -> OrderReceiveDate
   primary: {
     url: "https://tpl-api.ebs365.info/api/OrderReport/BI_ORDERGetOrderReleatedInformationReport",
     commandId: 1,
   },
 
-  // CommandID = 5
-  // Challan / Balance / Product details
   secondary: {
     url: "https://tpl-api.ebs365.info/api/OrderReport/BI_OrderRelatedInformationReport",
     commandId: 5,
   },
 
-  // CommandID = 15
-  // Order master information
   orderMaster: {
     url: "https://tpl-api.ebs365.info/api/OrderReport/BI_OrderRelatedInformationReport",
     commandId: 15,
   },
 
-  // CommandID = 3
-  // ACTUAL SALES - ChallanDate, ChallanQTY, ChallanValue
-  // This is the source of truth for Actual Sales
   actualSales: {
     url: "https://tpl-api.ebs365.info/api/OrderReport/BI_OrderRelatedInformationReport",
     commandId: 3,
   },
 };
 
-export const MONTH_ORDER = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-// Common API parameters
+export const MONTH_ORDER = [
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+];
+
+
+// ============================================================
+// COMMON API PARAMETERS
+// ============================================================
+
 export const DEFAULT_API_PARAMS = {
   CompanyID: 1,
   ProductCategoryID: 0,
@@ -72,18 +102,21 @@ export const DEFAULT_API_PARAMS = {
   EmpID: 0,
 };
 
-// Helper function to build Actual Sales API URL with dynamic dates
+
+// ============================================================
+// ACTUAL SALES URL
+// ============================================================
+
 export const buildActualSalesUrl = (startDate, endDate) => {
   const baseUrl = API_ENDPOINTS.actualSales.url;
   const commandId = API_ENDPOINTS.actualSales.commandId;
-  
-  // Format dates to ISO string if they're not already
+
   const formatDate = (date) => {
-    if (typeof date === 'string') return date;
+    if (typeof date === "string") return date;
     if (date instanceof Date) return date.toISOString();
     return new Date(date).toISOString();
   };
-  
+
   const params = new URLSearchParams({
     CompanyID: DEFAULT_API_PARAMS.CompanyID,
     ProductCategoryID: DEFAULT_API_PARAMS.ProductCategoryID,
@@ -97,18 +130,28 @@ export const buildActualSalesUrl = (startDate, endDate) => {
     CommandID: commandId,
     EmpID: DEFAULT_API_PARAMS.EmpID,
   });
-  
+
   return `${baseUrl}?${params.toString()}`;
 };
 
-// Helper function to build Order API URLs (existing)
-export const buildOrderApiUrl = (endpoint, commandId, startDate, endDate, additionalParams = {}) => {
+
+// ============================================================
+// ORDER API URL
+// ============================================================
+
+export const buildOrderApiUrl = (
+  endpoint,
+  commandId,
+  startDate,
+  endDate,
+  additionalParams = {}
+) => {
   const formatDate = (date) => {
-    if (typeof date === 'string') return date;
+    if (typeof date === "string") return date;
     if (date instanceof Date) return date.toISOString();
     return new Date(date).toISOString();
   };
-  
+
   const params = new URLSearchParams({
     CompanyID: DEFAULT_API_PARAMS.CompanyID,
     ProductCategoryID: DEFAULT_API_PARAMS.ProductCategoryID,
@@ -123,6 +166,6 @@ export const buildOrderApiUrl = (endpoint, commandId, startDate, endDate, additi
     EmpID: DEFAULT_API_PARAMS.EmpID,
     ...additionalParams,
   });
-  
+
   return `${endpoint}?${params.toString()}`;
 };

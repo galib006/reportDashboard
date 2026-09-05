@@ -71,11 +71,10 @@ function Home() {
   
   const apiData = useMemo(() => cndata?.apiData || [], [cndata]);
   const actualSalesData = useMemo(() => cndata?.actualSalesData || [], [cndata]);
-  
-  console.log("🔍 API KEYS:", apiData?.[0] ? Object.keys(apiData[0]) : []);
-  console.log("🔍 ACTUAL SALES DATA (CommandID=3):", actualSalesData?.length || 0);
+  console.log("🔍 API Data:", apiData);
+  // console.log("🔍 API KEYS:", apiData?.[0] ? Object.keys(apiData[0]) : []);
   if (actualSalesData?.length > 0) {
-    console.log("🔍 First Actual Sale:", actualSalesData[0]);
+    console.log("🔍 First Actual Sale:", actualSalesData);
     console.log("🔍 Actual Sale Keys:", Object.keys(actualSalesData[0]));
     console.log("✅ ChallanDate present:", !!actualSalesData[0].ChallanDate);
   }
@@ -120,7 +119,6 @@ function Home() {
     viewMode,
   );
   console.log("Comprehensive Data:", data);
-  console.log("📊 Sales by Date:", data.salesByDate?.length || 0);
 
   // ============================================================
   // Memoized Values
@@ -1188,6 +1186,7 @@ function Home() {
             selectedYear={selectedYear}
             selectedMonth={selectedMonth}
             selectedMarketing={selectedMarketing}
+            dateRange={dateRange}
           />
           )}
           {activeTab === "sales" && (
