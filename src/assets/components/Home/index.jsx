@@ -446,6 +446,46 @@ if (!apiKey) {
       console.log("📦 CommandID=5:", secondaryData.length);
       console.log("📦 CommandID=3:", actualSales.length);
 
+
+      // ==========================================
+// FILTER LOCAL DATA BY SELECTED DATE RANGE
+// ==========================================
+
+const filteredCommand1 = filterByDateRange(
+  primaryData,
+  "ApprovedDate",
+  startDate,
+  endDate
+);
+
+const filteredCommand3 = filterByDateRange(
+  actualSales,
+  "ChallanDate",
+  startDate,
+  endDate
+);
+
+console.log("==========================================");
+console.log("📅 SELECTED DATE RANGE");
+console.log("==========================================");
+console.log("Start:", startDate);
+console.log("End:", endDate);
+
+console.log(
+  "🟢 Command 1 filtered:",
+  filteredCommand1.length,
+  filteredCommand1
+);
+
+console.log(
+  "🟣 Command 3 filtered:",
+  filteredCommand3.length,
+  filteredCommand3
+);
+console.log("==========================================");
+
+
+
       // ------------------------------------------
       // Existing merge logic
       // ------------------------------------------
@@ -771,7 +811,7 @@ if (!apiKey) {
       // SAME SOURCE TAGGING AS ONLINE API
       // ==========================================
 
-      const command1Tagged = primaryData.map((item) => ({
+       const command1Tagged = filteredCommand1.map((item) => ({
         ...item,
 
         _apiSource: "command1",
@@ -803,7 +843,7 @@ if (!apiKey) {
         OrderReceiveDate: "",
       }));
 
-      const command3Tagged = actualSales.map((item) => ({
+       const command3Tagged = filteredCommand3.map((item) => ({
         ...item,
 
         _apiSource: "command3",
