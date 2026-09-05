@@ -7,7 +7,17 @@ import { AnimatePresence } from "framer-motion";
 import axios from "axios";
 
 // Utils
-import { COLORS, API_ENDPOINTS } from "./utils/constants";
+// import { COLORS, API_ENDPOINTS } from "./utils/constants";
+import {
+  COLORS,
+  API_ENDPOINTS,
+  USE_LOCAL_DATA,
+} from "./utils/constants";
+
+import commandId1 from "../../api/command1.json";
+import commandId5 from "../../api/command2.json";
+import commandId3 from "../../api/command3.json";
+import commandId15 from "../../api/command15.json";
 import {
   formatCurrency,
   formatNumber,
@@ -57,6 +67,22 @@ import {
 } from "react-icons/fa";
 import { RiMoneyDollarCircleFill } from "react-icons/ri";
 import { TbTruckDelivery } from "react-icons/tb";
+
+const normalizeLocalData = (data) => {
+  if (Array.isArray(data)) {
+    return data;
+  }
+
+  if (Array.isArray(data?.data)) {
+    return data.data;
+  }
+
+  if (Array.isArray(data?.Data)) {
+    return data.Data;
+  }
+
+  return [];
+};
 
 function Home() {
   // ============================================================
@@ -305,13 +331,46 @@ function Home() {
   // ============================================================
   // ✅ API Functions
   // ============================================================
-  
-  // Fetch Actual Sales Data (CommandID=3)
   const fetchActualSales = async (startDate, endDate, signal) => {
-    if (!apiKey) {
-      console.warn("No API key available for Actual Sales fetch");
-      return [];
-    }
+  // ==========================================
+  // LOCAL DATA MODE
+  // ==========================================
+  if (USE_LOCAL_DATA) {
+    console.log("🟢 LOCAL MODE: CommandID=3 API OFF");
+
+    const localSales = normalizeLocalData(commandId3);
+
+    console.log(
+      `📦 Local CommandID=3 records: ${localSales.length}`
+    );
+
+    return localSales.map((item) => ({
+      ...item,
+      _apiSource: "command3",
+      CommandID: 3,
+    }));
+  }
+
+  // ==========================================
+  // ONLINE API MODE
+  // ==========================================
+if (USE_LOCAL_DATA) {
+   // local JSON
+   return localSales;
+}
+
+if (!apiKey) {
+   throw new Error("API key is missing");
+}
+ 
+
+
+  // // Fetch Actual Sales Data (CommandID=3)
+  // const fetchActualSales = async (startDate, endDate, signal) => {
+  //   if (!apiKey) {
+  //     console.warn("No API key available for Actual Sales fetch");
+  //     return [];
+  //   }
     
     try {
       // Format dates for API
@@ -368,6 +427,111 @@ function Home() {
   };
 
   const fetchCurrentMonthData = async (force = false) => {
+    // ==========================================
+  // LOCAL DATA MODE
+  // ==========================================
+  if (USE_LOCAL_DATA) {
+    console.log("🟢 LOCAL MODE: Loading saved JSON files");
+
+    try {
+      setIsLoading(true);
+      setAutoLoadStatus("Loading local data...");
+      setAutoLoadProgress(20);
+
+      const primaryData = normalizeLocalData(commandId1);
+      const secondaryData = normalizeLocalData(commandId5);
+      const actualSales = normalizeLocalData(commandId3);
+
+      console.log("📦 CommandID=1:", primaryData.length);
+      console.log("📦 CommandID=5:", secondaryData.length);
+      console.log("📦 CommandID=3:", actualSales.length);
+
+      // ------------------------------------------
+      // Existing merge logic
+      // ------------------------------------------
+
+      const primaryMap = new Map();
+
+      primaryData.forEach((item) => {
+        const workOrderNo =
+          item.WorkOrderNo ||
+          item.workOrderNo ||
+          "";
+
+        if (!workOrderNo) return;
+
+        primaryMap.set(workOrderNo, {
+          ...item,
+          _apiSource: "command1",
+          CommandID: 1,
+
+          // Command 1-এর ApprovedDate ব্যবহার হবে
+          OrderReceiveDate:
+            item.ApprovedDate ||
+            item.approvedDate ||
+            "",
+        });
+      });
+
+      secondaryData.forEach((item) => {
+        const workOrderNo =
+          item.WorkOrderNo ||
+          item.workOrderNo ||
+          "";
+
+        if (!workOrderNo) return;
+
+        const existing = primaryMap.get(workOrderNo);
+
+        if (existing) {
+          primaryMap.set(workOrderNo, {
+            ...existing,
+            ...item,
+
+            // Command 1-এর date preserve
+            OrderReceiveDate:
+              existing.ApprovedDate ||
+              existing.approvedDate ||
+              "",
+            
+            _apiSource: "command1+command5",
+            CommandID: 5,
+          });
+        } else {
+          primaryMap.set(workOrderNo, {
+            ...item,
+            _apiSource: "command5",
+            CommandID: 5,
+            OrderReceiveDate: "",
+          });
+        }
+      });
+
+      const mergedData = Array.from(primaryMap.values());
+
+      setAutoLoadProgress(80);
+
+      setcndata({
+        apiData: mergedData,
+        actualSalesData: actualSales,
+      });
+
+      setAutoLoadProgress(100);
+      setAutoLoadStatus("Local data loaded");
+
+      console.log("✅ LOCAL DATA LOADED");
+      console.log("Final records:", mergedData.length);
+
+    } catch (error) {
+      console.error("❌ Local data error:", error);
+      setAutoLoadStatus("Local data loading failed");
+    } finally {
+      setIsLoading(false);
+      setAutoLoadProgress(100);
+    }
+
+    return;
+  }
     if (autoLoadRef.current && !force) return;
     if (
       !force &&
@@ -387,6 +551,7 @@ function Home() {
       setAutoLoadAttempted(true);
       return;
     }
+
 
     autoLoadRef.current = true;
     setIsAutoLoading(true);
@@ -574,10 +739,243 @@ function Home() {
   };
 
   const fetchDataByDateRange = async (startDate, endDate) => {
+     // ==========================================
+  // LOCAL DATA MODE
+  // ==========================================
+  if (USE_LOCAL_DATA) {
+    console.log("🟢 LOCAL MODE: Date range fetch");
+
+    try {
+      setIsLoading(true);
+      setAutoLoadStatus("Loading local data...");
+      setAutoLoadProgress(10);
+
+      const primaryData =
+        normalizeLocalData(commandId1);
+
+      const secondaryData =
+        normalizeLocalData(commandId5);
+
+      const orderMasterData =
+        normalizeLocalData(commandId15);
+
+      const actualSales =
+        normalizeLocalData(commandId3);
+
+      console.log("📦 Local Command 1:", primaryData.length);
+      console.log("📦 Local Command 5:", secondaryData.length);
+      console.log("📦 Local Command 15:", orderMasterData.length);
+      console.log("📦 Local Command 3:", actualSales.length);
+
+      // ==========================================
+      // SAME SOURCE TAGGING AS ONLINE API
+      // ==========================================
+
+      const command1Tagged = primaryData.map((item) => ({
+        ...item,
+
+        _apiSource: "command1",
+        CommandID: 1,
+
+        OrderReceiveDate:
+          item.ApprovedDate ||
+          item.approvedDate ||
+          "",
+      }));
+
+      const command5Tagged = secondaryData.map((item) => ({
+        ...item,
+
+        _apiSource: "command5",
+        CommandID: 5,
+
+        // IMPORTANT:
+        // Command 5-এর date ব্যবহার করা হবে না
+        OrderReceiveDate: "",
+      }));
+
+      const command15Tagged = orderMasterData.map((item) => ({
+        ...item,
+
+        _apiSource: "command15",
+        CommandID: 15,
+
+        OrderReceiveDate: "",
+      }));
+
+      const command3Tagged = actualSales.map((item) => ({
+        ...item,
+
+        _apiSource: "command3",
+        CommandID: 3,
+      }));
+
+      setAutoLoadProgress(30);
+
+      // ==========================================
+      // MERGE COMMAND 15
+      // ==========================================
+
+      const mergedMap = new Map();
+
+      command15Tagged.forEach((item) => {
+        const workOrderNo =
+          item.WorkOrderNo ||
+          item.workOrderNo ||
+          "";
+
+        if (!workOrderNo) return;
+
+        mergedMap.set(workOrderNo, {
+          ...item,
+          _apiSource: "command15",
+          CommandID: 15,
+        });
+      });
+
+      // ==========================================
+      // MERGE COMMAND 5
+      // ==========================================
+
+      command5Tagged.forEach((item) => {
+        const workOrderNo =
+          item.WorkOrderNo ||
+          item.workOrderNo ||
+          "";
+
+        if (!workOrderNo) return;
+
+        const existing = mergedMap.get(workOrderNo);
+
+        if (existing) {
+          mergedMap.set(workOrderNo, {
+            ...existing,
+            ...item,
+
+            _apiSource: "command15+command5",
+            CommandID: 5,
+
+            OrderReceiveDate:
+              existing.OrderReceiveDate || "",
+          });
+        } else {
+          mergedMap.set(workOrderNo, {
+            ...item,
+
+            _apiSource: "command5",
+            CommandID: 5,
+
+            OrderReceiveDate: "",
+          });
+        }
+      });
+
+      // ==========================================
+      // MERGE COMMAND 1
+      // ==========================================
+
+      command1Tagged.forEach((item) => {
+        const workOrderNo =
+          item.WorkOrderNo ||
+          item.workOrderNo ||
+          "";
+
+        if (!workOrderNo) return;
+
+        const existing = mergedMap.get(workOrderNo);
+
+        if (existing) {
+          mergedMap.set(workOrderNo, {
+            ...existing,
+            ...item,
+
+            // Command 1 ApprovedDate MUST WIN
+            ApprovedDate:
+              item.ApprovedDate ||
+              item.approvedDate ||
+              existing.ApprovedDate ||
+              "",
+
+            OrderReceiveDate:
+              item.ApprovedDate ||
+              item.approvedDate ||
+              "",
+
+            _apiSource: "command15+command5+command1",
+            CommandID: 1,
+          });
+        } else {
+          mergedMap.set(workOrderNo, {
+            ...item,
+
+            _apiSource: "command1",
+            CommandID: 1,
+
+            OrderReceiveDate:
+              item.ApprovedDate ||
+              item.approvedDate ||
+              "",
+          });
+        }
+      });
+
+      setAutoLoadProgress(80);
+
+      const mergedData =
+        Array.from(mergedMap.values());
+
+      // ==========================================
+      // SAVE TO CONTEXT
+      // ==========================================
+
+      setcndata({
+        apiData: mergedData,
+        actualSalesData: command3Tagged,
+      });
+
+      setAutoLoadProgress(100);
+      setAutoLoadStatus("Local data loaded");
+
+      console.log("=================================");
+      console.log("✅ LOCAL DATA FETCH COMPLETE");
+      console.log("=================================");
+      console.log("Command 1:", command1Tagged.length);
+      console.log("Command 5:", command5Tagged.length);
+      console.log("Command 15:", command15Tagged.length);
+      console.log("Command 3:", command3Tagged.length);
+      console.log("Merged:", mergedData.length);
+      console.log("=================================");
+
+    } catch (error) {
+      console.error(
+        "❌ Local date range error:",
+        error
+      );
+
+      setAutoLoadStatus(
+        "Local data loading failed"
+      );
+    } finally {
+      setIsLoading(false);
+      setAutoLoadProgress(100);
+    }
+
+    return;
+  }
     if (cancelTokenRef.current) {
       cancelTokenRef.current.abort();
       cancelTokenRef.current = null;
     }
+    console.log("========================================");
+console.log("🟢 LOCAL DATA MODE");
+console.log("========================================");
+
+console.log("📦 Command 1 Data:", commandId1);
+console.log("📦 Command 3 Data:", commandId3);
+console.log("📦 Command 5 Data:", commandId5);
+console.log("📦 Command 15 Data:", commandId15);
+
+console.log("========================================");
     
     setIsLoading(true);
     setIsFetchingRange(true);
@@ -1029,7 +1427,13 @@ function Home() {
   // Auto-load on mount
   useEffect(() => {
     const shouldAutoLoad = () => {
-      if (autoLoadAttempted || !apiKey || autoLoadRef.current) return false;
+      if (
+  autoLoadAttempted ||
+  (!USE_LOCAL_DATA && !apiKey) ||
+  autoLoadRef.current
+) {
+  return false;
+}
       if (cndata?.apiData && cndata.apiData.length > 0 && cndata?._lastFetch) {
         const hoursSinceLastFetch =
           (new Date() - new Date(cndata._lastFetch.timestamp)) /
