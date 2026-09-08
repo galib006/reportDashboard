@@ -1,5 +1,8 @@
 // FullAdvancedInventoryIssue_CompleteGreen.jsx
 // Redesigned: cohesive "operations dashboard" visual system, same data logic & Excel export.
+// Added: Multi-select filters for RequistionRaiseBy and Department
+// Fixed: Section data handling using CostCenterName
+// Added: Enhanced filtering capabilities and UI improvements
 
 import React, { useContext, useMemo, useState, useCallback, useEffect, useRef } from "react";
 import DateRangePicker from "../components/DatePickerData";
@@ -52,7 +55,14 @@ import {
   TrendingDown,
   Minus,
   ArrowUpDown,
-  LayoutGrid
+  LayoutGrid,
+  Filter,
+  User,
+  Building,
+  Layers,
+  FileText,
+  BarChart3,
+  Printer
 } from "lucide-react";
 
 // Register ChartJS
@@ -71,19 +81,6 @@ ChartJS.register(
 );
 
 // ==================== DESIGN TOKENS ====================
-// A single cohesive palette drives both the on-screen UI and the exported
-// Excel workbook, so the report reads as one connected system rather than
-// two disconnected outputs.
-//
-// Ink        #0F172A  primary text / headings
-// Slate      #64748B  secondary text
-// Canvas     #F5F7FA  page background
-// Teal 600   #0D9488  brand / "issued" / USD
-// Amber 600  #D97706  "pending" / attention / GBP
-// Violet 600 #7C3AED  "balance" / BDT
-// Rose 600   #DC2626  "critical" / shortfall
-// Blue 600   #2563EB  EUR / informational
-
 const CURRENCY_THEME = {
   BDT: { text: "text-violet-700", bg: "bg-violet-50", border: "border-violet-200", dot: "bg-violet-500", hex: "7C3AED", tint: "F3E8FF", tintAlt: "FAF5FF" },
   USD: { text: "text-teal-700", bg: "bg-teal-50", border: "border-teal-200", dot: "bg-teal-500", hex: "0D9488", tint: "E6F7F5", tintAlt: "F0FBFA" },
@@ -142,10 +139,10 @@ const formatDateExcel = (dateStr) => {
 
 const getStatusColor = (percentage) => {
   const val = parseFloat(percentage);
-  if (val >= 80) return "#0D9488"; // teal
-  if (val >= 50) return "#D97706"; // amber
-  if (val >= 30) return "#F59E0B"; // orange
-  return "#DC2626"; // rose
+  if (val >= 80) return "#0D9488";
+  if (val >= 50) return "#D97706";
+  if (val >= 30) return "#F59E0B";
+  return "#DC2626";
 };
 
 const getStatusBadge = (percentage) => {
@@ -178,7 +175,118 @@ const getExcelCurrencyTextColor = (currency) => getTheme(currency).hex;
 
 // ==================== UI COMPONENTS ====================
 
-// Slim, color-coded progress bar
+// Multi-select dropdown component
+const MultiSelectDropdown = React.memo(({ 
+  options, 
+  selectedValues, 
+  onChange, 
+  placeholder, 
+  label, 
+  icon: Icon,
+  maxDisplay = 2,
+  className = ""
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef(null);
+  
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+  
+  const handleToggle = (value) => {
+    const newSelected = selectedValues.includes(value)
+      ? selectedValues.filter(v => v !== value)
+      : [...selectedValues, value];
+    onChange(newSelected);
+  };
+  
+  const handleSelectAll = () => {
+    if (selectedValues.length === options.length) {
+      onChange([]);
+    } else {
+      onChange([...options]);
+    }
+  };
+  
+  const displayText = selectedValues.length === 0 
+    ? placeholder 
+    : selectedValues.length <= maxDisplay 
+      ? selectedValues.join(", ")
+      : `${selectedValues.slice(0, maxDisplay).join(", ")} +${selectedValues.length - maxDisplay} more`;
+  
+  const isActive = selectedValues.length > 0;
+  
+  return (
+    <div className={`relative ${className}`} ref={dropdownRef}>
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className={`flex items-center gap-2 px-3.5 py-2.5 bg-white border rounded-xl text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-400 transition-all min-w-[180px] ${
+          isActive ? "border-teal-400 bg-teal-50/50" : "border-slate-200"
+        }`}
+      >
+        {Icon && <Icon size={16} className={isActive ? "text-teal-600" : "text-slate-400"} />}
+        <span className="flex-1 truncate text-left">{displayText}</span>
+        {isActive && (
+          <span className="text-xs font-medium text-teal-600 bg-teal-100 px-1.5 py-0.5 rounded-full">
+            {selectedValues.length}
+          </span>
+        )}
+        <ChevronDown size={16} className={`text-slate-400 transition-transform ${isOpen ? "rotate-180" : ""}`} />
+      </button>
+      
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.15 }}
+            className="absolute top-full left-0 mt-1.5 w-full bg-white border border-slate-200 rounded-xl shadow-lg z-50 max-h-64 overflow-hidden"
+          >
+            <div className="p-2 border-b border-slate-100 bg-slate-50/80 sticky top-0 flex justify-between items-center">
+              <span className="text-xs font-medium text-slate-500">{label || "Filter"}</span>
+              <button
+                onClick={handleSelectAll}
+                className="text-xs font-medium text-teal-600 hover:text-teal-700 px-2 py-1 rounded hover:bg-teal-50 transition-colors"
+              >
+                {selectedValues.length === options.length ? "Deselect All" : "Select All"}
+              </button>
+            </div>
+            <div className="max-h-48 overflow-y-auto p-1.5">
+              {options.length === 0 ? (
+                <div className="text-sm text-slate-400 px-3 py-2 text-center">No options available</div>
+              ) : (
+                options.map((option) => (
+                  <label
+                    key={option}
+                    className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-slate-50 cursor-pointer transition-colors group"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedValues.includes(option)}
+                      onChange={() => handleToggle(option)}
+                      className="w-4 h-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500 focus:ring-2 cursor-pointer"
+                    />
+                    <span className="text-sm text-slate-700 group-hover:text-slate-900">{option}</span>
+                  </label>
+                ))
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+});
+MultiSelectDropdown.displayName = "MultiSelectDropdown";
+
+// Progress Bar
 const ProgressBar = React.memo(({ value, height = "h-1.5" }) => {
   const val = Math.min(parseFloat(value) || 0, 100);
   return (
@@ -192,7 +300,7 @@ const ProgressBar = React.memo(({ value, height = "h-1.5" }) => {
 });
 ProgressBar.displayName = "ProgressBar";
 
-// KPI stat card — flat surface, colored top rule, icon chip. No gradients.
+// KPI stat card
 const StatCard = React.memo(({ title, value, icon: Icon, accent = "slate", subtext, trend }) => {
   const accentMap = {
     slate: { bar: "bg-slate-800", chip: "bg-slate-100 text-slate-700" },
@@ -200,7 +308,8 @@ const StatCard = React.memo(({ title, value, icon: Icon, accent = "slate", subte
     rose: { bar: "bg-rose-500", chip: "bg-rose-50 text-rose-700" },
     violet: { bar: "bg-violet-500", chip: "bg-violet-50 text-violet-700" },
     amber: { bar: "bg-amber-500", chip: "bg-amber-50 text-amber-700" },
-    ink: { bar: "bg-indigo-500", chip: "bg-indigo-50 text-indigo-700" }
+    ink: { bar: "bg-indigo-500", chip: "bg-indigo-50 text-indigo-700" },
+    emerald: { bar: "bg-emerald-500", chip: "bg-emerald-50 text-emerald-700" }
   };
   const a = accentMap[accent] || accentMap.slate;
 
@@ -244,7 +353,7 @@ const CurrencyBadge = React.memo(({ currency }) => {
 });
 CurrencyBadge.displayName = "CurrencyBadge";
 
-// Price change chip
+// Price variation badge
 const PriceVariationBadge = React.memo(({ price1, price2, currency }) => {
   if (!price1 || !price2) return null;
   const diff = price2 - price1;
@@ -271,7 +380,7 @@ const PriceVariationBadge = React.memo(({ price1, price2, currency }) => {
 });
 PriceVariationBadge.displayName = "PriceVariationBadge";
 
-// Single issue row-card in the drill-down history list
+// Issue card
 const IssueCard = React.memo(({ issue, index }) => {
   const currency = issue.Currency || "USD";
   const symbol = getCurrencySymbol(currency);
@@ -334,7 +443,7 @@ const IssueCard = React.memo(({ issue, index }) => {
 });
 IssueCard.displayName = "IssueCard";
 
-// Completion status pill
+// Status badge
 const StatusBadge = React.memo(({ percentage }) => {
   const status = getStatusBadge(percentage);
   const Icon = status.icon;
@@ -347,6 +456,49 @@ const StatusBadge = React.memo(({ percentage }) => {
 });
 StatusBadge.displayName = "StatusBadge";
 
+// Quick Stats Summary Component
+const QuickStatsSummary = React.memo(({ stats }) => {
+  return (
+    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2 bg-white rounded-xl border border-slate-200 p-3 mb-4">
+      <div className="text-center">
+        <p className="text-[10px] text-slate-400 uppercase tracking-wide">Sections</p>
+        <p className="text-sm font-bold text-slate-700">{stats.sections}</p>
+      </div>
+      <div className="text-center">
+        <p className="text-[10px] text-slate-400 uppercase tracking-wide">Materials</p>
+        <p className="text-sm font-bold text-slate-700">{stats.materials}</p>
+      </div>
+      <div className="text-center">
+        <p className="text-[10px] text-slate-400 uppercase tracking-wide">Requisitions</p>
+        <p className="text-sm font-bold text-slate-700">{formatNumber(stats.req)}</p>
+      </div>
+      <div className="text-center">
+        <p className="text-[10px] text-slate-400 uppercase tracking-wide">Issues</p>
+        <p className="text-sm font-bold text-teal-600">{formatNumber(stats.issues)}</p>
+      </div>
+      <div className="text-center">
+        <p className="text-[10px] text-slate-400 uppercase tracking-wide">Issued Qty</p>
+        <p className="text-sm font-bold text-teal-600">{formatNumber(stats.issued)}</p>
+      </div>
+      <div className="text-center">
+        <p className="text-[10px] text-slate-400 uppercase tracking-wide">Pending Qty</p>
+        <p className="text-sm font-bold text-rose-500">{formatNumber(stats.pending)}</p>
+      </div>
+      <div className="text-center">
+        <p className="text-[10px] text-slate-400 uppercase tracking-wide">Balance Qty</p>
+        <p className="text-sm font-bold text-violet-600">{formatNumber(stats.balance)}</p>
+      </div>
+      <div className="text-center">
+        <p className="text-[10px] text-slate-400 uppercase tracking-wide">Completion</p>
+        <p className={`text-sm font-bold ${parseFloat(stats.completion) >= 80 ? 'text-teal-600' : parseFloat(stats.completion) >= 50 ? 'text-amber-600' : 'text-rose-600'}`}>
+          {stats.completion}%
+        </p>
+      </div>
+    </div>
+  );
+});
+QuickStatsSummary.displayName = "QuickStatsSummary";
+
 // ==================== MAIN COMPONENT ====================
 
 function FullAdvancedInventoryIssue_CompleteGreen() {
@@ -357,6 +509,8 @@ function FullAdvancedInventoryIssue_CompleteGreen() {
   const [filterItem, setFilterItem] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterCurrency, setFilterCurrency] = useState("all");
+  const [filterRaiser, setFilterRaiser] = useState([]);
+  const [filterDepartment, setFilterDepartment] = useState([]); // New: multi-select for Department
   const [expandedSections, setExpandedSections] = useState({});
   const [expandedItems, setExpandedItems] = useState({});
   const [expandedRequisitions, setExpandedRequisitions] = useState({});
@@ -365,6 +519,7 @@ function FullAdvancedInventoryIssue_CompleteGreen() {
   const [sortOrder, setSortOrder] = useState("desc");
   const [showCharts, setShowCharts] = useState(true);
   const [showBalanceDetails, setShowBalanceDetails] = useState(true);
+  const [viewMode, setViewMode] = useState("detailed"); // "detailed" or "compact"
 
   const searchCacheRef = useRef({});
 
@@ -400,13 +555,14 @@ function FullAdvancedInventoryIssue_CompleteGreen() {
     return isNaN(num) ? 0 : num;
   };
 
+  // Get unique sections from CostCenterName
   const uniqueSections = useMemo(() => {
     const data = cndata?.inventory || [];
     if (!Array.isArray(data) || data.length === 0) return [];
     const set = new Set();
     for (let i = 0; i < data.length; i++) {
       const name = data[i]?.CostCenterName;
-      if (name) set.add(String(name));
+      if (name && name.trim()) set.add(String(name).trim());
     }
     return [...set].sort();
   }, [cndata]);
@@ -417,7 +573,7 @@ function FullAdvancedInventoryIssue_CompleteGreen() {
     const set = new Set();
     for (let i = 0; i < data.length; i++) {
       const name = data[i]?.MaterialName;
-      if (name && name !== "-") set.add(String(name));
+      if (name && name !== "-" && name.trim()) set.add(String(name).trim());
     }
     return [...set].sort();
   }, [cndata]);
@@ -433,12 +589,35 @@ function FullAdvancedInventoryIssue_CompleteGreen() {
     return [...set].sort();
   }, [cndata]);
 
-  // ==================== PROCESS DATA (unchanged logic) ====================
+  const uniqueRaisers = useMemo(() => {
+    const data = cndata?.inventory || [];
+    if (!Array.isArray(data) || data.length === 0) return [];
+    const set = new Set();
+    for (let i = 0; i < data.length; i++) {
+      const raiser = data[i]?.RequistionRaiseBy;
+      if (raiser && raiser.trim()) set.add(String(raiser).trim());
+    }
+    return [...set].sort();
+  }, [cndata]);
+
+  // New: Unique Department values
+  const uniqueDepartments = useMemo(() => {
+    const data = cndata?.inventory || [];
+    if (!Array.isArray(data) || data.length === 0) return [];
+    const set = new Set();
+    for (let i = 0; i < data.length; i++) {
+      const dept = data[i]?.Department;
+      if (dept && dept.trim()) set.add(String(dept).trim());
+    }
+    return [...set].sort();
+  }, [cndata]);
+
+  // ==================== PROCESS DATA ====================
   const UseData = useMemo(() => {
     const data = cndata?.inventory || [];
     if (!Array.isArray(data) || data.length === 0) return [];
 
-    const cacheKey = `${data.length}_${searchText}_${filterSection}_${filterItem}_${filterStatus}_${filterCurrency}_${sortBy}_${sortOrder}`;
+    const cacheKey = `${data.length}_${searchText}_${filterSection}_${filterItem}_${filterStatus}_${filterCurrency}_${sortBy}_${sortOrder}_${filterRaiser.join("|")}_${filterDepartment.join("|")}`;
 
     if (searchCacheRef.current[cacheKey]) {
       return searchCacheRef.current[cacheKey];
@@ -459,15 +638,19 @@ function FullAdvancedInventoryIssue_CompleteGreen() {
 
     const preFilteredData = dateFilteredData.filter((d) => {
       if (!d) return false;
-      const section = safeString(d.CostCenterName);
-      const material = safeString(d.MaterialName);
+      const section = safeString(d.CostCenterName).trim();
+      const material = safeString(d.MaterialName).trim();
       const currency = safeString(d.Currency).toUpperCase();
+      const raiser = safeString(d.RequistionRaiseBy).trim();
+      const department = safeString(d.Department).trim();
 
       const sectionMatch = filterSection === "all" || section === filterSection;
       const itemMatch = filterItem === "all" || material === filterItem;
       const currencyMatch = filterCurrency === "all" || currency === filterCurrency;
+      const raiserMatch = filterRaiser.length === 0 || filterRaiser.includes(raiser);
+      const departmentMatch = filterDepartment.length === 0 || filterDepartment.includes(department);
 
-      return sectionMatch && itemMatch && currencyMatch;
+      return sectionMatch && itemMatch && currencyMatch && raiserMatch && departmentMatch;
     });
 
     const searchTerm = searchText ? searchText.trim().toLowerCase() : "";
@@ -478,10 +661,10 @@ function FullAdvancedInventoryIssue_CompleteGreen() {
       const d = preFilteredData[i];
       if (!d) continue;
 
-      const sectionName = safeString(d.CostCenterName);
+      const sectionName = safeString(d.CostCenterName).trim();
       if (!sectionName) continue;
 
-      const materialName = safeString(d.MaterialName);
+      const materialName = safeString(d.MaterialName).trim();
       if (!materialName || materialName === "-") continue;
 
       const reqNo = safeString(d.RequisitionNo) || `REQ-${Math.random()}`;
@@ -741,13 +924,14 @@ function FullAdvancedInventoryIssue_CompleteGreen() {
     }
 
     return result;
-  }, [cndata, searchText, filterSection, filterItem, filterStatus, filterCurrency, sortBy, sortOrder]);
+  }, [cndata, searchText, filterSection, filterItem, filterStatus, filterCurrency, filterRaiser, filterDepartment, sortBy, sortOrder]);
 
   const summaryStats = useMemo(() => {
     let req = 0, issued = 0, pending = 0, value = 0, balance = 0;
     let materials = 0, issues = 0;
     const currencyBreakdown = {};
     const currencyCounts = {};
+    const departmentStats = {};
 
     for (let i = 0; i < UseData.length; i++) {
       const s = UseData[i];
@@ -764,6 +948,15 @@ function FullAdvancedInventoryIssue_CompleteGreen() {
         const curr = item.Currency || "USD";
         currencyBreakdown[curr] = (currencyBreakdown[curr] || 0) + item.TotalValue;
         currencyCounts[curr] = (currencyCounts[curr] || 0) + item.Requisitions.length;
+
+        // Department stats
+        item.Requisitions.forEach((reqItem) => {
+          const dept = reqItem.Department || "Unknown";
+          departmentStats[dept] = departmentStats[dept] || { req: 0, issued: 0, pending: 0 };
+          departmentStats[dept].req += reqItem.RequiredQty;
+          departmentStats[dept].issued += reqItem.TotalIssue;
+          departmentStats[dept].pending += reqItem.PendingQty;
+        });
       }
     }
 
@@ -772,7 +965,8 @@ function FullAdvancedInventoryIssue_CompleteGreen() {
       sections: UseData.length, issues,
       completion: req > 0 ? ((issued / req) * 100).toFixed(1) : "0",
       currencyBreakdown,
-      currencyCounts
+      currencyCounts,
+      departmentStats
     };
   }, [UseData]);
 
@@ -824,435 +1018,534 @@ function FullAdvancedInventoryIssue_CompleteGreen() {
     }
   }, [UseData, expandedSections]);
 
-  // ===== EXPORT EXCEL FUNCTION (logic unchanged, palette aligned to UI) =====
-  const exportExcel = useCallback(() => {
-    if (!UseData || UseData.length === 0) {
-      toast.warning("No data to export!");
-      return;
-    }
-
-    try {
-      const wb = XLSX.utils.book_new();
-
-      const applyBorder = (ws, range, borderStyle = "thin", color = "D9DEE7") => {
-        const [startRow, startCol, endRow, endCol] = range;
-        for (let r = startRow; r <= endRow; r++) {
-          for (let c = startCol; c <= endCol; c++) {
-            const cellRef = XLSX.utils.encode_cell({ r, c });
-            if (!ws[cellRef]) continue;
-            if (!ws[cellRef].s) ws[cellRef].s = {};
-            ws[cellRef].s.border = {
-              top: { style: borderStyle, color: { rgb: color } },
-              bottom: { style: borderStyle, color: { rgb: color } },
-              left: { style: borderStyle, color: { rgb: color } },
-              right: { style: borderStyle, color: { rgb: color } }
-            };
-          }
-        }
-      };
-
-      const applyStyleToRange = (ws, range, styles) => {
-        const [startRow, startCol, endRow, endCol] = range;
-        for (let r = startRow; r <= endRow; r++) {
-          for (let c = startCol; c <= endCol; c++) {
-            const cellRef = XLSX.utils.encode_cell({ r, c });
-            if (!ws[cellRef]) ws[cellRef] = { v: "", t: "s" };
-            if (!ws[cellRef].s) ws[cellRef].s = {};
-            Object.assign(ws[cellRef].s, styles);
-          }
-        }
-      };
-
-      const applyMainTitleStyle = (ws, row, startCol, endCol) => {
-        applyStyleToRange(ws, [row, startCol, row, endCol], {
-          fill: { fgColor: { rgb: "0F172A" } },
-          font: { bold: true, color: { rgb: "FFFFFF" }, sz: 28, name: "Calibri" },
-          alignment: { horizontal: "center", vertical: "center" }
-        });
-      };
-
-      const applySubTitleStyle = (ws, row, startCol, endCol) => {
-        applyStyleToRange(ws, [row, startCol, row, endCol], {
-          fill: { fgColor: { rgb: "334155" } },
-          font: { bold: true, color: { rgb: "FFFFFF" }, sz: 22, name: "Calibri" },
-          alignment: { horizontal: "center", vertical: "center" }
-        });
-      };
-
-      const applySectionHeaderStyle = (ws, row, startCol, endCol, currency) => {
-        const headerColor = getExcelCurrencyColor(currency);
-        applyStyleToRange(ws, [row, startCol, row, endCol], {
-          fill: { fgColor: { rgb: headerColor } },
-          font: { bold: true, color: { rgb: "FFFFFF" }, sz: 20, name: "Calibri" },
-          alignment: { horizontal: "left", vertical: "center" }
-        });
-        applyBorder(ws, [row, startCol, row, endCol], "medium", headerColor);
-      };
-
-      const applyTableHeaderStyle = (ws, row, startCol, endCol, currency) => {
-        applyStyleToRange(ws, [row, startCol, row, endCol], {
-          fill: { fgColor: { rgb: "1E293B" } },
-          font: { bold: true, color: { rgb: "FFFFFF" }, sz: 16, name: "Calibri" },
-          alignment: { horizontal: "center", vertical: "center", wrapText: true }
-        });
-        applyBorder(ws, [row, startCol, row, endCol], "medium", "1E293B");
-      };
-
-      const applyCurrencyRowStyle = (ws, row, startCol, endCol, currency, isEven = false) => {
-        const bgColor = getExcelCurrencyBg(currency, isEven);
-        const textColor = getExcelCurrencyTextColor(currency);
-
-        applyStyleToRange(ws, [row, startCol, row, endCol], {
-          fill: { fgColor: { rgb: bgColor } },
-          font: { bold: false, color: { rgb: textColor }, sz: 14, name: "Calibri" }
-        });
-        applyBorder(ws, [row, startCol, row, endCol], "thin", "D9DEE7");
-      };
-
-      const applySubtotalStyle = (ws, row, startCol, endCol, currency) => {
-        const textColor = getExcelCurrencyColor(currency);
-        applyStyleToRange(ws, [row, startCol, row, endCol], {
-          fill: { fgColor: { rgb: "E2E8F0" } },
-          font: { bold: true, color: { rgb: textColor }, sz: 16, name: "Calibri" },
-          alignment: { horizontal: "right", vertical: "center" }
-        });
-        applyBorder(ws, [row, startCol, row, endCol], "medium", textColor);
-      };
-
-      const applyGrandTotalStyle = (ws, row, startCol, endCol) => {
-        applyStyleToRange(ws, [row, startCol, row, endCol], {
-          fill: { fgColor: { rgb: "0D9488" } },
-          font: { bold: true, color: { rgb: "FFFFFF" }, sz: 16, name: "Calibri" },
-          alignment: { horizontal: "center", vertical: "center" }
-        });
-        applyBorder(ws, [row, startCol, row, endCol], "medium", "0D9488");
-      };
-
-      const applyInfoRowStyle = (ws, row, startCol, endCol) => {
-        applyStyleToRange(ws, [row, startCol, row, endCol], {
-          font: { sz: 13, name: "Calibri", color: { rgb: "475569" } },
-          alignment: { horizontal: "left", vertical: "center" },
-          fill: { fgColor: { rgb: "F1F5F9" } }
-        });
-      };
-
-      const applyLabelStyle = (ws, row, startCol, endCol) => {
-        applyStyleToRange(ws, [row, startCol, row, endCol], {
-          font: { bold: true, sz: 13, name: "Calibri", color: { rgb: "0F172A" } },
-          alignment: { horizontal: "left", vertical: "center" }
-        });
-      };
-
-      const applyPriceVariationColor = (ws, row, col, priceChange) => {
-        const cellRef = XLSX.utils.encode_cell({ r: row, c: col });
-        if (!ws[cellRef]) return;
-        if (!ws[cellRef].s) ws[cellRef].s = {};
-
-        const numChange = parseFloat(priceChange);
-        if (!isNaN(numChange)) {
-          if (numChange > 0.001) {
-            ws[cellRef].s.font = { bold: true, color: { rgb: "DC2626" }, sz: 14, name: "Calibri" };
-            ws[cellRef].s.fill = { fgColor: { rgb: "FEE2E2" } };
-          } else if (numChange < -0.001) {
-            ws[cellRef].s.font = { bold: true, color: { rgb: "0D9488" }, sz: 14, name: "Calibri" };
-            ws[cellRef].s.fill = { fgColor: { rgb: "E6F7F5" } };
-          }
-          ws[cellRef].s.alignment = { horizontal: "center", vertical: "center" };
-        }
-      };
-
-      // ===== SHEET 1: MASTER SUMMARY =====
-      const summaryData = [];
-
-      summaryData.push(["INVENTORY ISSUE REPORT"]);
-      summaryData.push(["SECTION & ITEM SUMMARY"]);
-      summaryData.push([]);
-      summaryData.push(["Generated:", new Date().toLocaleString()]);
-      summaryData.push(["Date Range:", cndata.startDate ? formatDateExcel(cndata.startDate) : "N/A", "to", cndata.endDate ? formatDateExcel(cndata.endDate) : "N/A"]);
-      summaryData.push([]);
-
-      let grandReq = 0, grandIssued = 0, grandPending = 0;
-      let currentRow = 6;
-
-      UseData.forEach((section) => {
-        summaryData.push([`${section.CostCenter}`, "", "", "", "", "", "", "", ""]);
-        const sectionHeaderRow = currentRow;
-        currentRow++;
-
-        summaryData.push(["#", "MATERIAL", "UNIT", "CURRENCY", "REQUIRED", "ISSUED", "PENDING", "AVG PRICE", "TOTAL VALUE"]);
-        currentRow++;
-
-        let sectionReq = 0, sectionIssued = 0, sectionPending = 0;
-        let itemCounter = 1;
-
-        section.Items.forEach((item) => {
-          const unit = item.Requisitions.length > 0 ? item.Requisitions[0].Unit || "" : "";
-          const currency = item.Currency || section.Currency || "USD";
-          const symbol = getCurrencySymbol(currency);
-
-          let totalPrice = 0;
-          let priceCount = 0;
-          item.Requisitions.forEach((req) => {
-            req.Issues.forEach((issue) => {
-              if (issue.IssuePrice > 0) {
-                totalPrice += issue.IssuePrice;
-                priceCount++;
-              }
-            });
-          });
-          const avgPrice = priceCount > 0 ? totalPrice / priceCount : 0;
-
-          summaryData.push([
-            itemCounter,
-            item.Material,
-            unit,
-            `${symbol} ${currency}`,
-            item.TotalRequired || 0,
-            item.TotalIssued || 0,
-            item.TotalPending || 0,
-            avgPrice > 0 ? avgPrice.toFixed(4) : "-",
-            Math.round(item.TotalValue || 0)
-          ]);
-
-          sectionReq += item.TotalRequired || 0;
-          sectionIssued += item.TotalIssued || 0;
-          sectionPending += item.TotalPending || 0;
-          itemCounter++;
-          currentRow++;
-        });
-
-        summaryData.push(["", `SUBTOTAL: ${section.CostCenter}`, "", "", sectionReq, sectionIssued, sectionPending, "", ""]);
-        currentRow++;
-
-        summaryData.push([]);
-        summaryData.push([]);
-        summaryData.push([]);
-        summaryData.push([]);
-        summaryData.push([]);
-        currentRow += 5;
-
-        grandReq += sectionReq;
-        grandIssued += sectionIssued;
-        grandPending += sectionPending;
-      });
-
-      summaryData.push(["", "GRAND TOTAL", "", "", grandReq, grandIssued, grandPending, "", ""]);
-      const grandTotalRow = currentRow;
-
-      const wsSummary = XLSX.utils.aoa_to_sheet(summaryData);
-      wsSummary["!cols"] = [
-        { wch: 6 }, { wch: 40 }, { wch: 12 }, { wch: 14 },
-        { wch: 18 }, { wch: 18 }, { wch: 18 }, { wch: 18 }, { wch: 18 }
-      ];
-
-      applyMainTitleStyle(wsSummary, 0, 0, 8);
-      applySubTitleStyle(wsSummary, 1, 0, 8);
-      if (!wsSummary["!merges"]) wsSummary["!merges"] = [];
-      wsSummary["!merges"].push({ s: { r: 0, c: 0 }, e: { r: 0, c: 8 } });
-      wsSummary["!merges"].push({ s: { r: 1, c: 0 }, e: { r: 1, c: 8 } });
-
-      applyLabelStyle(wsSummary, 3, 0, 1);
-      applyInfoRowStyle(wsSummary, 4, 0, 3);
-
-      let styleRow = 6;
-
-      UseData.forEach((section) => {
-        const sectionCurrency = section.Currency || "USD";
-
-        applySectionHeaderStyle(wsSummary, styleRow, 0, 8, sectionCurrency);
-        if (!wsSummary["!merges"]) wsSummary["!merges"] = [];
-        wsSummary["!merges"].push({ s: { r: styleRow, c: 0 }, e: { r: styleRow, c: 8 } });
-        styleRow++;
-
-        applyTableHeaderStyle(wsSummary, styleRow, 0, 8, sectionCurrency);
-        styleRow++;
-
-        section.Items.forEach((item) => {
-          const itemCurrency = item.Currency || sectionCurrency || "USD";
-          const isEven = styleRow % 2 === 0;
-          applyCurrencyRowStyle(wsSummary, styleRow, 0, 8, itemCurrency, isEven);
-          styleRow++;
-        });
-
-        applySubtotalStyle(wsSummary, styleRow, 0, 8, sectionCurrency);
-        styleRow++;
-
-        styleRow += 5;
-      });
-
-      applyGrandTotalStyle(wsSummary, grandTotalRow, 0, 8);
-
-      XLSX.utils.book_append_sheet(wb, wsSummary, "Master Summary");
-
-      // ===== SHEET 2: DETAILED ISSUES WITH PRICE HISTORY =====
-      const detailData = [];
-
-      detailData.push(["INVENTORY ISSUE REPORT"]);
-      detailData.push(["DETAILED ISSUES WITH PRICE HISTORY"]);
-      detailData.push([]);
-      detailData.push(["Generated:", new Date().toLocaleString()]);
-      detailData.push(["Date Range:", cndata.startDate ? formatDateExcel(cndata.startDate) : "N/A", "to", cndata.endDate ? formatDateExcel(cndata.endDate) : "N/A"]);
-      detailData.push([]);
-      detailData.push([
-        "SECTION", "MATERIAL", "REQ NO", "ISSUE NO", "ISSUE DATE",
-        "QTY", "PRICE", "PREVIOUS PRICE", "PRICE CHANGE", "CHANGE %",
-        "VALUE", "CURRENCY", "ISSUED BY"
-      ]);
-
-      UseData.forEach((section) => {
-        section.Items.forEach((item) => {
-          const itemCurrency = item.Currency || section.Currency || "USD";
-
-          item.Requisitions.forEach((req) => {
-            req.Issues.forEach((issue) => {
-              const priceChange = issue.PreviousPrice ? issue.IssuePrice - issue.PreviousPrice : 0;
-              const changePercent = issue.PreviousPrice && issue.PreviousPrice > 0 ? (priceChange / issue.PreviousPrice) * 100 : 0;
-              const symbol = getCurrencySymbol(issue.Currency || "USD");
-
-              const priceFormat = issue.IssuePrice < 1 ? issue.IssuePrice.toFixed(4) : issue.IssuePrice.toFixed(2);
-              const prevPriceFormat = issue.PreviousPrice && issue.PreviousPrice < 1
-                ? issue.PreviousPrice.toFixed(4)
-                : issue.PreviousPrice ? issue.PreviousPrice.toFixed(2) : "-";
-
-              detailData.push([
-                section.CostCenter,
-                item.Material,
-                req.RequisitionNo,
-                issue.IssueNo,
-                formatDateExcel(issue.IssueDate),
-                issue.IssueQty || 0,
-                priceFormat,
-                prevPriceFormat,
-                priceChange !== 0 ? `${priceChange > 0 ? "+" : ""}${priceChange.toFixed(4)}` : "No Change",
-                changePercent !== 0 ? `${changePercent > 0 ? "+" : ""}${changePercent.toFixed(1)}%` : "0%",
-                Math.round(issue.IssueValue || 0),
-                `${symbol} ${issue.Currency || "USD"}`,
-                issue.IssuedBy || "-"
-              ]);
-            });
-          });
-        });
-      });
-
-      const wsDetail = XLSX.utils.aoa_to_sheet(detailData);
-      wsDetail["!cols"] = [
-        { wch: 20 }, { wch: 35 }, { wch: 18 }, { wch: 18 },
-        { wch: 15 }, { wch: 12 }, { wch: 18 }, { wch: 18 },
-        { wch: 20 }, { wch: 15 }, { wch: 18 }, { wch: 12 }, { wch: 20 }
-      ];
-
-      applyMainTitleStyle(wsDetail, 0, 0, 12);
-      applySubTitleStyle(wsDetail, 1, 0, 12);
-      if (!wsDetail["!merges"]) wsDetail["!merges"] = [];
-      wsDetail["!merges"].push({ s: { r: 0, c: 0 }, e: { r: 0, c: 12 } });
-      wsDetail["!merges"].push({ s: { r: 1, c: 0 }, e: { r: 1, c: 12 } });
-
-      applyLabelStyle(wsDetail, 3, 0, 1);
-      applyInfoRowStyle(wsDetail, 4, 0, 3);
-      applyTableHeaderStyle(wsDetail, 6, 0, 12, "USD");
-
-      let detailRow = 7;
-      UseData.forEach((section) => {
-        section.Items.forEach((item) => {
-          const itemCurrency = item.Currency || section.Currency || "USD";
-
-          item.Requisitions.forEach((req) => {
-            req.Issues.forEach((issue) => {
-              const isEven = detailRow % 2 === 0;
-              applyCurrencyRowStyle(wsDetail, detailRow, 0, 12, itemCurrency, isEven);
-
-              const rowData = detailData[detailRow];
-              if (rowData && rowData[8] && rowData[8] !== "No Change") {
-                applyPriceVariationColor(wsDetail, detailRow, 8, rowData[8]);
-              }
-
-              detailRow++;
-            });
-          });
-        });
-      });
-
-      XLSX.utils.book_append_sheet(wb, wsDetail, "Price History");
-
-      // ===== SHEET 3: CURRENCY BREAKDOWN =====
-      const currencyData = [];
-
-      currencyData.push(["INVENTORY ISSUE REPORT"]);
-      currencyData.push(["CURRENCY BREAKDOWN"]);
-      currencyData.push([]);
-      currencyData.push(["Generated:", new Date().toLocaleString()]);
-      currencyData.push(["Date Range:", cndata.startDate ? formatDateExcel(cndata.startDate) : "N/A", "to", cndata.endDate ? formatDateExcel(cndata.endDate) : "N/A"]);
-      currencyData.push([]);
-      currencyData.push(["CURRENCY", "TOTAL VALUE", "NO. OF TRANSACTIONS", "PERCENTAGE OF TOTAL"]);
-
-      const currencyTotals = {};
-      const currencyCounts = {};
-      let totalValueAll = 0;
-      let totalTransactions = 0;
-
-      UseData.forEach((section) => {
-        section.Items.forEach((item) => {
-          const curr = item.Currency || section.Currency || "USD";
-          currencyTotals[curr] = (currencyTotals[curr] || 0) + item.TotalValue;
-          currencyCounts[curr] = (currencyCounts[curr] || 0) + item.Requisitions.length;
-          totalValueAll += item.TotalValue;
-        });
-      });
-
-      Object.values(currencyCounts).forEach((v) => (totalTransactions += v));
-
-      const sortedCurrencies = Object.keys(currencyTotals).sort();
-
-      sortedCurrencies.forEach((curr) => {
-        const value = currencyTotals[curr] || 0;
-        const count = currencyCounts[curr] || 0;
-        const percentage = totalValueAll > 0 ? ((value / totalValueAll) * 100).toFixed(1) : "0";
-        const symbol = getCurrencySymbol(curr);
-
-        currencyData.push([`${symbol} ${curr}`, Math.round(value), count, `${percentage}%`]);
-      });
-
-      currencyData.push([]);
-      currencyData.push(["TOTAL", Math.round(totalValueAll), totalTransactions, "100%"]);
-
-      const wsCurrency = XLSX.utils.aoa_to_sheet(currencyData);
-      wsCurrency["!cols"] = [{ wch: 20 }, { wch: 25 }, { wch: 25 }, { wch: 20 }];
-
-      applyMainTitleStyle(wsCurrency, 0, 0, 3);
-      applySubTitleStyle(wsCurrency, 1, 0, 3);
-      if (!wsCurrency["!merges"]) wsCurrency["!merges"] = [];
-      wsCurrency["!merges"].push({ s: { r: 0, c: 0 }, e: { r: 0, c: 3 } });
-      wsCurrency["!merges"].push({ s: { r: 1, c: 0 }, e: { r: 1, c: 3 } });
-
-      applyLabelStyle(wsCurrency, 3, 0, 1);
-      applyInfoRowStyle(wsCurrency, 4, 0, 3);
-      applyTableHeaderStyle(wsCurrency, 6, 0, 3, "USD");
-
-      for (let i = 7; i < currencyData.length; i++) {
-        const row = currencyData[i];
-        if (!row || row.length === 0) continue;
-        const firstCell = String(row[0] || "");
-
-        if (firstCell && firstCell !== "TOTAL" && !firstCell.includes("TOTAL")) {
-          const isEven = i % 2 === 0;
-          const currency = firstCell.replace(/[^\w]/g, "");
-          applyCurrencyRowStyle(wsCurrency, i, 0, 3, currency, isEven);
-        } else if (firstCell === "TOTAL") {
-          applyGrandTotalStyle(wsCurrency, i, 0, 3);
+  // Clear all filters
+  const clearAllFilters = useCallback(() => {
+    setSearchText("");
+    setFilterSection("all");
+    setFilterItem("all");
+    setFilterStatus("all");
+    setFilterCurrency("all");
+    setFilterRaiser([]);
+    setFilterDepartment([]);
+  }, []);
+
+  // Check if any filters are active
+  const hasActiveFilters = useMemo(() => {
+    return searchText || filterSection !== "all" || filterItem !== "all" || 
+           filterStatus !== "all" || filterCurrency !== "all" || 
+           filterRaiser.length > 0 || filterDepartment.length > 0;
+  }, [searchText, filterSection, filterItem, filterStatus, filterCurrency, filterRaiser, filterDepartment]);
+
+// ===== EXPORT EXCEL FUNCTION (FIXED: STYLES NOW TRACK REAL ROW INDICES) =====
+//
+// WHAT WAS WRONG:
+// - `currentRow`/`styleRow` were hardcoded to start at 8, assuming both
+//   filterRaiser and filterDepartment info rows were always present.
+//   If either was empty, those rows were skipped, so real content started
+//   2 rows earlier than the style code assumed.
+// - Each section pushed 4 empty spacer rows but incremented the row
+//   counter by 5 (`currentRow += 5`), causing a +1 drift PER SECTION that
+//   compounded (section 2, 3, 4... got progressively more misaligned).
+// - The Detail and Currency sheets hardcoded row 7/8 for their headers,
+//   with the same filter-row assumption bug.
+//
+// THE FIX:
+// Instead of computing row numbers with arithmetic, we record the REAL
+// row index the moment each row is pushed (using `array.length - 1`),
+// then use those recorded indices to apply styles. No more drift, ever.
+
+const exportExcel = useCallback(() => {
+  if (!UseData || UseData.length === 0) {
+    toast.warning("No data to export!");
+    return;
+  }
+
+  try {
+    const wb = XLSX.utils.book_new();
+
+    const applyBorder = (ws, range, borderStyle = "thin", color = "D9DEE7") => {
+      const [startRow, startCol, endRow, endCol] = range;
+      for (let r = startRow; r <= endRow; r++) {
+        for (let c = startCol; c <= endCol; c++) {
+          const cellRef = XLSX.utils.encode_cell({ r, c });
+          if (!ws[cellRef]) continue;
+          if (!ws[cellRef].s) ws[cellRef].s = {};
+          ws[cellRef].s.border = {
+            top: { style: borderStyle, color: { rgb: color } },
+            bottom: { style: borderStyle, color: { rgb: color } },
+            left: { style: borderStyle, color: { rgb: color } },
+            right: { style: borderStyle, color: { rgb: color } }
+          };
         }
       }
+    };
 
-      XLSX.utils.book_append_sheet(wb, wsCurrency, "Currency Breakdown");
+    const applyStyleToRange = (ws, range, styles) => {
+      const [startRow, startCol, endRow, endCol] = range;
+      for (let r = startRow; r <= endRow; r++) {
+        for (let c = startCol; c <= endCol; c++) {
+          const cellRef = XLSX.utils.encode_cell({ r, c });
+          if (!ws[cellRef]) ws[cellRef] = { v: "", t: "s" };
+          if (!ws[cellRef].s) ws[cellRef].s = {};
+          Object.assign(ws[cellRef].s, styles);
+        }
+      }
+    };
 
-      const fileName = `Inventory_Issue_Report_${new Date().toISOString().split("T")[0]}.xlsx`;
-      XLSX.writeFile(wb, fileName);
+    const applyMainTitleStyle = (ws, row, startCol, endCol) => {
+      applyStyleToRange(ws, [row, startCol, row, endCol], {
+        fill: { fgColor: { rgb: "0F172A" } },
+        font: { bold: true, color: { rgb: "FFFFFF" }, sz: 24, name: "Calibri" },
+        alignment: { horizontal: "center", vertical: "center" }
+      });
+    };
 
-      toast.success(`Exported ${wb.SheetNames.length} sheets successfully`);
-    } catch (error) {
-      console.error("Export Error:", error);
-      toast.error("Failed to export data. Please try again.");
+    const applySubtitleStyle = (ws, row, startCol, endCol) => {
+      applyStyleToRange(ws, [row, startCol, row, endCol], {
+        fill: { fgColor: { rgb: "1E293B" } },
+        font: { bold: true, color: { rgb: "FFFFFF" }, sz: 20, name: "Calibri" },
+        alignment: { horizontal: "center", vertical: "center" }
+      });
+    };
+
+    const applySectionHeaderStyle = (ws, row, startCol, endCol, currency) => {
+      const headerColor = getExcelCurrencyColor(currency);
+      applyStyleToRange(ws, [row, startCol, row, endCol], {
+        fill: { fgColor: { rgb: headerColor } },
+        font: { bold: true, color: { rgb: "FFFFFF" }, sz: 18, name: "Calibri" },
+        alignment: { horizontal: "left", vertical: "center" }
+      });
+      applyBorder(ws, [row, startCol, row, endCol], "medium", headerColor);
+    };
+
+    const applyTableHeaderStyle = (ws, row, startCol, endCol) => {
+      applyStyleToRange(ws, [row, startCol, row, endCol], {
+        fill: { fgColor: { rgb: "334155" } },
+        font: { bold: true, color: { rgb: "FFFFFF" }, sz: 14, name: "Calibri" },
+        alignment: { horizontal: "center", vertical: "center", wrapText: true }
+      });
+      applyBorder(ws, [row, startCol, row, endCol], "medium", "334155");
+    };
+
+    const applyDataRowStyle = (ws, row, startCol, endCol, isEven = false) => {
+      const bgColor = isEven ? "F8FAFC" : "FFFFFF";
+      applyStyleToRange(ws, [row, startCol, row, endCol], {
+        fill: { fgColor: { rgb: bgColor } },
+        font: { sz: 13, name: "Calibri", color: { rgb: "0F172A" } },
+        alignment: { horizontal: "center", vertical: "center" }
+      });
+      applyBorder(ws, [row, startCol, row, endCol], "thin", "E2E8F0");
+    };
+
+    const applySubtotalStyle = (ws, row, startCol, endCol, currency) => {
+      const textColor = getExcelCurrencyColor(currency);
+      applyStyleToRange(ws, [row, startCol, row, endCol], {
+        fill: { fgColor: { rgb: "F1F5F9" } },
+        font: { bold: true, color: { rgb: textColor }, sz: 14, name: "Calibri" },
+        alignment: { horizontal: "right", vertical: "center" }
+      });
+      applyBorder(ws, [row, startCol, row, endCol], "medium", textColor);
+    };
+
+    const applyGrandTotalStyle = (ws, row, startCol, endCol) => {
+      applyStyleToRange(ws, [row, startCol, row, endCol], {
+        fill: { fgColor: { rgb: "0D9488" } },
+        font: { bold: true, color: { rgb: "FFFFFF" }, sz: 16, name: "Calibri" },
+        alignment: { horizontal: "center", vertical: "center" }
+      });
+      applyBorder(ws, [row, startCol, row, endCol], "medium", "0D9488");
+    };
+
+    const applyInfoRowStyle = (ws, row, startCol, endCol) => {
+      applyStyleToRange(ws, [row, startCol, row, endCol], {
+        font: { sz: 12, name: "Calibri", color: { rgb: "475569" } },
+        alignment: { horizontal: "left", vertical: "center" },
+        fill: { fgColor: { rgb: "F8FAFC" } }
+      });
+    };
+
+    const applyLabelStyle = (ws, row, startCol, endCol) => {
+      applyStyleToRange(ws, [row, startCol, row, endCol], {
+        font: { bold: true, sz: 12, name: "Calibri", color: { rgb: "0F172A" } },
+        alignment: { horizontal: "left", vertical: "center" }
+      });
+    };
+
+    const applyPriceVariationColor = (ws, row, col, priceChange) => {
+      const cellRef = XLSX.utils.encode_cell({ r: row, c: col });
+      if (!ws[cellRef]) return;
+      if (!ws[cellRef].s) ws[cellRef].s = {};
+
+      const numChange = parseFloat(priceChange);
+      if (!isNaN(numChange)) {
+        if (numChange > 0.001) {
+          ws[cellRef].s.font = { bold: true, color: { rgb: "DC2626" }, sz: 12, name: "Calibri" };
+          ws[cellRef].s.fill = { fgColor: { rgb: "FEE2E2" } };
+        } else if (numChange < -0.001) {
+          ws[cellRef].s.font = { bold: true, color: { rgb: "0D9488" }, sz: 12, name: "Calibri" };
+          ws[cellRef].s.fill = { fgColor: { rgb: "E6F7F5" } };
+        }
+        ws[cellRef].s.alignment = { horizontal: "center", vertical: "center" };
+      }
+    };
+
+    // Small helper: push a row and return the REAL index it landed on.
+    // This replaces all manual "currentRow++ / += 5" arithmetic.
+    const pushRow = (arr, row) => {
+      arr.push(row);
+      return arr.length - 1;
+    };
+
+    const dateRangeText =
+      cndata.startDate && cndata.endDate
+        ? `${formatDateExcel(cndata.startDate)} to ${formatDateExcel(cndata.endDate)}`
+        : "N/A";
+
+    // ============================================================
+    // SHEET 1: MASTER SUMMARY
+    // ============================================================
+    const summaryData = [];
+    const summaryMeta = {
+      sections: [],   // { headerRow, tableHeaderRow, currency, itemRows: [], subtotalRow }
+      grandTotalRow: null,
+      infoRows: [],
+    };
+
+    const titleRow = pushRow(summaryData, ["INVENTORY ISSUE REPORT"]);
+    const subtitleRow = pushRow(summaryData, ["SECTION & ITEM SUMMARY"]);
+    pushRow(summaryData, []);
+
+    summaryMeta.infoRows.push(pushRow(summaryData, ["Generated:", new Date().toLocaleString()]));
+    summaryMeta.infoRows.push(pushRow(summaryData, ["Date Range:", dateRangeText]));
+    if (filterRaiser.length > 0) {
+      summaryMeta.infoRows.push(
+        pushRow(summaryData, ["Filtered by Raiser:", filterRaiser.join(", ")])
+      );
     }
-  }, [UseData, cndata]);
+    if (filterDepartment.length > 0) {
+      summaryMeta.infoRows.push(
+        pushRow(summaryData, ["Filtered by Department:", filterDepartment.join(", ")])
+      );
+    }
+    pushRow(summaryData, []);
+
+    let grandReq = 0, grandIssued = 0, grandPending = 0, grandValue = 0;
+
+    UseData.forEach((section) => {
+      const sectionCurrency = section.Currency || "USD";
+      const headerRow = pushRow(summaryData, [section.CostCenter]);
+
+      const tableHeaderRow = pushRow(summaryData, [
+        "Sl", "MATERIAL", "UNIT", "CURRENCY", "REQUIRED", "ISSUED", "PENDING", "AVG PRICE", "TOTAL VALUE"
+      ]);
+
+      let sectionReq = 0, sectionIssued = 0, sectionPending = 0, sectionValue = 0;
+      let itemCounter = 1;
+      const itemRows = [];
+
+      section.Items.forEach((item) => {
+        const unit = item.Requisitions.length > 0 ? item.Requisitions[0].Unit || "" : "";
+        const currency = item.Currency || section.Currency || "USD";
+        const symbol = getCurrencySymbol(currency);
+
+        let totalPrice = 0;
+        let priceCount = 0;
+        item.Requisitions.forEach((req) => {
+          req.Issues.forEach((issue) => {
+            if (issue.IssuePrice > 0) {
+              totalPrice += issue.IssuePrice;
+              priceCount++;
+            }
+          });
+        });
+        const avgPrice = priceCount > 0 ? totalPrice / priceCount : 0;
+
+        const row = pushRow(summaryData, [
+          itemCounter,
+          item.Material,
+          unit,
+          `${symbol} ${currency}`,
+          item.TotalRequired || 0,
+          item.TotalIssued || 0,
+          item.TotalPending || 0,
+          avgPrice > 0 ? avgPrice.toFixed(4) : "-",
+          Math.round(item.TotalValue || 0)
+        ]);
+        itemRows.push(row);
+
+        sectionReq += item.TotalRequired || 0;
+        sectionIssued += item.TotalIssued || 0;
+        sectionPending += item.TotalPending || 0;
+        sectionValue += item.TotalValue || 0;
+        itemCounter++;
+      });
+
+      const subtotalRow = pushRow(summaryData, [
+        "", `SUBTOTAL: ${section.CostCenter}`, "", "",
+        sectionReq, sectionIssued, sectionPending, "", Math.round(sectionValue)
+      ]);
+
+      // Exactly 4 blank spacer rows — no counter drift possible now.
+      pushRow(summaryData, []);
+      pushRow(summaryData, []);
+      pushRow(summaryData, []);
+      pushRow(summaryData, []);
+
+      grandReq += sectionReq;
+      grandIssued += sectionIssued;
+      grandPending += sectionPending;
+      grandValue += sectionValue;
+
+      summaryMeta.sections.push({
+        headerRow, tableHeaderRow, currency: sectionCurrency, itemRows, subtotalRow
+      });
+    });
+
+    summaryMeta.grandTotalRow = pushRow(summaryData, [
+      "", "GRAND TOTAL", "", "", grandReq, grandIssued, grandPending, "", Math.round(grandValue)
+    ]);
+
+    const wsSummary = XLSX.utils.aoa_to_sheet(summaryData);
+
+    wsSummary["!cols"] = [
+      { wch: 6 }, { wch: 40 }, { wch: 12 }, { wch: 14 },
+      { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 18 }, { wch: 18 }
+    ];
+
+    wsSummary["!merges"] = [
+      { s: { r: titleRow, c: 0 }, e: { r: titleRow, c: 8 } },
+      { s: { r: subtitleRow, c: 0 }, e: { r: subtitleRow, c: 8 } },
+    ];
+
+    applyMainTitleStyle(wsSummary, titleRow, 0, 8);
+    applySubtitleStyle(wsSummary, subtitleRow, 0, 8);
+
+    applyLabelStyle(wsSummary, summaryMeta.infoRows[0], 0, 1);
+    summaryMeta.infoRows.slice(1).forEach((r) => applyInfoRowStyle(wsSummary, r, 0, 3));
+
+    summaryMeta.sections.forEach(({ headerRow, tableHeaderRow, currency, itemRows, subtotalRow }) => {
+      applySectionHeaderStyle(wsSummary, headerRow, 0, 8, currency);
+      wsSummary["!merges"].push({ s: { r: headerRow, c: 0 }, e: { r: headerRow, c: 8 } });
+
+      applyTableHeaderStyle(wsSummary, tableHeaderRow, 0, 8);
+
+      itemRows.forEach((row, idx) => {
+        applyDataRowStyle(wsSummary, row, 0, 8, idx % 2 === 0);
+      });
+
+      applySubtotalStyle(wsSummary, subtotalRow, 0, 8, currency);
+    });
+
+    applyGrandTotalStyle(wsSummary, summaryMeta.grandTotalRow, 0, 8);
+
+    XLSX.utils.book_append_sheet(wb, wsSummary, "Master Summary");
+
+    // ============================================================
+    // SHEET 2: DETAILED ISSUES WITH PRICE HISTORY
+    // ============================================================
+    const detailData = [];
+    const detailMeta = { infoRows: [], tableHeaderRow: null, dataRows: [] };
+
+    const detailTitleRow = pushRow(detailData, ["INVENTORY ISSUE REPORT"]);
+    const detailSubtitleRow = pushRow(detailData, ["DETAILED ISSUES WITH PRICE HISTORY"]);
+    pushRow(detailData, []);
+
+    detailMeta.infoRows.push(pushRow(detailData, ["Generated:", new Date().toLocaleString()]));
+    detailMeta.infoRows.push(pushRow(detailData, ["Date Range:", dateRangeText]));
+    if (filterRaiser.length > 0) {
+      detailMeta.infoRows.push(pushRow(detailData, ["Filtered by Raiser:", filterRaiser.join(", ")]));
+    }
+    if (filterDepartment.length > 0) {
+      detailMeta.infoRows.push(pushRow(detailData, ["Filtered by Department:", filterDepartment.join(", ")]));
+    }
+    pushRow(detailData, []);
+
+    detailMeta.tableHeaderRow = pushRow(detailData, [
+      "Sl", "SECTION", "MATERIAL", "REQ NO", "ISSUE NO", "ISSUE DATE",
+      "QTY", "PRICE", "PREVIOUS PRICE", "PRICE CHANGE", "CHANGE %",
+      "VALUE", "CURRENCY", "ISSUED BY", "RAISED BY", "DEPARTMENT"
+    ]);
+
+    let detailCounter = 1;
+    UseData.forEach((section) => {
+      section.Items.forEach((item) => {
+        item.Requisitions.forEach((req) => {
+          req.Issues.forEach((issue) => {
+            const priceChange = issue.PreviousPrice ? issue.IssuePrice - issue.PreviousPrice : 0;
+            const changePercent = issue.PreviousPrice && issue.PreviousPrice > 0
+              ? (priceChange / issue.PreviousPrice) * 100 : 0;
+            const symbol = getCurrencySymbol(issue.Currency || "USD");
+
+            const priceFormat = issue.IssuePrice < 1 ? issue.IssuePrice.toFixed(4) : issue.IssuePrice.toFixed(2);
+            const prevPriceFormat = issue.PreviousPrice && issue.PreviousPrice < 1
+              ? issue.PreviousPrice.toFixed(4)
+              : issue.PreviousPrice ? issue.PreviousPrice.toFixed(2) : "-";
+
+            const row = pushRow(detailData, [
+              detailCounter,
+              section.CostCenter,
+              item.Material,
+              req.RequisitionNo,
+              issue.IssueNo,
+              formatDateExcel(issue.IssueDate),
+              issue.IssueQty || 0,
+              priceFormat,
+              prevPriceFormat,
+              priceChange !== 0 ? `${priceChange > 0 ? "+" : ""}${priceChange.toFixed(4)}` : "No Change",
+              changePercent !== 0 ? `${changePercent > 0 ? "+" : ""}${changePercent.toFixed(1)}%` : "0%",
+              Math.round(issue.IssueValue || 0),
+              `${symbol} ${issue.Currency || "USD"}`,
+              issue.IssuedBy || "-",
+              req.RequistionRaiseBy || "-",
+              req.Department || "-"
+            ]);
+
+            detailMeta.dataRows.push({
+              row,
+              hasPriceChange: !!(issue.PreviousPrice && issue.PreviousPrice !== issue.IssuePrice),
+              priceChangeValue: issue.PreviousPrice ? issue.IssuePrice - issue.PreviousPrice : 0,
+            });
+
+            detailCounter++;
+          });
+        });
+      });
+    });
+
+    const wsDetail = XLSX.utils.aoa_to_sheet(detailData);
+    wsDetail["!cols"] = [
+      { wch: 6 }, { wch: 20 }, { wch: 35 }, { wch: 18 }, { wch: 18 }, { wch: 15 },
+      { wch: 12 }, { wch: 18 }, { wch: 18 }, { wch: 20 }, { wch: 15 },
+      { wch: 18 }, { wch: 12 }, { wch: 20 }, { wch: 20 }, { wch: 18 }
+    ];
+
+    wsDetail["!merges"] = [
+      { s: { r: detailTitleRow, c: 0 }, e: { r: detailTitleRow, c: 15 } },
+      { s: { r: detailSubtitleRow, c: 0 }, e: { r: detailSubtitleRow, c: 15 } },
+    ];
+
+    applyMainTitleStyle(wsDetail, detailTitleRow, 0, 15);
+    applySubtitleStyle(wsDetail, detailSubtitleRow, 0, 15);
+
+    applyLabelStyle(wsDetail, detailMeta.infoRows[0], 0, 1);
+    detailMeta.infoRows.slice(1).forEach((r) => applyInfoRowStyle(wsDetail, r, 0, 3));
+
+    applyTableHeaderStyle(wsDetail, detailMeta.tableHeaderRow, 0, 15);
+
+    detailMeta.dataRows.forEach(({ row, hasPriceChange, priceChangeValue }, idx) => {
+      applyDataRowStyle(wsDetail, row, 0, 15, idx % 2 === 0);
+      if (hasPriceChange) {
+        applyPriceVariationColor(wsDetail, row, 9, priceChangeValue.toString());
+      }
+    });
+
+    XLSX.utils.book_append_sheet(wb, wsDetail, "Price History");
+
+    // ============================================================
+    // SHEET 3: CURRENCY BREAKDOWN
+    // ============================================================
+    const currencyData = [];
+    const currencyMeta = { infoRows: [], tableHeaderRow: null, dataRows: [], totalRow: null };
+
+    const currencyTitleRow = pushRow(currencyData, ["INVENTORY ISSUE REPORT"]);
+    const currencySubtitleRow = pushRow(currencyData, ["CURRENCY BREAKDOWN"]);
+    pushRow(currencyData, []);
+
+    currencyMeta.infoRows.push(pushRow(currencyData, ["Generated:", new Date().toLocaleString()]));
+    currencyMeta.infoRows.push(pushRow(currencyData, ["Date Range:", dateRangeText]));
+    if (filterRaiser.length > 0) {
+      currencyMeta.infoRows.push(pushRow(currencyData, ["Filtered by Raiser:", filterRaiser.join(", ")]));
+    }
+    if (filterDepartment.length > 0) {
+      currencyMeta.infoRows.push(pushRow(currencyData, ["Filtered by Department:", filterDepartment.join(", ")]));
+    }
+    pushRow(currencyData, []);
+
+    currencyMeta.tableHeaderRow = pushRow(currencyData, [
+      "Sl", "CURRENCY", "TOTAL VALUE", "NO. OF TRANSACTIONS", "PERCENTAGE OF TOTAL"
+    ]);
+
+    const currencyTotals = {};
+    const currencyCounts = {};
+    let totalValueAll = 0;
+    let totalTransactions = 0;
+
+    UseData.forEach((section) => {
+      section.Items.forEach((item) => {
+        const curr = item.Currency || section.Currency || "USD";
+        currencyTotals[curr] = (currencyTotals[curr] || 0) + item.TotalValue;
+        currencyCounts[curr] = (currencyCounts[curr] || 0) + item.Requisitions.length;
+        totalValueAll += item.TotalValue;
+      });
+    });
+    Object.values(currencyCounts).forEach((v) => (totalTransactions += v));
+
+    const sortedCurrencies = Object.keys(currencyTotals).sort();
+
+    let currencyCounter = 1;
+    sortedCurrencies.forEach((curr) => {
+      const value = currencyTotals[curr] || 0;
+      const count = currencyCounts[curr] || 0;
+      const percentage = totalValueAll > 0 ? ((value / totalValueAll) * 100).toFixed(1) : "0";
+      const symbol = getCurrencySymbol(curr);
+
+      const row = pushRow(currencyData, [
+        currencyCounter, `${symbol} ${curr}`, Math.round(value), count, `${percentage}%`
+      ]);
+      currencyMeta.dataRows.push(row);
+      currencyCounter++;
+    });
+
+    pushRow(currencyData, []);
+    currencyMeta.totalRow = pushRow(currencyData, [
+      "", "TOTAL", Math.round(totalValueAll), totalTransactions, "100%"
+    ]);
+
+    const wsCurrency = XLSX.utils.aoa_to_sheet(currencyData);
+    wsCurrency["!cols"] = [
+      { wch: 6 }, { wch: 20 }, { wch: 25 }, { wch: 25 }, { wch: 20 }
+    ];
+
+    wsCurrency["!merges"] = [
+      { s: { r: currencyTitleRow, c: 0 }, e: { r: currencyTitleRow, c: 4 } },
+      { s: { r: currencySubtitleRow, c: 0 }, e: { r: currencySubtitleRow, c: 4 } },
+    ];
+
+    applyMainTitleStyle(wsCurrency, currencyTitleRow, 0, 4);
+    applySubtitleStyle(wsCurrency, currencySubtitleRow, 0, 4);
+
+    applyLabelStyle(wsCurrency, currencyMeta.infoRows[0], 0, 1);
+    currencyMeta.infoRows.slice(1).forEach((r) => applyInfoRowStyle(wsCurrency, r, 0, 3));
+
+    applyTableHeaderStyle(wsCurrency, currencyMeta.tableHeaderRow, 0, 4);
+
+    currencyMeta.dataRows.forEach((row, idx) => {
+      applyDataRowStyle(wsCurrency, row, 0, 4, idx % 2 === 0);
+    });
+
+    applyGrandTotalStyle(wsCurrency, currencyMeta.totalRow, 0, 4);
+
+    XLSX.utils.book_append_sheet(wb, wsCurrency, "Currency Breakdown");
+
+    // Save the file
+    const fileName = `Inventory_Issue_Report_${new Date().toISOString().split("T")[0]}.xlsx`;
+    XLSX.writeFile(wb, fileName);
+
+    toast.success(`Exported ${wb.SheetNames.length} sheets successfully`);
+  } catch (error) {
+    console.error("Export Error:", error);
+    toast.error("Failed to export data. Please try again.");
+  }
+}, [UseData, cndata, filterRaiser, filterDepartment]);
+  // Clear raiser filter
+  const clearRaiserFilter = useCallback(() => {
+    setFilterRaiser([]);
+  }, []);
+
+  // Clear department filter
+  const clearDepartmentFilter = useCallback(() => {
+    setFilterDepartment([]);
+  }, []);
 
   // Currency filter control
   const currencyFilterUI = useMemo(() => {
@@ -1272,6 +1565,10 @@ function FullAdvancedInventoryIssue_CompleteGreen() {
       </select>
     );
   }, [uniqueCurrencies, filterCurrency]);
+
+  // Raiser filter badge count
+  const raiserFilterCount = filterRaiser.length;
+  const departmentFilterCount = filterDepartment.length;
 
   // ============================================
   // RENDER
@@ -1306,6 +1603,24 @@ function FullAdvancedInventoryIssue_CompleteGreen() {
                       <span className="inline-flex items-center gap-1 text-slate-500 font-medium">
                         <CalendarDays size={12} />
                         {formatDate(cndata.startDate)} → {formatDate(cndata.endDate)}
+                      </span>
+                    </>
+                  )}
+                  {raiserFilterCount > 0 && (
+                    <>
+                      <span className="text-slate-300">•</span>
+                      <span className="inline-flex items-center gap-1 text-teal-600 font-medium">
+                        <User size={12} />
+                        {raiserFilterCount} raiser{raiserFilterCount > 1 ? "s" : ""} selected
+                      </span>
+                    </>
+                  )}
+                  {departmentFilterCount > 0 && (
+                    <>
+                      <span className="text-slate-300">•</span>
+                      <span className="inline-flex items-center gap-1 text-emerald-600 font-medium">
+                        <Building size={12} />
+                        {departmentFilterCount} dept{departmentFilterCount > 1 ? "s" : ""} selected
                       </span>
                     </>
                   )}
@@ -1350,6 +1665,64 @@ function FullAdvancedInventoryIssue_CompleteGreen() {
               Clear
             </button>
           </motion.div>
+        )}
+
+        {/* FILTER BANNERS */}
+        {raiserFilterCount > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-teal-50 border border-teal-200 rounded-xl p-3 mb-3 flex items-center justify-between"
+          >
+            <div className="flex items-center gap-2 text-sm flex-wrap">
+              <User size={14} className="text-teal-600" />
+              <span className="text-slate-700">
+                Raiser{raiserFilterCount > 1 ? "s" : ""}: 
+              </span>
+              <div className="flex flex-wrap gap-1.5">
+                {filterRaiser.map((raiser) => (
+                  <span key={raiser} className="bg-teal-100 text-teal-800 px-2.5 py-0.5 rounded-full text-xs font-medium">
+                    {raiser}
+                  </span>
+                ))}
+              </div>
+            </div>
+            <button onClick={clearRaiserFilter} className="text-xs text-slate-500 hover:text-slate-700 flex items-center gap-1 font-medium">
+              <XCircle size={13} />
+              Clear
+            </button>
+          </motion.div>
+        )}
+
+        {departmentFilterCount > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 mb-3 flex items-center justify-between"
+          >
+            <div className="flex items-center gap-2 text-sm flex-wrap">
+              <Building size={14} className="text-emerald-600" />
+              <span className="text-slate-700">
+                Department{departmentFilterCount > 1 ? "s" : ""}: 
+              </span>
+              <div className="flex flex-wrap gap-1.5">
+                {filterDepartment.map((dept) => (
+                  <span key={dept} className="bg-emerald-100 text-emerald-800 px-2.5 py-0.5 rounded-full text-xs font-medium">
+                    {dept}
+                  </span>
+                ))}
+              </div>
+            </div>
+            <button onClick={clearDepartmentFilter} className="text-xs text-slate-500 hover:text-slate-700 flex items-center gap-1 font-medium">
+              <XCircle size={13} />
+              Clear
+            </button>
+          </motion.div>
+        )}
+
+        {/* QUICK STATS SUMMARY */}
+        {!loading && UseData.length > 0 && (
+          <QuickStatsSummary stats={summaryStats} />
         )}
 
         {/* KPI STRIP */}
@@ -1434,6 +1807,28 @@ function FullAdvancedInventoryIssue_CompleteGreen() {
               <option value="critical">Critical (0%)</option>
             </select>
 
+            {/* Multi-select Raiser Filter */}
+            <MultiSelectDropdown
+              options={uniqueRaisers}
+              selectedValues={filterRaiser}
+              onChange={setFilterRaiser}
+              placeholder="All raisers"
+              label="Raisers"
+              icon={User}
+              maxDisplay={2}
+            />
+
+            {/* Multi-select Department Filter */}
+            <MultiSelectDropdown
+              options={uniqueDepartments}
+              selectedValues={filterDepartment}
+              onChange={setFilterDepartment}
+              placeholder="All departments"
+              label="Departments"
+              icon={Building}
+              maxDisplay={2}
+            />
+
             <div className="h-6 w-px bg-slate-200 mx-0.5 hidden md:block" />
 
             <div className="flex items-center gap-1 bg-slate-100 rounded-xl p-1">
@@ -1463,6 +1858,16 @@ function FullAdvancedInventoryIssue_CompleteGreen() {
             </button>
 
             <button
+              onClick={() => setViewMode(viewMode === "detailed" ? "compact" : "detailed")}
+              title={viewMode === "detailed" ? "Switch to compact view" : "Switch to detailed view"}
+              className={`p-2.5 rounded-xl border transition-all ${
+                viewMode === "detailed" ? "bg-blue-50 border-blue-200 text-blue-700" : "bg-white border-slate-200 text-slate-400"
+              }`}
+            >
+              <Layers size={16} />
+            </button>
+
+            <button
               onClick={() => setShowCharts(!showCharts)}
               title="Toggle charts"
               className={`p-2.5 rounded-xl border transition-all ${showCharts ? "bg-teal-50 border-teal-200 text-teal-700" : "bg-white border-slate-200 text-slate-400"}`}
@@ -1477,6 +1882,16 @@ function FullAdvancedInventoryIssue_CompleteGreen() {
             >
               <SlidersHorizontal size={16} />
             </button>
+
+            {hasActiveFilters && (
+              <button
+                onClick={clearAllFilters}
+                title="Clear all filters"
+                className="p-2.5 bg-rose-50 border border-rose-200 rounded-xl hover:bg-rose-100 transition-all text-rose-600"
+              >
+                <XCircle size={16} />
+              </button>
+            )}
 
             <button
               onClick={exportExcel}
@@ -1606,7 +2021,7 @@ function FullAdvancedInventoryIssue_CompleteGreen() {
                       )}
 
                       {/* MATERIALS */}
-                      <div className="p-4 space-y-3">
+                      <div className={`p-4 space-y-3 ${viewMode === "compact" ? "max-h-96 overflow-y-auto" : ""}`}>
                         {section.Items.map((item) => {
                           const itemKey = `${section.CostCenter}-${item.Material}`;
                           const isItemExpanded = expandedItems[itemKey] || false;
@@ -1730,6 +2145,7 @@ function FullAdvancedInventoryIssue_CompleteGreen() {
                                             <th className="p-2.5 text-left font-semibold">Unit</th>
                                             <th className="p-2.5 text-left font-semibold">Currency</th>
                                             <th className="p-2.5 text-left font-semibold">Raised by</th>
+                                            <th className="p-2.5 text-left font-semibold">Department</th>
                                             <th className="p-2.5 text-left font-semibold">Issues</th>
                                           </tr>
                                           <tr className="bg-teal-50/70 font-semibold border-b border-teal-100">
@@ -1743,7 +2159,7 @@ function FullAdvancedInventoryIssue_CompleteGreen() {
                                                 {item.CompletionRate}%
                                               </span>
                                             </td>
-                                            <td colSpan={4}></td>
+                                            <td colSpan={5}></td>
                                           </tr>
                                         </thead>
                                         <tbody>
@@ -1786,6 +2202,14 @@ function FullAdvancedInventoryIssue_CompleteGreen() {
                                                       </div>
                                                     )}
                                                   </td>
+                                                  <td className="p-2.5 text-slate-500 text-xs">
+                                                    {req.Department && (
+                                                      <div className="flex items-center gap-1">
+                                                        <Building size={11} className="text-slate-400" />
+                                                        <span>{req.Department}</span>
+                                                      </div>
+                                                    )}
+                                                  </td>
                                                   <td className="p-2.5">
                                                     <div className="flex items-center gap-1.5">
                                                       <span className="text-[11px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-medium">
@@ -1799,7 +2223,7 @@ function FullAdvancedInventoryIssue_CompleteGreen() {
                                                 <AnimatePresence>
                                                   {isReqExpanded && (
                                                     <tr>
-                                                      <td colSpan={11} className="p-0">
+                                                      <td colSpan={12} className="p-0">
                                                         <motion.div
                                                           initial={{ height: 0, opacity: 0 }}
                                                           animate={{ height: "auto", opacity: 1 }}
@@ -1807,7 +2231,7 @@ function FullAdvancedInventoryIssue_CompleteGreen() {
                                                           transition={{ duration: 0.2 }}
                                                           className="bg-slate-50/60 p-3.5"
                                                         >
-                                                          <div className="grid grid-cols-1 md:grid-cols-4 gap-2.5 mb-3">
+                                                          <div className="grid grid-cols-1 md:grid-cols-5 gap-2.5 mb-3">
                                                             {req.RequistionRaiseBy && (
                                                               <div className="bg-white rounded-xl p-2.5 border border-slate-200">
                                                                 <div className="flex items-center gap-1.5">
@@ -1815,7 +2239,16 @@ function FullAdvancedInventoryIssue_CompleteGreen() {
                                                                   <span className="text-[11px] font-medium text-slate-400 uppercase tracking-wide">Raised by</span>
                                                                 </div>
                                                                 <p className="text-sm font-semibold text-slate-800 mt-0.5">{req.RequistionRaiseBy}</p>
-                                                                {req.Department && <span className="text-[11px] text-slate-400">{req.Department}</span>}
+                                                              </div>
+                                                            )}
+
+                                                            {req.Department && (
+                                                              <div className="bg-white rounded-xl p-2.5 border border-slate-200">
+                                                                <div className="flex items-center gap-1.5">
+                                                                  <Building size={13} className="text-slate-400" />
+                                                                  <span className="text-[11px] font-medium text-slate-400 uppercase tracking-wide">Department</span>
+                                                                </div>
+                                                                <p className="text-sm font-semibold text-slate-800 mt-0.5">{req.Department}</p>
                                                               </div>
                                                             )}
 
@@ -1963,6 +2396,8 @@ function FullAdvancedInventoryIssue_CompleteGreen() {
               {UseData.length} sections · {summaryStats.materials} materials · {summaryStats.req} requisitions · {summaryStats.issues} issues
               {cndata.startDate && cndata.endDate && ` · ${formatDate(cndata.startDate)} → ${formatDate(cndata.endDate)}`}
               {searchText && searchText.trim().length > 0 && ` · Search: "${searchText.trim()}"`}
+              {filterRaiser.length > 0 && ` · Raisers: ${filterRaiser.join(", ")}`}
+              {filterDepartment.length > 0 && ` · Depts: ${filterDepartment.join(", ")}`}
             </p>
           </motion.div>
         )}

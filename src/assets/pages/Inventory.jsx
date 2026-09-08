@@ -31,6 +31,7 @@ const LOW_STOCK_THRESHOLD = 50;
 
 // Opening balances for materials (should come from API in production)
 const OPENING_BALANCES = {
+  "LDPE": 7258,
   "10 mm Single Satin (White)": 9,
   "15 mm Single Satin (White)": 1954,
   "Silicon Oil (FLUID 5000)": 2350,
@@ -68,7 +69,6 @@ const OPENING_BALANCES = {
   "DANA PP": 0,
   "DANA RECYCLE": 0,
   "Jumbo role (40 mic)": 0,
-  "LDPE": 0,
   "Poly Ink (Toyo Magenta)": 0
 };
 

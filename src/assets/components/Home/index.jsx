@@ -144,7 +144,7 @@ function Home() {
     console.log("🔍 Actual Sale Keys:", Object.keys(actualSalesData[0]));
     console.log("✅ ChallanDate present:", !!actualSalesData[0].ChallanDate);
   }
-console.log("cndata:", cndata);
+console.log("cndata0.........:", cndata);
   // ============================================================
   // State
   // ============================================================
@@ -697,11 +697,9 @@ console.log("cndata:", cndata);
         command15Data.forEach((item) => {
           const workOrderNo =
             item.WorkOrderNo ||
-            item.workOrderNo ||
             "";
 
           if (!workOrderNo) return;
-
           mergedMap.set(workOrderNo, {
             ...item,
 
@@ -732,7 +730,7 @@ console.log("cndata:", cndata);
             BalanceValue: 0,
           });
         });
-
+        console.log("command15Data................",command15Data.map(item => item.WorkOrderNo));
         // ------------------------------------------
         // SECOND: COMMAND 5
         // ------------------------------------------
@@ -740,9 +738,7 @@ console.log("cndata:", cndata);
         command5Data.forEach((item) => {
           const workOrderNo =
             item.WorkOrderNo ||
-            item.workOrderNo ||
             "";
-
           if (!workOrderNo) return;
 
           const existing = mergedMap.get(workOrderNo);
@@ -954,7 +950,7 @@ console.log("cndata:", cndata);
               ),
             };
           });
-
+          console.log("Merged Data", mergedData);
         // ==========================================
         // FINAL CONSOLE
         // ==========================================
@@ -1056,7 +1052,7 @@ console.log("cndata:", cndata);
               "local-command1-command5-command15-command3",
           },
         }));
-
+        console.log("cndata updated with date range data:", cndata);
         setRangeFetchProgress(100);
 
         setRangeFetchStatus(
