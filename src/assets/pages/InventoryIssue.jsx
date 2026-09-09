@@ -679,6 +679,7 @@ function FullAdvancedInventoryIssue_CompleteGreen() {
       let req = material.get(reqNo);
       if (!req) {
         req = {
+          RequisitionNo: reqNo,
           RequiredQty: 0,
           Issues: [],
           BalanceQTY: 0,
