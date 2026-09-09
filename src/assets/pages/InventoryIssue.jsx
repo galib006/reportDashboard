@@ -687,7 +687,6 @@ function FullAdvancedInventoryIssue_CompleteGreen() {
         material.set(reqNo, req);
       }
 
-      req.RequiredQty += safeNumber(d.RequiredQTY);
       if (req.RequiredQty === 0) {
   req.RequiredQty = safeNumber(d.RequiredQTY);
 }
@@ -828,7 +827,9 @@ function FullAdvancedInventoryIssue_CompleteGreen() {
         material.set(reqNo, req);
       }
 
-      req.RequiredQty += safeNumber(d.RequiredQTY);
+      if (req.RequiredQty === 0) {
+  req.RequiredQty = safeNumber(d.RequiredQTY);
+}
       req.BalanceQTY += safeNumber(d.BalanceQTY);
       req.ExtraIssuedQTY += safeNumber(d.ExtraIssuedQTY);
 
