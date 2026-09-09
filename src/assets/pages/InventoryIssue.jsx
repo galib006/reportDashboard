@@ -2,7 +2,9 @@
 // Redesigned: cohesive "operations dashboard" visual system, same data logic & Excel export.
 // Added: Multi-select filters for RequistionRaiseBy and Department
 // Fixed: Section data handling using CostCenterName
-// Added: Enhanced filtering capabilities and UI improvements
+// Fixed: Required quantity summation for same RequisitionNo
+// Fixed: Excel export with dynamic row indexing
+// Added: Unfiltered lifetime totals section
 
 import React, { useContext, useMemo, useState, useCallback, useEffect, useRef } from "react";
 import DateRangePicker from "../components/DatePickerData";
@@ -33,7 +35,6 @@ import {
   RefreshCw,
   ChevronDown,
   ChevronRight,
-  PieChart,
   CheckCircle2,
   Clock,
   Package,
@@ -56,13 +57,10 @@ import {
   Minus,
   ArrowUpDown,
   LayoutGrid,
-  Filter,
   User,
   Building,
   Layers,
-  FileText,
-  BarChart3,
-  Printer
+  Database
 } from "lucide-react";
 
 // Register ChartJS
@@ -309,7 +307,8 @@ const StatCard = React.memo(({ title, value, icon: Icon, accent = "slate", subte
     violet: { bar: "bg-violet-500", chip: "bg-violet-50 text-violet-700" },
     amber: { bar: "bg-amber-500", chip: "bg-amber-50 text-amber-700" },
     ink: { bar: "bg-indigo-500", chip: "bg-indigo-50 text-indigo-700" },
-    emerald: { bar: "bg-emerald-500", chip: "bg-emerald-50 text-emerald-700" }
+    emerald: { bar: "bg-emerald-500", chip: "bg-emerald-50 text-emerald-700" },
+    slateLight: { bar: "bg-slate-400", chip: "bg-slate-50 text-slate-600" }
   };
   const a = accentMap[accent] || accentMap.slate;
 
@@ -457,9 +456,9 @@ const StatusBadge = React.memo(({ percentage }) => {
 StatusBadge.displayName = "StatusBadge";
 
 // Quick Stats Summary Component
-const QuickStatsSummary = React.memo(({ stats }) => {
+const QuickStatsSummary = React.memo(({ stats, label = "Summary" }) => {
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2 bg-white rounded-xl border border-slate-200 p-3 mb-4">
+    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2 bg-white rounded-xl border border-slate-200 p-3">
       <div className="text-center">
         <p className="text-[10px] text-slate-400 uppercase tracking-wide">Sections</p>
         <p className="text-sm font-bold text-slate-700">{stats.sections}</p>
@@ -510,7 +509,7 @@ function FullAdvancedInventoryIssue_CompleteGreen() {
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterCurrency, setFilterCurrency] = useState("all");
   const [filterRaiser, setFilterRaiser] = useState([]);
-  const [filterDepartment, setFilterDepartment] = useState([]); // New: multi-select for Department
+  const [filterDepartment, setFilterDepartment] = useState([]);
   const [expandedSections, setExpandedSections] = useState({});
   const [expandedItems, setExpandedItems] = useState({});
   const [expandedRequisitions, setExpandedRequisitions] = useState({});
@@ -519,7 +518,7 @@ function FullAdvancedInventoryIssue_CompleteGreen() {
   const [sortOrder, setSortOrder] = useState("desc");
   const [showCharts, setShowCharts] = useState(true);
   const [showBalanceDetails, setShowBalanceDetails] = useState(true);
-  const [viewMode, setViewMode] = useState("detailed"); // "detailed" or "compact"
+  const [viewMode, setViewMode] = useState("detailed");
 
   const searchCacheRef = useRef({});
 
@@ -548,14 +547,13 @@ function FullAdvancedInventoryIssue_CompleteGreen() {
     }
   }, [cndata.startDate, cndata.endDate, stDate, edDate, apiKey, setcndata, setLoading]);
 
-  const safeString = (val) => (val == null ? "" : String(val));
+  const safeString = (val) => (val == null ? "" : String(val).trim());
   const safeNumber = (val) => {
     if (val == null) return 0;
     const num = parseFloat(val);
     return isNaN(num) ? 0 : num;
   };
 
-  // Get unique sections from CostCenterName
   const uniqueSections = useMemo(() => {
     const data = cndata?.inventory || [];
     if (!Array.isArray(data) || data.length === 0) return [];
@@ -600,7 +598,6 @@ function FullAdvancedInventoryIssue_CompleteGreen() {
     return [...set].sort();
   }, [cndata]);
 
-  // New: Unique Department values
   const uniqueDepartments = useMemo(() => {
     const data = cndata?.inventory || [];
     if (!Array.isArray(data) || data.length === 0) return [];
@@ -612,7 +609,97 @@ function FullAdvancedInventoryIssue_CompleteGreen() {
     return [...set].sort();
   }, [cndata]);
 
-  // ==================== PROCESS DATA ====================
+  // ==================== UNFILTERED TOTALS (Lifetime Data) ====================
+  const unfilteredStats = useMemo(() => {
+    const data = cndata?.inventory || [];
+    if (!Array.isArray(data) || data.length === 0) {
+      return { req: 0, issued: 0, pending: 0, value: 0, balance: 0, materials: 0, issues: 0, sections: 0, completion: "0" };
+    }
+
+    const sectionMap = new Map();
+    
+    for (let i = 0; i < data.length; i++) {
+      const d = data[i];
+      if (!d) continue;
+
+      const sectionName = safeString(d.CostCenterName);
+      if (!sectionName) continue;
+
+      const materialName = safeString(d.MaterialName);
+      if (!materialName || materialName === "-") continue;
+
+      const reqNo = safeString(d.RequisitionNo);
+      if (!reqNo) continue;
+
+      let section = sectionMap.get(sectionName);
+      if (!section) {
+        section = new Map();
+        sectionMap.set(sectionName, section);
+      }
+
+      let material = section.get(materialName);
+      if (!material) {
+        material = new Map();
+        section.set(materialName, material);
+      }
+
+      let req = material.get(reqNo);
+      if (!req) {
+        req = {
+          RequiredQty: 0,
+          Issues: [],
+          BalanceQTY: 0,
+          ExtraIssuedQTY: 0
+        };
+        material.set(reqNo, req);
+      }
+
+      req.RequiredQty += safeNumber(d.RequiredQTY);
+      req.BalanceQTY += safeNumber(d.BalanceQTY);
+      req.ExtraIssuedQTY += safeNumber(d.ExtraIssuedQTY);
+
+      req.Issues.push({
+        IssueQty: safeNumber(d.IssueQTY),
+        IssueValue: safeNumber(d.IssueValue)
+      });
+    }
+
+    let totalReq = 0, totalIssued = 0, totalPending = 0, totalValue = 0, totalBalance = 0;
+    let materialCount = 0, issueCount = 0;
+    const sectionSet = new Set();
+
+    for (const [sectionName, section] of sectionMap) {
+      sectionSet.add(sectionName);
+      for (const [materialName, reqMap] of section) {
+        materialCount++;
+        for (const [, req] of reqMap) {
+          totalReq += req.RequiredQty;
+          const totalIssue = req.Issues.reduce((s, i) => s + i.IssueQty, 0);
+          const totalValueSum = req.Issues.reduce((s, i) => s + i.IssueValue, 0);
+          totalIssued += totalIssue;
+          totalValue += totalValueSum;
+          totalBalance += req.BalanceQTY;
+          issueCount += req.Issues.length;
+        }
+      }
+    }
+
+    totalPending = totalReq - totalIssued;
+
+    return {
+      req: totalReq,
+      issued: totalIssued,
+      pending: totalPending,
+      value: totalValue,
+      balance: totalBalance,
+      materials: materialCount,
+      issues: issueCount,
+      sections: sectionSet.size,
+      completion: totalReq > 0 ? ((totalIssued / totalReq) * 100).toFixed(1) : "0"
+    };
+  }, [cndata]);
+
+  // ==================== PROCESS DATA (Filtered) ====================
   const UseData = useMemo(() => {
     const data = cndata?.inventory || [];
     if (!Array.isArray(data) || data.length === 0) return [];
@@ -638,11 +725,11 @@ function FullAdvancedInventoryIssue_CompleteGreen() {
 
     const preFilteredData = dateFilteredData.filter((d) => {
       if (!d) return false;
-      const section = safeString(d.CostCenterName).trim();
-      const material = safeString(d.MaterialName).trim();
+      const section = safeString(d.CostCenterName);
+      const material = safeString(d.MaterialName);
       const currency = safeString(d.Currency).toUpperCase();
-      const raiser = safeString(d.RequistionRaiseBy).trim();
-      const department = safeString(d.Department).trim();
+      const raiser = safeString(d.RequistionRaiseBy);
+      const department = safeString(d.Department);
 
       const sectionMatch = filterSection === "all" || section === filterSection;
       const itemMatch = filterItem === "all" || material === filterItem;
@@ -654,20 +741,20 @@ function FullAdvancedInventoryIssue_CompleteGreen() {
     });
 
     const searchTerm = searchText ? searchText.trim().toLowerCase() : "";
-
     const sectionMap = new Map();
 
     for (let i = 0; i < preFilteredData.length; i++) {
       const d = preFilteredData[i];
       if (!d) continue;
 
-      const sectionName = safeString(d.CostCenterName).trim();
+      const sectionName = safeString(d.CostCenterName);
       if (!sectionName) continue;
 
-      const materialName = safeString(d.MaterialName).trim();
+      const materialName = safeString(d.MaterialName);
       if (!materialName || materialName === "-") continue;
 
-      const reqNo = safeString(d.RequisitionNo) || `REQ-${Math.random()}`;
+      const reqNo = safeString(d.RequisitionNo);
+      if (!reqNo) continue;
 
       const currency = safeString(d.Currency).toUpperCase() || "USD";
 
@@ -949,7 +1036,6 @@ function FullAdvancedInventoryIssue_CompleteGreen() {
         currencyBreakdown[curr] = (currencyBreakdown[curr] || 0) + item.TotalValue;
         currencyCounts[curr] = (currencyCounts[curr] || 0) + item.Requisitions.length;
 
-        // Department stats
         item.Requisitions.forEach((reqItem) => {
           const dept = reqItem.Department || "Unknown";
           departmentStats[dept] = departmentStats[dept] || { req: 0, issued: 0, pending: 0 };
@@ -1036,507 +1122,6 @@ function FullAdvancedInventoryIssue_CompleteGreen() {
            filterRaiser.length > 0 || filterDepartment.length > 0;
   }, [searchText, filterSection, filterItem, filterStatus, filterCurrency, filterRaiser, filterDepartment]);
 
-// ===== EXPORT EXCEL FUNCTION (FIXED: STYLES NOW TRACK REAL ROW INDICES) =====
-//
-// WHAT WAS WRONG:
-// - `currentRow`/`styleRow` were hardcoded to start at 8, assuming both
-//   filterRaiser and filterDepartment info rows were always present.
-//   If either was empty, those rows were skipped, so real content started
-//   2 rows earlier than the style code assumed.
-// - Each section pushed 4 empty spacer rows but incremented the row
-//   counter by 5 (`currentRow += 5`), causing a +1 drift PER SECTION that
-//   compounded (section 2, 3, 4... got progressively more misaligned).
-// - The Detail and Currency sheets hardcoded row 7/8 for their headers,
-//   with the same filter-row assumption bug.
-//
-// THE FIX:
-// Instead of computing row numbers with arithmetic, we record the REAL
-// row index the moment each row is pushed (using `array.length - 1`),
-// then use those recorded indices to apply styles. No more drift, ever.
-
-const exportExcel = useCallback(() => {
-  if (!UseData || UseData.length === 0) {
-    toast.warning("No data to export!");
-    return;
-  }
-
-  try {
-    const wb = XLSX.utils.book_new();
-
-    const applyBorder = (ws, range, borderStyle = "thin", color = "D9DEE7") => {
-      const [startRow, startCol, endRow, endCol] = range;
-      for (let r = startRow; r <= endRow; r++) {
-        for (let c = startCol; c <= endCol; c++) {
-          const cellRef = XLSX.utils.encode_cell({ r, c });
-          if (!ws[cellRef]) continue;
-          if (!ws[cellRef].s) ws[cellRef].s = {};
-          ws[cellRef].s.border = {
-            top: { style: borderStyle, color: { rgb: color } },
-            bottom: { style: borderStyle, color: { rgb: color } },
-            left: { style: borderStyle, color: { rgb: color } },
-            right: { style: borderStyle, color: { rgb: color } }
-          };
-        }
-      }
-    };
-
-    const applyStyleToRange = (ws, range, styles) => {
-      const [startRow, startCol, endRow, endCol] = range;
-      for (let r = startRow; r <= endRow; r++) {
-        for (let c = startCol; c <= endCol; c++) {
-          const cellRef = XLSX.utils.encode_cell({ r, c });
-          if (!ws[cellRef]) ws[cellRef] = { v: "", t: "s" };
-          if (!ws[cellRef].s) ws[cellRef].s = {};
-          Object.assign(ws[cellRef].s, styles);
-        }
-      }
-    };
-
-    const applyMainTitleStyle = (ws, row, startCol, endCol) => {
-      applyStyleToRange(ws, [row, startCol, row, endCol], {
-        fill: { fgColor: { rgb: "0F172A" } },
-        font: { bold: true, color: { rgb: "FFFFFF" }, sz: 24, name: "Calibri" },
-        alignment: { horizontal: "center", vertical: "center" }
-      });
-    };
-
-    const applySubtitleStyle = (ws, row, startCol, endCol) => {
-      applyStyleToRange(ws, [row, startCol, row, endCol], {
-        fill: { fgColor: { rgb: "1E293B" } },
-        font: { bold: true, color: { rgb: "FFFFFF" }, sz: 20, name: "Calibri" },
-        alignment: { horizontal: "center", vertical: "center" }
-      });
-    };
-
-    const applySectionHeaderStyle = (ws, row, startCol, endCol, currency) => {
-      const headerColor = getExcelCurrencyColor(currency);
-      applyStyleToRange(ws, [row, startCol, row, endCol], {
-        fill: { fgColor: { rgb: headerColor } },
-        font: { bold: true, color: { rgb: "FFFFFF" }, sz: 18, name: "Calibri" },
-        alignment: { horizontal: "left", vertical: "center" }
-      });
-      applyBorder(ws, [row, startCol, row, endCol], "medium", headerColor);
-    };
-
-    const applyTableHeaderStyle = (ws, row, startCol, endCol) => {
-      applyStyleToRange(ws, [row, startCol, row, endCol], {
-        fill: { fgColor: { rgb: "334155" } },
-        font: { bold: true, color: { rgb: "FFFFFF" }, sz: 14, name: "Calibri" },
-        alignment: { horizontal: "center", vertical: "center", wrapText: true }
-      });
-      applyBorder(ws, [row, startCol, row, endCol], "medium", "334155");
-    };
-
-    const applyDataRowStyle = (ws, row, startCol, endCol, isEven = false) => {
-      const bgColor = isEven ? "F8FAFC" : "FFFFFF";
-      applyStyleToRange(ws, [row, startCol, row, endCol], {
-        fill: { fgColor: { rgb: bgColor } },
-        font: { sz: 13, name: "Calibri", color: { rgb: "0F172A" } },
-        alignment: { horizontal: "center", vertical: "center" }
-      });
-      applyBorder(ws, [row, startCol, row, endCol], "thin", "E2E8F0");
-    };
-
-    const applySubtotalStyle = (ws, row, startCol, endCol, currency) => {
-      const textColor = getExcelCurrencyColor(currency);
-      applyStyleToRange(ws, [row, startCol, row, endCol], {
-        fill: { fgColor: { rgb: "F1F5F9" } },
-        font: { bold: true, color: { rgb: textColor }, sz: 14, name: "Calibri" },
-        alignment: { horizontal: "right", vertical: "center" }
-      });
-      applyBorder(ws, [row, startCol, row, endCol], "medium", textColor);
-    };
-
-    const applyGrandTotalStyle = (ws, row, startCol, endCol) => {
-      applyStyleToRange(ws, [row, startCol, row, endCol], {
-        fill: { fgColor: { rgb: "0D9488" } },
-        font: { bold: true, color: { rgb: "FFFFFF" }, sz: 16, name: "Calibri" },
-        alignment: { horizontal: "center", vertical: "center" }
-      });
-      applyBorder(ws, [row, startCol, row, endCol], "medium", "0D9488");
-    };
-
-    const applyInfoRowStyle = (ws, row, startCol, endCol) => {
-      applyStyleToRange(ws, [row, startCol, row, endCol], {
-        font: { sz: 12, name: "Calibri", color: { rgb: "475569" } },
-        alignment: { horizontal: "left", vertical: "center" },
-        fill: { fgColor: { rgb: "F8FAFC" } }
-      });
-    };
-
-    const applyLabelStyle = (ws, row, startCol, endCol) => {
-      applyStyleToRange(ws, [row, startCol, row, endCol], {
-        font: { bold: true, sz: 12, name: "Calibri", color: { rgb: "0F172A" } },
-        alignment: { horizontal: "left", vertical: "center" }
-      });
-    };
-
-    const applyPriceVariationColor = (ws, row, col, priceChange) => {
-      const cellRef = XLSX.utils.encode_cell({ r: row, c: col });
-      if (!ws[cellRef]) return;
-      if (!ws[cellRef].s) ws[cellRef].s = {};
-
-      const numChange = parseFloat(priceChange);
-      if (!isNaN(numChange)) {
-        if (numChange > 0.001) {
-          ws[cellRef].s.font = { bold: true, color: { rgb: "DC2626" }, sz: 12, name: "Calibri" };
-          ws[cellRef].s.fill = { fgColor: { rgb: "FEE2E2" } };
-        } else if (numChange < -0.001) {
-          ws[cellRef].s.font = { bold: true, color: { rgb: "0D9488" }, sz: 12, name: "Calibri" };
-          ws[cellRef].s.fill = { fgColor: { rgb: "E6F7F5" } };
-        }
-        ws[cellRef].s.alignment = { horizontal: "center", vertical: "center" };
-      }
-    };
-
-    // Small helper: push a row and return the REAL index it landed on.
-    // This replaces all manual "currentRow++ / += 5" arithmetic.
-    const pushRow = (arr, row) => {
-      arr.push(row);
-      return arr.length - 1;
-    };
-
-    const dateRangeText =
-      cndata.startDate && cndata.endDate
-        ? `${formatDateExcel(cndata.startDate)} to ${formatDateExcel(cndata.endDate)}`
-        : "N/A";
-
-    // ============================================================
-    // SHEET 1: MASTER SUMMARY
-    // ============================================================
-    const summaryData = [];
-    const summaryMeta = {
-      sections: [],   // { headerRow, tableHeaderRow, currency, itemRows: [], subtotalRow }
-      grandTotalRow: null,
-      infoRows: [],
-    };
-
-    const titleRow = pushRow(summaryData, ["INVENTORY ISSUE REPORT"]);
-    const subtitleRow = pushRow(summaryData, ["SECTION & ITEM SUMMARY"]);
-    pushRow(summaryData, []);
-
-    summaryMeta.infoRows.push(pushRow(summaryData, ["Generated:", new Date().toLocaleString()]));
-    summaryMeta.infoRows.push(pushRow(summaryData, ["Date Range:", dateRangeText]));
-    if (filterRaiser.length > 0) {
-      summaryMeta.infoRows.push(
-        pushRow(summaryData, ["Filtered by Raiser:", filterRaiser.join(", ")])
-      );
-    }
-    if (filterDepartment.length > 0) {
-      summaryMeta.infoRows.push(
-        pushRow(summaryData, ["Filtered by Department:", filterDepartment.join(", ")])
-      );
-    }
-    pushRow(summaryData, []);
-
-    let grandReq = 0, grandIssued = 0, grandPending = 0, grandValue = 0;
-
-    UseData.forEach((section) => {
-      const sectionCurrency = section.Currency || "USD";
-      const headerRow = pushRow(summaryData, [section.CostCenter]);
-
-      const tableHeaderRow = pushRow(summaryData, [
-        "Sl", "MATERIAL", "UNIT", "CURRENCY", "REQUIRED", "ISSUED", "PENDING", "AVG PRICE", "TOTAL VALUE"
-      ]);
-
-      let sectionReq = 0, sectionIssued = 0, sectionPending = 0, sectionValue = 0;
-      let itemCounter = 1;
-      const itemRows = [];
-
-      section.Items.forEach((item) => {
-        const unit = item.Requisitions.length > 0 ? item.Requisitions[0].Unit || "" : "";
-        const currency = item.Currency || section.Currency || "USD";
-        const symbol = getCurrencySymbol(currency);
-
-        let totalPrice = 0;
-        let priceCount = 0;
-        item.Requisitions.forEach((req) => {
-          req.Issues.forEach((issue) => {
-            if (issue.IssuePrice > 0) {
-              totalPrice += issue.IssuePrice;
-              priceCount++;
-            }
-          });
-        });
-        const avgPrice = priceCount > 0 ? totalPrice / priceCount : 0;
-
-        const row = pushRow(summaryData, [
-          itemCounter,
-          item.Material,
-          unit,
-          `${symbol} ${currency}`,
-          item.TotalRequired || 0,
-          item.TotalIssued || 0,
-          item.TotalPending || 0,
-          avgPrice > 0 ? avgPrice.toFixed(4) : "-",
-          Math.round(item.TotalValue || 0)
-        ]);
-        itemRows.push(row);
-
-        sectionReq += item.TotalRequired || 0;
-        sectionIssued += item.TotalIssued || 0;
-        sectionPending += item.TotalPending || 0;
-        sectionValue += item.TotalValue || 0;
-        itemCounter++;
-      });
-
-      const subtotalRow = pushRow(summaryData, [
-        "", `SUBTOTAL: ${section.CostCenter}`, "", "",
-        sectionReq, sectionIssued, sectionPending, "", Math.round(sectionValue)
-      ]);
-
-      // Exactly 4 blank spacer rows — no counter drift possible now.
-      pushRow(summaryData, []);
-      pushRow(summaryData, []);
-      pushRow(summaryData, []);
-      pushRow(summaryData, []);
-
-      grandReq += sectionReq;
-      grandIssued += sectionIssued;
-      grandPending += sectionPending;
-      grandValue += sectionValue;
-
-      summaryMeta.sections.push({
-        headerRow, tableHeaderRow, currency: sectionCurrency, itemRows, subtotalRow
-      });
-    });
-
-    summaryMeta.grandTotalRow = pushRow(summaryData, [
-      "", "GRAND TOTAL", "", "", grandReq, grandIssued, grandPending, "", Math.round(grandValue)
-    ]);
-
-    const wsSummary = XLSX.utils.aoa_to_sheet(summaryData);
-
-    wsSummary["!cols"] = [
-      { wch: 6 }, { wch: 40 }, { wch: 12 }, { wch: 14 },
-      { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 18 }, { wch: 18 }
-    ];
-
-    wsSummary["!merges"] = [
-      { s: { r: titleRow, c: 0 }, e: { r: titleRow, c: 8 } },
-      { s: { r: subtitleRow, c: 0 }, e: { r: subtitleRow, c: 8 } },
-    ];
-
-    applyMainTitleStyle(wsSummary, titleRow, 0, 8);
-    applySubtitleStyle(wsSummary, subtitleRow, 0, 8);
-
-    applyLabelStyle(wsSummary, summaryMeta.infoRows[0], 0, 1);
-    summaryMeta.infoRows.slice(1).forEach((r) => applyInfoRowStyle(wsSummary, r, 0, 3));
-
-    summaryMeta.sections.forEach(({ headerRow, tableHeaderRow, currency, itemRows, subtotalRow }) => {
-      applySectionHeaderStyle(wsSummary, headerRow, 0, 8, currency);
-      wsSummary["!merges"].push({ s: { r: headerRow, c: 0 }, e: { r: headerRow, c: 8 } });
-
-      applyTableHeaderStyle(wsSummary, tableHeaderRow, 0, 8);
-
-      itemRows.forEach((row, idx) => {
-        applyDataRowStyle(wsSummary, row, 0, 8, idx % 2 === 0);
-      });
-
-      applySubtotalStyle(wsSummary, subtotalRow, 0, 8, currency);
-    });
-
-    applyGrandTotalStyle(wsSummary, summaryMeta.grandTotalRow, 0, 8);
-
-    XLSX.utils.book_append_sheet(wb, wsSummary, "Master Summary");
-
-    // ============================================================
-    // SHEET 2: DETAILED ISSUES WITH PRICE HISTORY
-    // ============================================================
-    const detailData = [];
-    const detailMeta = { infoRows: [], tableHeaderRow: null, dataRows: [] };
-
-    const detailTitleRow = pushRow(detailData, ["INVENTORY ISSUE REPORT"]);
-    const detailSubtitleRow = pushRow(detailData, ["DETAILED ISSUES WITH PRICE HISTORY"]);
-    pushRow(detailData, []);
-
-    detailMeta.infoRows.push(pushRow(detailData, ["Generated:", new Date().toLocaleString()]));
-    detailMeta.infoRows.push(pushRow(detailData, ["Date Range:", dateRangeText]));
-    if (filterRaiser.length > 0) {
-      detailMeta.infoRows.push(pushRow(detailData, ["Filtered by Raiser:", filterRaiser.join(", ")]));
-    }
-    if (filterDepartment.length > 0) {
-      detailMeta.infoRows.push(pushRow(detailData, ["Filtered by Department:", filterDepartment.join(", ")]));
-    }
-    pushRow(detailData, []);
-
-    detailMeta.tableHeaderRow = pushRow(detailData, [
-      "Sl", "SECTION", "MATERIAL", "REQ NO", "ISSUE NO", "ISSUE DATE",
-      "QTY", "PRICE", "PREVIOUS PRICE", "PRICE CHANGE", "CHANGE %",
-      "VALUE", "CURRENCY", "ISSUED BY", "RAISED BY", "DEPARTMENT"
-    ]);
-
-    let detailCounter = 1;
-    UseData.forEach((section) => {
-      section.Items.forEach((item) => {
-        item.Requisitions.forEach((req) => {
-          req.Issues.forEach((issue) => {
-            const priceChange = issue.PreviousPrice ? issue.IssuePrice - issue.PreviousPrice : 0;
-            const changePercent = issue.PreviousPrice && issue.PreviousPrice > 0
-              ? (priceChange / issue.PreviousPrice) * 100 : 0;
-            const symbol = getCurrencySymbol(issue.Currency || "USD");
-
-            const priceFormat = issue.IssuePrice < 1 ? issue.IssuePrice.toFixed(4) : issue.IssuePrice.toFixed(2);
-            const prevPriceFormat = issue.PreviousPrice && issue.PreviousPrice < 1
-              ? issue.PreviousPrice.toFixed(4)
-              : issue.PreviousPrice ? issue.PreviousPrice.toFixed(2) : "-";
-
-            const row = pushRow(detailData, [
-              detailCounter,
-              section.CostCenter,
-              item.Material,
-              req.RequisitionNo,
-              issue.IssueNo,
-              formatDateExcel(issue.IssueDate),
-              issue.IssueQty || 0,
-              priceFormat,
-              prevPriceFormat,
-              priceChange !== 0 ? `${priceChange > 0 ? "+" : ""}${priceChange.toFixed(4)}` : "No Change",
-              changePercent !== 0 ? `${changePercent > 0 ? "+" : ""}${changePercent.toFixed(1)}%` : "0%",
-              Math.round(issue.IssueValue || 0),
-              `${symbol} ${issue.Currency || "USD"}`,
-              issue.IssuedBy || "-",
-              req.RequistionRaiseBy || "-",
-              req.Department || "-"
-            ]);
-
-            detailMeta.dataRows.push({
-              row,
-              hasPriceChange: !!(issue.PreviousPrice && issue.PreviousPrice !== issue.IssuePrice),
-              priceChangeValue: issue.PreviousPrice ? issue.IssuePrice - issue.PreviousPrice : 0,
-            });
-
-            detailCounter++;
-          });
-        });
-      });
-    });
-
-    const wsDetail = XLSX.utils.aoa_to_sheet(detailData);
-    wsDetail["!cols"] = [
-      { wch: 6 }, { wch: 20 }, { wch: 35 }, { wch: 18 }, { wch: 18 }, { wch: 15 },
-      { wch: 12 }, { wch: 18 }, { wch: 18 }, { wch: 20 }, { wch: 15 },
-      { wch: 18 }, { wch: 12 }, { wch: 20 }, { wch: 20 }, { wch: 18 }
-    ];
-
-    wsDetail["!merges"] = [
-      { s: { r: detailTitleRow, c: 0 }, e: { r: detailTitleRow, c: 15 } },
-      { s: { r: detailSubtitleRow, c: 0 }, e: { r: detailSubtitleRow, c: 15 } },
-    ];
-
-    applyMainTitleStyle(wsDetail, detailTitleRow, 0, 15);
-    applySubtitleStyle(wsDetail, detailSubtitleRow, 0, 15);
-
-    applyLabelStyle(wsDetail, detailMeta.infoRows[0], 0, 1);
-    detailMeta.infoRows.slice(1).forEach((r) => applyInfoRowStyle(wsDetail, r, 0, 3));
-
-    applyTableHeaderStyle(wsDetail, detailMeta.tableHeaderRow, 0, 15);
-
-    detailMeta.dataRows.forEach(({ row, hasPriceChange, priceChangeValue }, idx) => {
-      applyDataRowStyle(wsDetail, row, 0, 15, idx % 2 === 0);
-      if (hasPriceChange) {
-        applyPriceVariationColor(wsDetail, row, 9, priceChangeValue.toString());
-      }
-    });
-
-    XLSX.utils.book_append_sheet(wb, wsDetail, "Price History");
-
-    // ============================================================
-    // SHEET 3: CURRENCY BREAKDOWN
-    // ============================================================
-    const currencyData = [];
-    const currencyMeta = { infoRows: [], tableHeaderRow: null, dataRows: [], totalRow: null };
-
-    const currencyTitleRow = pushRow(currencyData, ["INVENTORY ISSUE REPORT"]);
-    const currencySubtitleRow = pushRow(currencyData, ["CURRENCY BREAKDOWN"]);
-    pushRow(currencyData, []);
-
-    currencyMeta.infoRows.push(pushRow(currencyData, ["Generated:", new Date().toLocaleString()]));
-    currencyMeta.infoRows.push(pushRow(currencyData, ["Date Range:", dateRangeText]));
-    if (filterRaiser.length > 0) {
-      currencyMeta.infoRows.push(pushRow(currencyData, ["Filtered by Raiser:", filterRaiser.join(", ")]));
-    }
-    if (filterDepartment.length > 0) {
-      currencyMeta.infoRows.push(pushRow(currencyData, ["Filtered by Department:", filterDepartment.join(", ")]));
-    }
-    pushRow(currencyData, []);
-
-    currencyMeta.tableHeaderRow = pushRow(currencyData, [
-      "Sl", "CURRENCY", "TOTAL VALUE", "NO. OF TRANSACTIONS", "PERCENTAGE OF TOTAL"
-    ]);
-
-    const currencyTotals = {};
-    const currencyCounts = {};
-    let totalValueAll = 0;
-    let totalTransactions = 0;
-
-    UseData.forEach((section) => {
-      section.Items.forEach((item) => {
-        const curr = item.Currency || section.Currency || "USD";
-        currencyTotals[curr] = (currencyTotals[curr] || 0) + item.TotalValue;
-        currencyCounts[curr] = (currencyCounts[curr] || 0) + item.Requisitions.length;
-        totalValueAll += item.TotalValue;
-      });
-    });
-    Object.values(currencyCounts).forEach((v) => (totalTransactions += v));
-
-    const sortedCurrencies = Object.keys(currencyTotals).sort();
-
-    let currencyCounter = 1;
-    sortedCurrencies.forEach((curr) => {
-      const value = currencyTotals[curr] || 0;
-      const count = currencyCounts[curr] || 0;
-      const percentage = totalValueAll > 0 ? ((value / totalValueAll) * 100).toFixed(1) : "0";
-      const symbol = getCurrencySymbol(curr);
-
-      const row = pushRow(currencyData, [
-        currencyCounter, `${symbol} ${curr}`, Math.round(value), count, `${percentage}%`
-      ]);
-      currencyMeta.dataRows.push(row);
-      currencyCounter++;
-    });
-
-    pushRow(currencyData, []);
-    currencyMeta.totalRow = pushRow(currencyData, [
-      "", "TOTAL", Math.round(totalValueAll), totalTransactions, "100%"
-    ]);
-
-    const wsCurrency = XLSX.utils.aoa_to_sheet(currencyData);
-    wsCurrency["!cols"] = [
-      { wch: 6 }, { wch: 20 }, { wch: 25 }, { wch: 25 }, { wch: 20 }
-    ];
-
-    wsCurrency["!merges"] = [
-      { s: { r: currencyTitleRow, c: 0 }, e: { r: currencyTitleRow, c: 4 } },
-      { s: { r: currencySubtitleRow, c: 0 }, e: { r: currencySubtitleRow, c: 4 } },
-    ];
-
-    applyMainTitleStyle(wsCurrency, currencyTitleRow, 0, 4);
-    applySubtitleStyle(wsCurrency, currencySubtitleRow, 0, 4);
-
-    applyLabelStyle(wsCurrency, currencyMeta.infoRows[0], 0, 1);
-    currencyMeta.infoRows.slice(1).forEach((r) => applyInfoRowStyle(wsCurrency, r, 0, 3));
-
-    applyTableHeaderStyle(wsCurrency, currencyMeta.tableHeaderRow, 0, 4);
-
-    currencyMeta.dataRows.forEach((row, idx) => {
-      applyDataRowStyle(wsCurrency, row, 0, 4, idx % 2 === 0);
-    });
-
-    applyGrandTotalStyle(wsCurrency, currencyMeta.totalRow, 0, 4);
-
-    XLSX.utils.book_append_sheet(wb, wsCurrency, "Currency Breakdown");
-
-    // Save the file
-    const fileName = `Inventory_Issue_Report_${new Date().toISOString().split("T")[0]}.xlsx`;
-    XLSX.writeFile(wb, fileName);
-
-    toast.success(`Exported ${wb.SheetNames.length} sheets successfully`);
-  } catch (error) {
-    console.error("Export Error:", error);
-    toast.error("Failed to export data. Please try again.");
-  }
-}, [UseData, cndata, filterRaiser, filterDepartment]);
   // Clear raiser filter
   const clearRaiserFilter = useCallback(() => {
     setFilterRaiser([]);
@@ -1566,9 +1151,489 @@ const exportExcel = useCallback(() => {
     );
   }, [uniqueCurrencies, filterCurrency]);
 
-  // Raiser filter badge count
   const raiserFilterCount = filterRaiser.length;
   const departmentFilterCount = filterDepartment.length;
+
+  // ===== EXPORT EXCEL FUNCTION =====
+  const exportExcel = useCallback(() => {
+    if (!UseData || UseData.length === 0) {
+      toast.warning("No data to export!");
+      return;
+    }
+
+    try {
+      const wb = XLSX.utils.book_new();
+
+      const applyBorder = (ws, range, borderStyle = "thin", color = "D9DEE7") => {
+        const [startRow, startCol, endRow, endCol] = range;
+        for (let r = startRow; r <= endRow; r++) {
+          for (let c = startCol; c <= endCol; c++) {
+            const cellRef = XLSX.utils.encode_cell({ r, c });
+            if (!ws[cellRef]) continue;
+            if (!ws[cellRef].s) ws[cellRef].s = {};
+            ws[cellRef].s.border = {
+              top: { style: borderStyle, color: { rgb: color } },
+              bottom: { style: borderStyle, color: { rgb: color } },
+              left: { style: borderStyle, color: { rgb: color } },
+              right: { style: borderStyle, color: { rgb: color } }
+            };
+          }
+        }
+      };
+
+      const applyStyleToRange = (ws, range, styles) => {
+        const [startRow, startCol, endRow, endCol] = range;
+        for (let r = startRow; r <= endRow; r++) {
+          for (let c = startCol; c <= endCol; c++) {
+            const cellRef = XLSX.utils.encode_cell({ r, c });
+            if (!ws[cellRef]) ws[cellRef] = { v: "", t: "s" };
+            if (!ws[cellRef].s) ws[cellRef].s = {};
+            Object.assign(ws[cellRef].s, styles);
+          }
+        }
+      };
+
+      const applyMainTitleStyle = (ws, row, startCol, endCol) => {
+        applyStyleToRange(ws, [row, startCol, row, endCol], {
+          fill: { fgColor: { rgb: "0F172A" } },
+          font: { bold: true, color: { rgb: "FFFFFF" }, sz: 24, name: "Calibri" },
+          alignment: { horizontal: "center", vertical: "center" }
+        });
+      };
+
+      const applySubtitleStyle = (ws, row, startCol, endCol) => {
+        applyStyleToRange(ws, [row, startCol, row, endCol], {
+          fill: { fgColor: { rgb: "1E293B" } },
+          font: { bold: true, color: { rgb: "FFFFFF" }, sz: 20, name: "Calibri" },
+          alignment: { horizontal: "center", vertical: "center" }
+        });
+      };
+
+      const applySectionHeaderStyle = (ws, row, startCol, endCol, currency) => {
+        const headerColor = getExcelCurrencyColor(currency);
+        applyStyleToRange(ws, [row, startCol, row, endCol], {
+          fill: { fgColor: { rgb: headerColor } },
+          font: { bold: true, color: { rgb: "FFFFFF" }, sz: 18, name: "Calibri" },
+          alignment: { horizontal: "left", vertical: "center" }
+        });
+        applyBorder(ws, [row, startCol, row, endCol], "medium", headerColor);
+      };
+
+      const applyTableHeaderStyle = (ws, row, startCol, endCol) => {
+        applyStyleToRange(ws, [row, startCol, row, endCol], {
+          fill: { fgColor: { rgb: "334155" } },
+          font: { bold: true, color: { rgb: "FFFFFF" }, sz: 14, name: "Calibri" },
+          alignment: { horizontal: "center", vertical: "center", wrapText: true }
+        });
+        applyBorder(ws, [row, startCol, row, endCol], "medium", "334155");
+      };
+
+      const applyDataRowStyle = (ws, row, startCol, endCol, isEven = false) => {
+        const bgColor = isEven ? "F8FAFC" : "FFFFFF";
+        applyStyleToRange(ws, [row, startCol, row, endCol], {
+          fill: { fgColor: { rgb: bgColor } },
+          font: { sz: 13, name: "Calibri", color: { rgb: "0F172A" } },
+          alignment: { horizontal: "center", vertical: "center" }
+        });
+        applyBorder(ws, [row, startCol, row, endCol], "thin", "E2E8F0");
+      };
+
+      const applySubtotalStyle = (ws, row, startCol, endCol, currency) => {
+        const textColor = getExcelCurrencyColor(currency);
+        applyStyleToRange(ws, [row, startCol, row, endCol], {
+          fill: { fgColor: { rgb: "F1F5F9" } },
+          font: { bold: true, color: { rgb: textColor }, sz: 14, name: "Calibri" },
+          alignment: { horizontal: "right", vertical: "center" }
+        });
+        applyBorder(ws, [row, startCol, row, endCol], "medium", textColor);
+      };
+
+      const applyGrandTotalStyle = (ws, row, startCol, endCol) => {
+        applyStyleToRange(ws, [row, startCol, row, endCol], {
+          fill: { fgColor: { rgb: "0D9488" } },
+          font: { bold: true, color: { rgb: "FFFFFF" }, sz: 16, name: "Calibri" },
+          alignment: { horizontal: "center", vertical: "center" }
+        });
+        applyBorder(ws, [row, startCol, row, endCol], "medium", "0D9488");
+      };
+
+      const applyInfoRowStyle = (ws, row, startCol, endCol) => {
+        applyStyleToRange(ws, [row, startCol, row, endCol], {
+          font: { sz: 12, name: "Calibri", color: { rgb: "475569" } },
+          alignment: { horizontal: "left", vertical: "center" },
+          fill: { fgColor: { rgb: "F8FAFC" } }
+        });
+      };
+
+      const applyLabelStyle = (ws, row, startCol, endCol) => {
+        applyStyleToRange(ws, [row, startCol, row, endCol], {
+          font: { bold: true, sz: 12, name: "Calibri", color: { rgb: "0F172A" } },
+          alignment: { horizontal: "left", vertical: "center" }
+        });
+      };
+
+      const applyPriceVariationColor = (ws, row, col, priceChange) => {
+        const cellRef = XLSX.utils.encode_cell({ r: row, c: col });
+        if (!ws[cellRef]) return;
+        if (!ws[cellRef].s) ws[cellRef].s = {};
+
+        const numChange = parseFloat(priceChange);
+        if (!isNaN(numChange)) {
+          if (numChange > 0.001) {
+            ws[cellRef].s.font = { bold: true, color: { rgb: "DC2626" }, sz: 12, name: "Calibri" };
+            ws[cellRef].s.fill = { fgColor: { rgb: "FEE2E2" } };
+          } else if (numChange < -0.001) {
+            ws[cellRef].s.font = { bold: true, color: { rgb: "0D9488" }, sz: 12, name: "Calibri" };
+            ws[cellRef].s.fill = { fgColor: { rgb: "E6F7F5" } };
+          }
+          ws[cellRef].s.alignment = { horizontal: "center", vertical: "center" };
+        }
+      };
+
+      const pushRow = (arr, row) => {
+        arr.push(row);
+        return arr.length - 1;
+      };
+
+      const dateRangeText =
+        cndata.startDate && cndata.endDate
+          ? `${formatDateExcel(cndata.startDate)} to ${formatDateExcel(cndata.endDate)}`
+          : "N/A";
+
+      // ============================================================
+      // SHEET 1: MASTER SUMMARY
+      // ============================================================
+      const summaryData = [];
+      const summaryMeta = {
+        sections: [],
+        grandTotalRow: null,
+        infoRows: [],
+      };
+
+      const titleRow = pushRow(summaryData, ["INVENTORY ISSUE REPORT"]);
+      const subtitleRow = pushRow(summaryData, ["SECTION & ITEM SUMMARY"]);
+      pushRow(summaryData, []);
+
+      summaryMeta.infoRows.push(pushRow(summaryData, ["Generated:", new Date().toLocaleString()]));
+      summaryMeta.infoRows.push(pushRow(summaryData, ["Date Range:", dateRangeText]));
+      if (filterRaiser.length > 0) {
+        summaryMeta.infoRows.push(
+          pushRow(summaryData, ["Filtered by Raiser:", filterRaiser.join(", ")])
+        );
+      }
+      if (filterDepartment.length > 0) {
+        summaryMeta.infoRows.push(
+          pushRow(summaryData, ["Filtered by Department:", filterDepartment.join(", ")])
+        );
+      }
+      pushRow(summaryData, []);
+
+      let grandReq = 0, grandIssued = 0, grandPending = 0, grandValue = 0;
+
+      UseData.forEach((section) => {
+        const sectionCurrency = section.Currency || "USD";
+        const headerRow = pushRow(summaryData, [section.CostCenter]);
+
+        const tableHeaderRow = pushRow(summaryData, [
+          "Sl", "MATERIAL", "UNIT", "CURRENCY", "REQUIRED", "ISSUED", "PENDING", "AVG PRICE", "TOTAL VALUE"
+        ]);
+
+        let sectionReq = 0, sectionIssued = 0, sectionPending = 0, sectionValue = 0;
+        let itemCounter = 1;
+        const itemRows = [];
+
+        section.Items.forEach((item) => {
+          const unit = item.Requisitions.length > 0 ? item.Requisitions[0].Unit || "" : "";
+          const currency = item.Currency || section.Currency || "USD";
+          const symbol = getCurrencySymbol(currency);
+
+          let totalPrice = 0;
+          let priceCount = 0;
+          item.Requisitions.forEach((req) => {
+            req.Issues.forEach((issue) => {
+              if (issue.IssuePrice > 0) {
+                totalPrice += issue.IssuePrice;
+                priceCount++;
+              }
+            });
+          });
+          const avgPrice = priceCount > 0 ? totalPrice / priceCount : 0;
+
+          const row = pushRow(summaryData, [
+            itemCounter,
+            item.Material,
+            unit,
+            `${symbol} ${currency}`,
+            item.TotalRequired || 0,
+            item.TotalIssued || 0,
+            item.TotalPending || 0,
+            avgPrice > 0 ? avgPrice.toFixed(4) : "-",
+            Math.round(item.TotalValue || 0)
+          ]);
+          itemRows.push(row);
+
+          sectionReq += item.TotalRequired || 0;
+          sectionIssued += item.TotalIssued || 0;
+          sectionPending += item.TotalPending || 0;
+          sectionValue += item.TotalValue || 0;
+          itemCounter++;
+        });
+
+        const subtotalRow = pushRow(summaryData, [
+          "", `SUBTOTAL: ${section.CostCenter}`, "", "",
+          sectionReq, sectionIssued, sectionPending, "", Math.round(sectionValue)
+        ]);
+
+        pushRow(summaryData, []);
+        pushRow(summaryData, []);
+        pushRow(summaryData, []);
+        pushRow(summaryData, []);
+
+        grandReq += sectionReq;
+        grandIssued += sectionIssued;
+        grandPending += sectionPending;
+        grandValue += sectionValue;
+
+        summaryMeta.sections.push({
+          headerRow, tableHeaderRow, currency: sectionCurrency, itemRows, subtotalRow
+        });
+      });
+
+      summaryMeta.grandTotalRow = pushRow(summaryData, [
+        "", "GRAND TOTAL", "", "", grandReq, grandIssued, grandPending, "", Math.round(grandValue)
+      ]);
+
+      const wsSummary = XLSX.utils.aoa_to_sheet(summaryData);
+
+      wsSummary["!cols"] = [
+        { wch: 6 }, { wch: 40 }, { wch: 12 }, { wch: 14 },
+        { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 18 }, { wch: 18 }
+      ];
+
+      wsSummary["!merges"] = [
+        { s: { r: titleRow, c: 0 }, e: { r: titleRow, c: 8 } },
+        { s: { r: subtitleRow, c: 0 }, e: { r: subtitleRow, c: 8 } },
+      ];
+
+      applyMainTitleStyle(wsSummary, titleRow, 0, 8);
+      applySubtitleStyle(wsSummary, subtitleRow, 0, 8);
+
+      applyLabelStyle(wsSummary, summaryMeta.infoRows[0], 0, 1);
+      summaryMeta.infoRows.slice(1).forEach((r) => applyInfoRowStyle(wsSummary, r, 0, 3));
+
+      summaryMeta.sections.forEach(({ headerRow, tableHeaderRow, currency, itemRows, subtotalRow }) => {
+        applySectionHeaderStyle(wsSummary, headerRow, 0, 8, currency);
+        wsSummary["!merges"].push({ s: { r: headerRow, c: 0 }, e: { r: headerRow, c: 8 } });
+
+        applyTableHeaderStyle(wsSummary, tableHeaderRow, 0, 8);
+
+        itemRows.forEach((row, idx) => {
+          applyDataRowStyle(wsSummary, row, 0, 8, idx % 2 === 0);
+        });
+
+        applySubtotalStyle(wsSummary, subtotalRow, 0, 8, currency);
+      });
+
+      applyGrandTotalStyle(wsSummary, summaryMeta.grandTotalRow, 0, 8);
+
+      XLSX.utils.book_append_sheet(wb, wsSummary, "Master Summary");
+
+      // ============================================================
+      // SHEET 2: DETAILED ISSUES WITH PRICE HISTORY
+      // ============================================================
+      const detailData = [];
+      const detailMeta = { infoRows: [], tableHeaderRow: null, dataRows: [] };
+
+      const detailTitleRow = pushRow(detailData, ["INVENTORY ISSUE REPORT"]);
+      const detailSubtitleRow = pushRow(detailData, ["DETAILED ISSUES WITH PRICE HISTORY"]);
+      pushRow(detailData, []);
+
+      detailMeta.infoRows.push(pushRow(detailData, ["Generated:", new Date().toLocaleString()]));
+      detailMeta.infoRows.push(pushRow(detailData, ["Date Range:", dateRangeText]));
+      if (filterRaiser.length > 0) {
+        detailMeta.infoRows.push(pushRow(detailData, ["Filtered by Raiser:", filterRaiser.join(", ")]));
+      }
+      if (filterDepartment.length > 0) {
+        detailMeta.infoRows.push(pushRow(detailData, ["Filtered by Department:", filterDepartment.join(", ")]));
+      }
+      pushRow(detailData, []);
+
+      detailMeta.tableHeaderRow = pushRow(detailData, [
+        "Sl", "SECTION", "MATERIAL", "REQ NO", "ISSUE NO", "ISSUE DATE",
+        "QTY", "PRICE", "PREVIOUS PRICE", "PRICE CHANGE", "CHANGE %",
+        "VALUE", "CURRENCY", "ISSUED BY", "RAISED BY", "DEPARTMENT"
+      ]);
+
+      let detailCounter = 1;
+      UseData.forEach((section) => {
+        section.Items.forEach((item) => {
+          item.Requisitions.forEach((req) => {
+            req.Issues.forEach((issue) => {
+              const priceChange = issue.PreviousPrice ? issue.IssuePrice - issue.PreviousPrice : 0;
+              const changePercent = issue.PreviousPrice && issue.PreviousPrice > 0
+                ? (priceChange / issue.PreviousPrice) * 100 : 0;
+              const symbol = getCurrencySymbol(issue.Currency || "USD");
+
+              const priceFormat = issue.IssuePrice < 1 ? issue.IssuePrice.toFixed(4) : issue.IssuePrice.toFixed(2);
+              const prevPriceFormat = issue.PreviousPrice && issue.PreviousPrice < 1
+                ? issue.PreviousPrice.toFixed(4)
+                : issue.PreviousPrice ? issue.PreviousPrice.toFixed(2) : "-";
+
+              const row = pushRow(detailData, [
+                detailCounter,
+                section.CostCenter,
+                item.Material,
+                req.RequisitionNo,
+                issue.IssueNo,
+                formatDateExcel(issue.IssueDate),
+                issue.IssueQty || 0,
+                priceFormat,
+                prevPriceFormat,
+                priceChange !== 0 ? `${priceChange > 0 ? "+" : ""}${priceChange.toFixed(4)}` : "No Change",
+                changePercent !== 0 ? `${changePercent > 0 ? "+" : ""}${changePercent.toFixed(1)}%` : "0%",
+                Math.round(issue.IssueValue || 0),
+                `${symbol} ${issue.Currency || "USD"}`,
+                issue.IssuedBy || "-",
+                req.RequistionRaiseBy || "-",
+                req.Department || "-"
+              ]);
+
+              detailMeta.dataRows.push({
+                row,
+                hasPriceChange: !!(issue.PreviousPrice && issue.PreviousPrice !== issue.IssuePrice),
+                priceChangeValue: issue.PreviousPrice ? issue.IssuePrice - issue.PreviousPrice : 0,
+              });
+
+              detailCounter++;
+            });
+          });
+        });
+      });
+
+      const wsDetail = XLSX.utils.aoa_to_sheet(detailData);
+      wsDetail["!cols"] = [
+        { wch: 6 }, { wch: 20 }, { wch: 35 }, { wch: 18 }, { wch: 18 }, { wch: 15 },
+        { wch: 12 }, { wch: 18 }, { wch: 18 }, { wch: 20 }, { wch: 15 },
+        { wch: 18 }, { wch: 12 }, { wch: 20 }, { wch: 20 }, { wch: 18 }
+      ];
+
+      wsDetail["!merges"] = [
+        { s: { r: detailTitleRow, c: 0 }, e: { r: detailTitleRow, c: 15 } },
+        { s: { r: detailSubtitleRow, c: 0 }, e: { r: detailSubtitleRow, c: 15 } },
+      ];
+
+      applyMainTitleStyle(wsDetail, detailTitleRow, 0, 15);
+      applySubtitleStyle(wsDetail, detailSubtitleRow, 0, 15);
+
+      applyLabelStyle(wsDetail, detailMeta.infoRows[0], 0, 1);
+      detailMeta.infoRows.slice(1).forEach((r) => applyInfoRowStyle(wsDetail, r, 0, 3));
+
+      applyTableHeaderStyle(wsDetail, detailMeta.tableHeaderRow, 0, 15);
+
+      detailMeta.dataRows.forEach(({ row, hasPriceChange, priceChangeValue }, idx) => {
+        applyDataRowStyle(wsDetail, row, 0, 15, idx % 2 === 0);
+        if (hasPriceChange) {
+          applyPriceVariationColor(wsDetail, row, 9, priceChangeValue.toString());
+        }
+      });
+
+      XLSX.utils.book_append_sheet(wb, wsDetail, "Price History");
+
+      // ============================================================
+      // SHEET 3: CURRENCY BREAKDOWN
+      // ============================================================
+      const currencyData = [];
+      const currencyMeta = { infoRows: [], tableHeaderRow: null, dataRows: [], totalRow: null };
+
+      const currencyTitleRow = pushRow(currencyData, ["INVENTORY ISSUE REPORT"]);
+      const currencySubtitleRow = pushRow(currencyData, ["CURRENCY BREAKDOWN"]);
+      pushRow(currencyData, []);
+
+      currencyMeta.infoRows.push(pushRow(currencyData, ["Generated:", new Date().toLocaleString()]));
+      currencyMeta.infoRows.push(pushRow(currencyData, ["Date Range:", dateRangeText]));
+      if (filterRaiser.length > 0) {
+        currencyMeta.infoRows.push(pushRow(currencyData, ["Filtered by Raiser:", filterRaiser.join(", ")]));
+      }
+      if (filterDepartment.length > 0) {
+        currencyMeta.infoRows.push(pushRow(currencyData, ["Filtered by Department:", filterDepartment.join(", ")]));
+      }
+      pushRow(currencyData, []);
+
+      currencyMeta.tableHeaderRow = pushRow(currencyData, [
+        "Sl", "CURRENCY", "TOTAL VALUE", "NO. OF TRANSACTIONS", "PERCENTAGE OF TOTAL"
+      ]);
+
+      const currencyTotals = {};
+      const currencyCounts = {};
+      let totalValueAll = 0;
+      let totalTransactions = 0;
+
+      UseData.forEach((section) => {
+        section.Items.forEach((item) => {
+          const curr = item.Currency || section.Currency || "USD";
+          currencyTotals[curr] = (currencyTotals[curr] || 0) + item.TotalValue;
+          currencyCounts[curr] = (currencyCounts[curr] || 0) + item.Requisitions.length;
+          totalValueAll += item.TotalValue;
+        });
+      });
+      Object.values(currencyCounts).forEach((v) => (totalTransactions += v));
+
+      const sortedCurrencies = Object.keys(currencyTotals).sort();
+
+      let currencyCounter = 1;
+      sortedCurrencies.forEach((curr) => {
+        const value = currencyTotals[curr] || 0;
+        const count = currencyCounts[curr] || 0;
+        const percentage = totalValueAll > 0 ? ((value / totalValueAll) * 100).toFixed(1) : "0";
+        const symbol = getCurrencySymbol(curr);
+
+        const row = pushRow(currencyData, [
+          currencyCounter, `${symbol} ${curr}`, Math.round(value), count, `${percentage}%`
+        ]);
+        currencyMeta.dataRows.push(row);
+        currencyCounter++;
+      });
+
+      pushRow(currencyData, []);
+      currencyMeta.totalRow = pushRow(currencyData, [
+        "", "TOTAL", Math.round(totalValueAll), totalTransactions, "100%"
+      ]);
+
+      const wsCurrency = XLSX.utils.aoa_to_sheet(currencyData);
+      wsCurrency["!cols"] = [
+        { wch: 6 }, { wch: 20 }, { wch: 25 }, { wch: 25 }, { wch: 20 }
+      ];
+
+      wsCurrency["!merges"] = [
+        { s: { r: currencyTitleRow, c: 0 }, e: { r: currencyTitleRow, c: 4 } },
+        { s: { r: currencySubtitleRow, c: 0 }, e: { r: currencySubtitleRow, c: 4 } },
+      ];
+
+      applyMainTitleStyle(wsCurrency, currencyTitleRow, 0, 4);
+      applySubtitleStyle(wsCurrency, currencySubtitleRow, 0, 4);
+
+      applyLabelStyle(wsCurrency, currencyMeta.infoRows[0], 0, 1);
+      currencyMeta.infoRows.slice(1).forEach((r) => applyInfoRowStyle(wsCurrency, r, 0, 3));
+
+      applyTableHeaderStyle(wsCurrency, currencyMeta.tableHeaderRow, 0, 4);
+
+      currencyMeta.dataRows.forEach((row, idx) => {
+        applyDataRowStyle(wsCurrency, row, 0, 4, idx % 2 === 0);
+      });
+
+      applyGrandTotalStyle(wsCurrency, currencyMeta.totalRow, 0, 4);
+
+      XLSX.utils.book_append_sheet(wb, wsCurrency, "Currency Breakdown");
+
+      const fileName = `Inventory_Issue_Report_${new Date().toISOString().split("T")[0]}.xlsx`;
+      XLSX.writeFile(wb, fileName);
+
+      toast.success(`Exported ${wb.SheetNames.length} sheets successfully`);
+    } catch (error) {
+      console.error("Export Error:", error);
+      toast.error("Failed to export data. Please try again.");
+    }
+  }, [UseData, cndata, filterRaiser, filterDepartment]);
 
   // ============================================
   // RENDER
@@ -1606,6 +1671,11 @@ const exportExcel = useCallback(() => {
                       </span>
                     </>
                   )}
+                  <span className="text-slate-300">•</span>
+                  <span className="inline-flex items-center gap-1 text-slate-400">
+                    <Database size={12} />
+                    {cndata?.inventory?.length || 0} total records
+                  </span>
                   {raiserFilterCount > 0 && (
                     <>
                       <span className="text-slate-300">•</span>
@@ -1720,12 +1790,31 @@ const exportExcel = useCallback(() => {
           </motion.div>
         )}
 
-        {/* QUICK STATS SUMMARY */}
+        {/* QUICK STATS SUMMARY - Filtered */}
         {!loading && UseData.length > 0 && (
-          <QuickStatsSummary stats={summaryStats} />
+          <div className="mb-3">
+            <div className="flex items-center gap-2 mb-1.5">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-teal-600">📊 Filtered Data</span>
+              <span className="text-[10px] text-slate-400">— {UseData.reduce((acc, s) => acc + s.Items.length, 0)} materials</span>
+            </div>
+            <QuickStatsSummary stats={summaryStats} />
+          </div>
         )}
 
-        {/* KPI STRIP */}
+        {/* QUICK STATS SUMMARY - Unfiltered Lifetime Totals */}
+        {!loading && cndata?.inventory && cndata.inventory.length > 0 && (
+          <div className="mb-5">
+            <div className="flex items-center gap-2 mb-1.5">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-violet-600">📈 Lifetime Totals (All Data)</span>
+              <span className="text-[10px] text-slate-400">— {cndata.inventory.length} records</span>
+            </div>
+            <div className="bg-violet-50/50 rounded-xl border border-violet-200 p-3">
+              <QuickStatsSummary stats={unfilteredStats} />
+            </div>
+          </div>
+        )}
+
+        {/* KPI STRIP - Filtered */}
         {!loading && UseData.length > 0 && (
           <motion.div
             initial={{ y: 16, opacity: 0 }}
@@ -1807,7 +1896,6 @@ const exportExcel = useCallback(() => {
               <option value="critical">Critical (0%)</option>
             </select>
 
-            {/* Multi-select Raiser Filter */}
             <MultiSelectDropdown
               options={uniqueRaisers}
               selectedValues={filterRaiser}
@@ -1818,7 +1906,6 @@ const exportExcel = useCallback(() => {
               maxDisplay={2}
             />
 
-            {/* Multi-select Department Filter */}
             <MultiSelectDropdown
               options={uniqueDepartments}
               selectedValues={filterDepartment}
@@ -2398,6 +2485,13 @@ const exportExcel = useCallback(() => {
               {searchText && searchText.trim().length > 0 && ` · Search: "${searchText.trim()}"`}
               {filterRaiser.length > 0 && ` · Raisers: ${filterRaiser.join(", ")}`}
               {filterDepartment.length > 0 && ` · Depts: ${filterDepartment.join(", ")}`}
+            </p>
+            <p className="text-[10px] text-slate-400 mt-0.5">
+              <Database size={11} className="inline mr-1" />
+              Total records in system: {cndata?.inventory?.length || 0} · 
+              Lifetime Requisitioned: {formatNumber(unfilteredStats.req)} · 
+              Lifetime Issued: {formatNumber(unfilteredStats.issued)} · 
+              Lifetime Completion: {unfilteredStats.completion}%
             </p>
           </motion.div>
         )}
