@@ -950,53 +950,47 @@ console.log("cndata0.........:", cndata);
               ),
             };
           });
-          console.log("Merged Data", mergedData);
-        // ==========================================
-        // FINAL CONSOLE
-        // ==========================================
 
-        console.log("=========================================");
-        console.log("🎯 FINAL DATE RANGE RESULT");
-        console.log("=========================================");
+        // console.log("=========================================");
+        // console.log("🎯 FINAL DATE RANGE RESULT");
+        // console.log("=========================================");
 
-        console.log(
-          "📅 Range:",
-          startKey,
-          "→",
-          endKey
-        );
+        // console.log(
+        //   "📅 Range:",
+        //   startKey,
+        //   "→",
+        //   endKey
+        // );
 
-        console.log(
-          "🟢 CommandID=1:",
-          command1Data.length
-        );
+        // console.log(
+        //   "🟢 CommandID=1:",
+        //   command1Data.length
+        // );
 
-        console.log(
-          "🟡 CommandID=5:",
-          command5Data.length
-        );
+        // console.log(
+        //   "🟡 CommandID=5:",
+        //   command5Data.length
+        // );
 
-        console.log(
-          "🔵 CommandID=15:",
-          command15Data.length
-        );
+        // console.log(
+        //   "🔵 CommandID=15:",
+        //   command15Data.length
+        // );
 
-        console.log(
-          "🟣 CommandID=3:",
-          command3Data.length
-        );
+        // console.log(
+        //   "🟣 CommandID=3:",
+        //   command3Data.length
+        // );
 
-        console.log(
-          "🔗 Final unique WorkOrders:",
-          mergedData.length
-        );
+        // console.log(
+        //   "🔗 Final unique WorkOrders:",
+        //   mergedData.length
+        // );
 
-        console.log(
-          "📊 FINAL MERGED DATA:",
-          mergedData
-        );
-
-        console.log("=========================================");
+        // console.log(
+        //   "📊 FINAL MERGED DATA:",
+        //   mergedData
+        // );
 
         // ==========================================
         // SAVE TO CONTEXT
@@ -1052,7 +1046,6 @@ console.log("cndata0.........:", cndata);
               "local-command1-command5-command15-command3",
           },
         }));
-        console.log("cndata updated with date range data:", cndata);
         setRangeFetchProgress(100);
 
         setRangeFetchStatus(
@@ -1248,6 +1241,7 @@ console.log("cndata0.........:", cndata);
         _apiSource: "command15",
         OrderReceiveDate: "",
       }));
+      console.log("=======================cmm15", command15Data);
 
       console.log("🟢 Tagged CommandID=1:", command1Data.length);
       console.log("🟡 Tagged CommandID=5:", command5Data.length);

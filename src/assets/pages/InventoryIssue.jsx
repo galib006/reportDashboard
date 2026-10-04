@@ -665,6 +665,11 @@ function FullAdvancedInventoryIssue_CompleteGreen() {
       if (!reqNo) continue;
 
       let section = sectionMap.get(sectionName);
+      // In the UseData useMemo, after grouping:
+console.log('Section Map Keys:', Array.from(sectionMap.keys()));
+console.log('Requisitions in Offset Printing:', 
+  Array.from(sectionMap.get('Offset Printing')?.keys() || [])
+);
       if (!section) {
         section = new Map();
         sectionMap.set(sectionName, section);
@@ -738,6 +743,20 @@ function FullAdvancedInventoryIssue_CompleteGreen() {
   // ==================== PROCESS DATA (Filtered) ====================
   const UseData = useMemo(() => {
     const data = cndata?.inventory || [];
+    // After loading data, add this:
+console.log('All Requisitions:', data.map(d => d.RequisitionNo));
+console.log('SR-01940-2026 found?', data.some(d => d.RequisitionNo === 'SR-01940-2026'));
+
+
+
+
+
+
+
+
+
+
+
     if (!Array.isArray(data) || data.length === 0) return [];
 
     const cacheKey = `${data.length}_${searchText}_${filterSection}_${filterItem}_${filterStatus}_${filterCurrency}_${sortBy}_${sortOrder}_${filterRaiser.join("|")}_${filterDepartment.join("|")}`;
@@ -801,6 +820,7 @@ function FullAdvancedInventoryIssue_CompleteGreen() {
         section = new Map();
         sectionMap.set(sectionName, section);
       }
+      
 
       let material = section.get(materialName);
       if (!material) {
@@ -827,6 +847,8 @@ function FullAdvancedInventoryIssue_CompleteGreen() {
         };
         material.set(reqNo, req);
       }
+
+      
 
       if (req.RequiredQty === 0) {
   req.RequiredQty = safeNumber(d.RequiredQTY);
@@ -1049,9 +1071,12 @@ function FullAdvancedInventoryIssue_CompleteGreen() {
     if (keys.length > 10) {
       delete searchCacheRef.current[keys[0]];
     }
+    
 
     return result;
   }, [cndata, searchText, filterSection, filterItem, filterStatus, filterCurrency, filterRaiser, filterDepartment, sortBy, sortOrder]);
+
+  
 
   const summaryStats = useMemo(() => {
     let req = 0, issued = 0, pending = 0, value = 0, balance = 0;
@@ -1165,6 +1190,8 @@ function FullAdvancedInventoryIssue_CompleteGreen() {
   const raiserFilterCount = filterRaiser.length;
   const departmentFilterCount = filterDepartment.length;
 
+  
+
   // ===== EXPORT EXCEL FUNCTION =====
   const exportExcel = useCallback(() => {
     if (!UseData || UseData.length === 0) {
@@ -1192,8 +1219,7 @@ function FullAdvancedInventoryIssue_CompleteGreen() {
   // ============================================
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-4 md:p-6 font-sans text-slate-800">
-      <div className="max-w-[1600px] mx-auto">
-
+      <div className="max-w-[1600px] mx-auto">sectionMap.get
         {/* HEADER - Light Theme */}
         <motion.div
           initial={{ y: -16, opacity: 0 }}

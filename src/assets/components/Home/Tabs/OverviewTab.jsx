@@ -1,4 +1,3 @@
-
 import React, { useMemo } from "react";
 import {
   ResponsiveContainer,
@@ -65,7 +64,7 @@ const OverviewTab = ({
   selectedYear = "All",
   selectedMonth = "All",
   selectedMarketing = "All",
-   dateRange,
+  dateRange,
 }) => {
   // ============================================================
   // DATE HELPERS
@@ -76,9 +75,7 @@ const OverviewTab = ({
 
     // YYYY-MM-DD / YYYY-MM-DDTHH:mm:ss
     if (typeof value === "string") {
-      const match = value.match(
-        /^(\d{4})-(\d{2})-(\d{2})/
-      );
+      const match = value.match(/^(\d{4})-(\d{2})-(\d{2})/);
 
       if (match) {
         return `${match[1]}-${match[2]}-${match[3]}`;
@@ -101,15 +98,9 @@ const OverviewTab = ({
   const formatDate = (dateKey) => {
     if (!dateKey) return "";
 
-    const [year, month, day] = dateKey
-      .split("-")
-      .map(Number);
+    const [year, month, day] = dateKey.split("-").map(Number);
 
-    const date = new Date(
-      year,
-      month - 1,
-      day
-    );
+    const date = new Date(year, month - 1, day);
 
     return date.toLocaleDateString("en-US", {
       month: "short",
@@ -120,35 +111,27 @@ const OverviewTab = ({
   const dateMatchesFilter = (dateKey) => {
     if (!dateKey) return false;
 
-    const [year, month, day] = dateKey
-      .split("-")
-      .map(Number);
-     if (dateRange?.startDate && dateRange?.endDate) {
+    const [year, month, day] = dateKey.split("-").map(Number);
+    if (dateRange?.startDate && dateRange?.endDate) {
       const start = new Date(dateRange.startDate);
       const end = new Date(dateRange.endDate);
-      
+
       // Reset time to compare only dates
       start.setHours(0, 0, 0, 0);
       end.setHours(23, 59, 59, 999);
-      
+
       const checkDate = new Date(year, month - 1, day);
-      
+
       // Return true ONLY if the date is within the selected range
       return checkDate >= start && checkDate <= end;
     }
 
-    const yearMatches =
-      selectedYear === "All" ||
-      year === Number(selectedYear);
+    const yearMatches = selectedYear === "All" || year === Number(selectedYear);
 
     const monthIndex =
-      selectedMonth === "All"
-        ? -1
-        : MONTHS.indexOf(selectedMonth);
+      selectedMonth === "All" ? -1 : MONTHS.indexOf(selectedMonth);
 
-    const monthMatches =
-      selectedMonth === "All" ||
-      month - 1 === monthIndex;
+    const monthMatches = selectedMonth === "All" || month - 1 === monthIndex;
 
     return yearMatches && monthMatches;
   };
@@ -162,27 +145,17 @@ const OverviewTab = ({
   // ============================================================
 
   const marketingMatches = (item) => {
-    if (
-      !selectedMarketing ||
-      selectedMarketing === "All"
-    ) {
+    if (!selectedMarketing || selectedMarketing === "All") {
       return true;
     }
 
     const marketing =
-      item.MarketingName ||
-      item.Marketing ||
-      item.marketingName ||
-      "";
+      item.MarketingName || item.Marketing || item.marketingName || "";
 
     return String(marketing)
       .trim()
       .toLowerCase()
-      .includes(
-        String(selectedMarketing)
-          .trim()
-          .toLowerCase()
-      );
+      .includes(String(selectedMarketing).trim().toLowerCase());
   };
 
   // ============================================================
@@ -195,7 +168,6 @@ const OverviewTab = ({
   // dailyData is based on orderReceiveDate in the hook.
   // ============================================================
 
-  
 
   const filteredApiData = useMemo(() => {
     if (!Array.isArray(apiData)) {
@@ -203,39 +175,21 @@ const OverviewTab = ({
     }
 
     return apiData.filter((item) => {
-      const orderDate =
-        getDateKey(
-          item.OrderReceiveDate ||
-            item.ApprovedDate
-        );
+      const orderDate = getDateKey(item.OrderReceiveDate || item.ApprovedDate);
 
-      const challanDate =
-        getDateKey(item.ChallanDate);
+      const challanDate = getDateKey(item.ChallanDate);
 
       // An item belongs to the selected report if
       // either its order date OR its challan date
       // falls into the selected period.
 
-      const orderDateMatch =
-        orderDate &&
-        dateMatchesFilter(orderDate);
+      const orderDateMatch = orderDate && dateMatchesFilter(orderDate);
 
-      const challanDateMatch =
-        challanDate &&
-        dateMatchesFilter(challanDate);
+      const challanDateMatch = challanDate && dateMatchesFilter(challanDate);
 
-      return (
-        marketingMatches(item) &&
-        (orderDateMatch || challanDateMatch)
-      );
+      return marketingMatches(item) && (orderDateMatch || challanDateMatch);
     });
-  }, [
-    apiData,
-    selectedYear,
-    selectedMonth,
-    selectedMarketing,
-  ]);
-  console.log("apiData", apiData);
+  }, [apiData, selectedYear, selectedMonth, selectedMarketing]);
 
   // ============================================================
   // DAILY ORDERS
@@ -247,15 +201,9 @@ const OverviewTab = ({
     const map = new Map();
 
     filteredApiData.forEach((item) => {
-      const dateKey = getDateKey(
-        item.OrderReceiveDate ||
-          item.ApprovedDate
-      );
+      const dateKey = getDateKey(item.OrderReceiveDate || item.ApprovedDate);
 
-      if (
-        !dateKey ||
-        !dateMatchesFilter(dateKey)
-      ) {
+      if (!dateKey || !dateMatchesFilter(dateKey)) {
         return;
       }
 
@@ -270,10 +218,7 @@ const OverviewTab = ({
       const daily = map.get(dateKey);
       console.log("daily", daily);
 
-      const orderNo =
-        item.WorkOrderNo ||
-        item.workOrderNo ||
-        "";
+      const orderNo = item.WorkOrderNo || item.workOrderNo || "";
 
       /*
        * Primary API fields:
@@ -285,19 +230,9 @@ const OverviewTab = ({
        * TotalBreakDownQTY
        */
 
-      const orderQty =
-        Number(
-          item.OrderQTY ??
-            item.OrderQTY ??
-            0
-        ) || 0;
+      const orderQty = Number(item.OrderQTY ?? item.OrderQTY ?? 0) || 0;
 
-      const orderValue =
-        Number(
-          item.OrderValue ??
-            item.OrderValue ??
-            0
-        ) || 0;
+      const orderValue = Number(item.OrderValue ?? item.OrderValue ?? 0) || 0;
 
       daily.orderQty += orderQty;
       daily.orderValue += orderValue;
@@ -308,11 +243,7 @@ const OverviewTab = ({
     });
 
     return map;
-  }, [
-    filteredApiData,
-    selectedYear,
-    selectedMonth,
-  ]);
+  }, [filteredApiData, selectedYear, selectedMonth]);
 
   console.log("filterdata", filteredApiData);
   // ============================================================
@@ -334,29 +265,20 @@ const OverviewTab = ({
     const map = new Map();
 
     filteredApiData.forEach((item) => {
-      const challanDate =
-        getDateKey(item.ChallanDate);
+      const challanDate = getDateKey(item.ChallanDate);
 
-      if (
-        !challanDate ||
-        !dateMatchesFilter(challanDate)
-      ) {
+      if (!challanDate || !dateMatchesFilter(challanDate)) {
         return;
       }
 
-      const saleQty =
-        Number(item.ChallanQTY) || 0;
+      const saleQty = Number(item.ChallanQTY) || 0;
 
-      const saleValue =
-        Number(item.ChallanValue) || 0;
+      const saleValue = Number(item.ChallanValue) || 0;
 
       /*
        * Ignore rows without actual challan.
        */
-      if (
-        saleQty === 0 &&
-        saleValue === 0
-      ) {
+      if (saleQty === 0 && saleValue === 0) {
         return;
       }
 
@@ -375,24 +297,16 @@ const OverviewTab = ({
       daily.saleValue += saleValue;
 
       if (item.ChallanNo) {
-        daily.challans.add(
-          String(item.ChallanNo)
-        );
+        daily.challans.add(String(item.ChallanNo));
       }
 
       if (item.WorkOrderNo) {
-        daily.orders.add(
-          String(item.WorkOrderNo)
-        );
+        daily.orders.add(String(item.WorkOrderNo));
       }
     });
 
     return map;
-  }, [
-    filteredApiData,
-    selectedYear,
-    selectedMonth,
-  ]);
+  }, [filteredApiData, selectedYear, selectedMonth]);
 
   // ============================================================
   // COMBINED DAILY REPORT
@@ -405,73 +319,77 @@ const OverviewTab = ({
   // order date is different.
   // ============================================================
 
-// In OverviewTab.jsx, after creating dailyReport (around line 180)
-const dailyReport = useMemo(() => {
-  const dates = new Set();
+  // In OverviewTab.jsx, after creating dailyReport (around line 180)
+  const dailyReport = useMemo(() => {
+    const dates = new Set();
 
-  dailyOrderMap.forEach((_, date) => {
-    dates.add(date);
-  });
-
-  dailySaleMap.forEach((_, date) => {
-    dates.add(date);
-  });
-
-  const sortedDates = Array.from(dates).sort();
-
-  let cumulativeOrderQty = 0;
-  let cumulativeOrderValue = 0;
-  let cumulativeSaleQty = 0;
-  let cumulativeSaleValue = 0;
-
-  const report = sortedDates.map((date) => {
-    const order = dailyOrderMap.get(date) || { orderQty: 0, orderValue: 0 };
-    const sale = dailySaleMap.get(date) || { saleQty: 0, saleValue: 0 };
-
-    cumulativeOrderQty += order.orderQty;
-    cumulativeOrderValue += order.orderValue;
-    cumulativeSaleQty += sale.saleQty;
-    cumulativeSaleValue += sale.saleValue;
-
-    const balanceQty = Math.max(0, cumulativeOrderQty - cumulativeSaleQty);
-    const balanceValue = Math.max(0, cumulativeOrderValue - cumulativeSaleValue);
-    const deliveryRate = cumulativeOrderQty > 0 
-      ? Math.min(100, (cumulativeSaleQty / cumulativeOrderQty) * 100) 
-      : 0;
-
-    return {
-      date,
-      name: formatDate(date),
-      orderQty: order.orderQty,
-      orderValue: order.orderValue,
-      saleQty: sale.saleQty,
-      saleValue: sale.saleValue,
-      balanceQty,
-      balanceValue,
-      deliveryRate,
-      cumulativeOrderQty,
-      cumulativeOrderValue,
-      cumulativeSaleQty,
-      cumulativeSaleValue,
-    };
-  });
-
-  // 🔥 NEW: Filter the report to only include dates in the selected range
-  if (dateRange?.startDate && dateRange?.endDate) {
-    const start = new Date(dateRange.startDate);
-    const end = new Date(dateRange.endDate);
-    start.setHours(0, 0, 0, 0);
-    end.setHours(23, 59, 59, 999);
-
-    return report.filter((item) => {
-      const [year, month, day] = item.date.split("-").map(Number);
-      const checkDate = new Date(year, month - 1, day);
-      return checkDate >= start && checkDate <= end;
+    dailyOrderMap.forEach((_, date) => {
+      dates.add(date);
     });
-  }
 
-  return report;
-}, [dailyOrderMap, dailySaleMap, dateRange]); 
+    dailySaleMap.forEach((_, date) => {
+      dates.add(date);
+    });
+
+    const sortedDates = Array.from(dates).sort();
+
+    let cumulativeOrderQty = 0;
+    let cumulativeOrderValue = 0;
+    let cumulativeSaleQty = 0;
+    let cumulativeSaleValue = 0;
+
+    const report = sortedDates.map((date) => {
+      const order = dailyOrderMap.get(date) || { orderQty: 0, orderValue: 0 };
+      const sale = dailySaleMap.get(date) || { saleQty: 0, saleValue: 0 };
+
+      cumulativeOrderQty += order.orderQty;
+      cumulativeOrderValue += order.orderValue;
+      cumulativeSaleQty += sale.saleQty;
+      cumulativeSaleValue += sale.saleValue;
+
+      const balanceQty = Math.max(0, cumulativeOrderQty - cumulativeSaleQty);
+      const balanceValue = Math.max(
+        0,
+        cumulativeOrderValue - cumulativeSaleValue,
+      );
+      const deliveryRate =
+        cumulativeOrderQty > 0
+          ? Math.min(100, (cumulativeSaleQty / cumulativeOrderQty) * 100)
+          : 0;
+
+      return {
+        date,
+        name: formatDate(date),
+        orderQty: order.orderQty,
+        orderValue: order.orderValue,
+        saleQty: sale.saleQty,
+        saleValue: sale.saleValue,
+        balanceQty,
+        balanceValue,
+        deliveryRate,
+        cumulativeOrderQty,
+        cumulativeOrderValue,
+        cumulativeSaleQty,
+        cumulativeSaleValue,
+      };
+    });
+
+    // 🔥 NEW: Filter the report to only include dates in the selected range
+    if (dateRange?.startDate && dateRange?.endDate) {
+      const start = new Date(dateRange.startDate);
+      const end = new Date(dateRange.endDate);
+      start.setHours(0, 0, 0, 0);
+      end.setHours(23, 59, 59, 999);
+
+      return report.filter((item) => {
+        const [year, month, day] = item.date.split("-").map(Number);
+        const checkDate = new Date(year, month - 1, day);
+        return checkDate >= start && checkDate <= end;
+      });
+    }
+
+    return report;
+  }, [dailyOrderMap, dailySaleMap, dateRange]);
   console.log("dailyReport", dailyReport);
 
   // ============================================================
@@ -481,18 +399,16 @@ const dailyReport = useMemo(() => {
   const actualSaleTotals = useMemo(() => {
     return dailyReport.reduce(
       (result, item) => {
-        result.qty +=
-          Number(item.saleQty) || 0;
+        result.qty += Number(item.saleQty) || 0;
 
-        result.value +=
-          Number(item.saleValue) || 0;
+        result.value += Number(item.saleValue) || 0;
 
         return result;
       },
       {
         qty: 0,
         value: 0,
-      }
+      },
     );
   }, [dailyReport]);
 
@@ -506,33 +422,21 @@ const dailyReport = useMemo(() => {
     return dailyReport.map((item) => {
       let growth = 0;
 
-      if (
-        previousSale !== null
-      ) {
+      if (previousSale !== null) {
         if (previousSale > 0) {
-          growth =
-            ((item.saleValue -
-              previousSale) /
-              previousSale) *
-            100;
-        } else if (
-          previousSale === 0 &&
-          item.saleValue > 0
-        ) {
+          growth = ((item.saleValue - previousSale) / previousSale) * 100;
+        } else if (previousSale === 0 && item.saleValue > 0) {
           growth = 100;
         }
       }
 
       if (item.saleValue > 0) {
-        previousSale =
-          item.saleValue;
+        previousSale = item.saleValue;
       }
 
       return {
         ...item,
-        salesGrowth:
-          Math.round(growth * 10) /
-          10,
+        salesGrowth: Math.round(growth * 10) / 10,
       };
     });
   }, [dailyReport]);
@@ -543,55 +447,35 @@ const dailyReport = useMemo(() => {
 
   const currentSalesGrowth =
     salesGrowthData.length > 1
-      ? salesGrowthData[
-          salesGrowthData.length - 1
-        ].salesGrowth
+      ? salesGrowthData[salesGrowthData.length - 1].salesGrowth
       : 0;
 
   // ============================================================
   // QUICK STATS
   // ============================================================
 
-  const orderValue =
-    Number(data?.totals?.orderValue) ||
-    0;
+  const orderValue = Number(data?.totals?.orderValue) || 0;
 
-  const orderQty =
-    Number(data?.totals?.orderQty) ||
-    0;
+  const orderQty = Number(data?.totals?.orderQty) || 0;
 
-  const balanceQty =
-    Number(data?.totals?.balanceQty) ||
-    0;
+  const balanceQty = Number(data?.totals?.balanceQty) || 0;
 
-  const balanceValue =
-    Number(data?.totals?.balanceValue) ||
-    0;
+  const balanceValue = Number(data?.totals?.balanceValue) || 0;
 
   const deliveryPercent =
-    orderQty > 0
-      ? (actualSaleTotals.qty /
-          orderQty) *
-        100
-      : 0;
+    orderQty > 0 ? (actualSaleTotals.qty / orderQty) * 100 : 0;
 
   const valuePercent =
-    orderValue > 0
-      ? (actualSaleTotals.value /
-          orderValue) *
-        100
-      : 0;
+    orderValue > 0 ? (actualSaleTotals.value / orderValue) * 100 : 0;
 
   const stats = [
     {
       title: "Total Orders",
-      value:
-        data?.totalOrders || 0,
+      value: data?.totalOrders || 0,
       icon: FaShoppingCart,
       bg: "bg-blue-50",
       color: "text-blue-600",
-      formatter: (value) =>
-        formatNumber(value),
+      formatter: (value) => formatNumber(value),
     },
 
     {
@@ -600,19 +484,16 @@ const dailyReport = useMemo(() => {
       icon: FaMoneyBillWave,
       bg: "bg-indigo-50",
       color: "text-indigo-600",
-      formatter: (value) =>
-        formatCurrency(value),
+      formatter: (value) => formatCurrency(value),
     },
 
     {
       title: "Actual Sales",
-      value:
-        actualSaleTotals.value,
+      value: actualSaleTotals.value,
       icon: TbTruckDelivery,
       bg: "bg-emerald-50",
       color: "text-emerald-600",
-      formatter: (value) =>
-        formatCurrency(value),
+      formatter: (value) => formatCurrency(value),
     },
 
     {
@@ -621,8 +502,7 @@ const dailyReport = useMemo(() => {
       icon: FaBoxOpen,
       bg: "bg-red-50",
       color: "text-red-600",
-      formatter: (value) =>
-        formatCurrency(value),
+      formatter: (value) => formatCurrency(value),
     },
   ];
 
@@ -632,15 +512,12 @@ const dailyReport = useMemo(() => {
 
   return (
     <div className="space-y-6">
-
       {/* ========================================================
           DAILY PERFORMANCE
       ======================================================== */}
 
       <div className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-5">
-
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-5">
-
           <div>
             <h3 className="text-base font-semibold text-slate-800">
               Daily Performance
@@ -652,13 +529,11 @@ const dailyReport = useMemo(() => {
           </div>
 
           <div className="flex items-center gap-4 text-xs">
-
             <span className="flex items-center gap-1.5">
               <span
                 className="w-3 h-3 rounded-sm"
                 style={{
-                  background:
-                    COLORS.order,
+                  background: COLORS.order,
                 }}
               />
               Order
@@ -668,8 +543,7 @@ const dailyReport = useMemo(() => {
               <span
                 className="w-3 h-3 rounded-sm"
                 style={{
-                  background:
-                    COLORS.sale,
+                  background: COLORS.sale,
                 }}
               />
               Actual Sale
@@ -679,24 +553,16 @@ const dailyReport = useMemo(() => {
               <span
                 className="w-3 h-3 rounded-full"
                 style={{
-                  background:
-                    COLORS.balance,
+                  background: COLORS.balance,
                 }}
               />
               Balance
             </span>
-
           </div>
-
         </div>
 
         {dailyReport.length > 0 ? (
-
-          <ResponsiveContainer
-            width="100%"
-            height={350}
-          >
-
+          <ResponsiveContainer width="100%" height={350}>
             <ComposedChart
               data={dailyReport}
               margin={{
@@ -706,11 +572,7 @@ const dailyReport = useMemo(() => {
                 bottom: 5,
               }}
             >
-
-              <CartesianGrid
-                strokeDasharray="3 3"
-                stroke={COLORS.grid}
-              />
+              <CartesianGrid strokeDasharray="3 3" stroke={COLORS.grid} />
 
               <XAxis
                 dataKey="name"
@@ -726,11 +588,7 @@ const dailyReport = useMemo(() => {
                   fontSize: 10,
                   fill: COLORS.text,
                 }}
-                tickFormatter={(value) =>
-                  formatCompactCurrency(
-                    value
-                  )
-                }
+                tickFormatter={(value) => formatCompactCurrency(value)}
               />
 
               <YAxis
@@ -741,74 +599,29 @@ const dailyReport = useMemo(() => {
                   fontSize: 10,
                   fill: COLORS.text,
                 }}
-                tickFormatter={(value) =>
-                  `${value}%`
-                }
+                tickFormatter={(value) => `${value}%`}
               />
 
               <Tooltip
-                labelFormatter={(label) =>
-                  `Date: ${label}`
-                }
-                formatter={(
-                  value,
-                  name
-                ) => {
-
-                  if (
-                    name ===
-                    "Order Value"
-                  ) {
-                    return [
-                      formatCurrency(
-                        value
-                      ),
-                      name,
-                    ];
+                labelFormatter={(label) => `Date: ${label}`}
+                formatter={(value, name) => {
+                  if (name === "Order Value") {
+                    return [formatCurrency(value), name];
                   }
 
-                  if (
-                    name ===
-                    "Actual Sale"
-                  ) {
-                    return [
-                      formatCurrency(
-                        value
-                      ),
-                      name,
-                    ];
+                  if (name === "Actual Sale") {
+                    return [formatCurrency(value), name];
                   }
 
-                  if (
-                    name ===
-                    "Balance Value"
-                  ) {
-                    return [
-                      formatCurrency(
-                        value
-                      ),
-                      name,
-                    ];
+                  if (name === "Balance Value") {
+                    return [formatCurrency(value), name];
                   }
 
-                  if (
-                    name ===
-                    "Delivery Rate"
-                  ) {
-                    return [
-                      `${Number(
-                        value
-                      ).toFixed(1)}%`,
-                      name,
-                    ];
+                  if (name === "Delivery Rate") {
+                    return [`${Number(value).toFixed(1)}%`, name];
                   }
 
-                  return [
-                    formatNumber(
-                      value
-                    ),
-                    name,
-                  ];
+                  return [formatNumber(value), name];
                 }}
               />
 
@@ -819,12 +632,7 @@ const dailyReport = useMemo(() => {
                 dataKey="orderValue"
                 name="Order Value"
                 fill={COLORS.order}
-                radius={[
-                  4,
-                  4,
-                  0,
-                  0,
-                ]}
+                radius={[4, 4, 0, 0]}
                 barSize={22}
               />
 
@@ -833,12 +641,7 @@ const dailyReport = useMemo(() => {
                 dataKey="saleValue"
                 name="Actual Sale"
                 fill={COLORS.sale}
-                radius={[
-                  4,
-                  4,
-                  0,
-                  0,
-                ]}
+                radius={[4, 4, 0, 0]}
                 barSize={22}
               />
 
@@ -847,9 +650,7 @@ const dailyReport = useMemo(() => {
                 type="monotone"
                 dataKey="balanceValue"
                 name="Balance Value"
-                stroke={
-                  COLORS.balance
-                }
+                stroke={COLORS.balance}
                 strokeWidth={2}
                 dot={{
                   r: 3,
@@ -861,27 +662,19 @@ const dailyReport = useMemo(() => {
                 type="monotone"
                 dataKey="deliveryRate"
                 name="Delivery Rate"
-                stroke={
-                  COLORS.delivery
-                }
+                stroke={COLORS.delivery}
                 strokeWidth={2}
                 dot={{
                   r: 3,
                 }}
               />
-
             </ComposedChart>
-
           </ResponsiveContainer>
-
         ) : (
-
           <div className="py-12 text-center text-slate-400">
             No daily data available
           </div>
-
         )}
-
       </div>
 
       {/* ========================================================
@@ -889,9 +682,7 @@ const dailyReport = useMemo(() => {
       ======================================================== */}
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-
         {stats.map((stat) => {
-
           const Icon = stat.icon;
 
           return (
@@ -899,37 +690,22 @@ const dailyReport = useMemo(() => {
               key={stat.title}
               className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-4"
             >
-
               <div className="flex items-center gap-3">
-
-                <div
-                  className={`p-3 rounded-xl ${stat.bg}`}
-                >
-                  <Icon
-                    className={`w-5 h-5 ${stat.color}`}
-                  />
+                <div className={`p-3 rounded-xl ${stat.bg}`}>
+                  <Icon className={`w-5 h-5 ${stat.color}`} />
                 </div>
 
                 <div className="min-w-0">
-
-                  <p className="text-xs text-slate-400">
-                    {stat.title}
-                  </p>
+                  <p className="text-xs text-slate-400">{stat.title}</p>
 
                   <p className="text-lg font-bold text-slate-800 truncate">
-                    {stat.formatter(
-                      stat.value
-                    )}
+                    {stat.formatter(stat.value)}
                   </p>
-
                 </div>
-
               </div>
-
             </div>
           );
         })}
-
       </div>
 
       {/* ========================================================
@@ -937,57 +713,37 @@ const dailyReport = useMemo(() => {
       ======================================================== */}
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-
         <div className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-4">
-          <p className="text-xs text-slate-400">
-            Sale Qty
-          </p>
+          <p className="text-xs text-slate-400">Sale Qty</p>
 
           <p className="text-xl font-bold text-emerald-600 mt-1">
-            {formatNumber(
-              actualSaleTotals.qty
-            )}
+            {formatNumber(actualSaleTotals.qty)}
           </p>
         </div>
 
         <div className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-4">
-          <p className="text-xs text-slate-400">
-            Sale Value
-          </p>
+          <p className="text-xs text-slate-400">Sale Value</p>
 
           <p className="text-xl font-bold text-emerald-600 mt-1">
-            {formatCurrency(
-              actualSaleTotals.value
-            )}
+            {formatCurrency(actualSaleTotals.value)}
           </p>
         </div>
 
         <div className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-4">
-          <p className="text-xs text-slate-400">
-            Delivery Rate
-          </p>
+          <p className="text-xs text-slate-400">Delivery Rate</p>
 
           <p className="text-xl font-bold text-purple-600 mt-1">
-            {deliveryPercent.toFixed(
-              1
-            )}
-            %
+            {deliveryPercent.toFixed(1)}%
           </p>
         </div>
 
         <div className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-4">
-          <p className="text-xs text-slate-400">
-            Value Delivery
-          </p>
+          <p className="text-xs text-slate-400">Value Delivery</p>
 
           <p className="text-xl font-bold text-indigo-600 mt-1">
-            {valuePercent.toFixed(
-              1
-            )}
-            %
+            {valuePercent.toFixed(1)}%
           </p>
         </div>
-
       </div>
 
       {/* ========================================================
@@ -995,9 +751,7 @@ const dailyReport = useMemo(() => {
       ======================================================== */}
 
       <div className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-5">
-
         <div className="flex items-center justify-between mb-4">
-
           <div>
             <h3 className="text-base font-semibold text-slate-800">
               Daily Sales Growth
@@ -1010,44 +764,18 @@ const dailyReport = useMemo(() => {
 
           <div
             className={`flex items-center gap-1 text-sm font-semibold ${
-              currentSalesGrowth >=
-              0
-                ? "text-emerald-600"
-                : "text-red-600"
+              currentSalesGrowth >= 0 ? "text-emerald-600" : "text-red-600"
             }`}
           >
-            {currentSalesGrowth >=
-            0 ? (
-              <FaArrowUp />
-            ) : (
-              <FaArrowDown />
-            )}
-
-            {Math.abs(
-              currentSalesGrowth
-            ).toFixed(1)}
-            %
+            {currentSalesGrowth >= 0 ? <FaArrowUp /> : <FaArrowDown />}
+            {Math.abs(currentSalesGrowth).toFixed(1)}%
           </div>
-
         </div>
 
         {salesGrowthData.length > 1 ? (
-
-          <ResponsiveContainer
-            width="100%"
-            height={260}
-          >
-
-            <ComposedChart
-              data={
-                salesGrowthData
-              }
-            >
-
-              <CartesianGrid
-                strokeDasharray="3 3"
-                stroke={COLORS.grid}
-              />
+          <ResponsiveContainer width="100%" height={260}>
+            <ComposedChart data={salesGrowthData}>
+              <CartesianGrid strokeDasharray="3 3" stroke={COLORS.grid} />
 
               <XAxis
                 dataKey="name"
@@ -1057,56 +785,34 @@ const dailyReport = useMemo(() => {
               />
 
               <YAxis
-                tickFormatter={(
-                  value
-                ) =>
-                  `${value}%`
-                }
+                tickFormatter={(value) => `${value}%`}
                 tick={{
                   fontSize: 10,
                 }}
               />
 
               <Tooltip
-                formatter={(
-                  value
-                ) =>
-                  `${Number(
-                    value
-                  ).toFixed(1)}%`
-                }
-                labelFormatter={(
-                  label
-                ) =>
-                  `Date: ${label}`
-                }
+                formatter={(value) => `${Number(value).toFixed(1)}%`}
+                labelFormatter={(label) => `Date: ${label}`}
               />
 
               <Line
                 type="monotone"
                 dataKey="salesGrowth"
                 name="Sales Growth"
-                stroke={
-                  COLORS.sale
-                }
+                stroke={COLORS.sale}
                 strokeWidth={3}
                 dot={{
                   r: 3,
                 }}
               />
-
             </ComposedChart>
-
           </ResponsiveContainer>
-
         ) : (
-
           <div className="py-10 text-center text-slate-400 text-sm">
             Not enough data for growth analysis
           </div>
-
         )}
-
       </div>
 
       {/* ========================================================
@@ -1114,60 +820,38 @@ const dailyReport = useMemo(() => {
       ======================================================== */}
 
       <div className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-5">
-
         <div className="flex items-center gap-2 mb-4">
-
           <FaUserTie className="text-violet-500" />
 
           <h3 className="text-base font-semibold text-slate-800">
             Top Sales Persons
           </h3>
-
         </div>
 
         <div className="space-y-2">
-
-          {(data?.topMarketing ||
-            data?.marketingData ||
-            [])
+          {(data?.topMarketing || data?.marketingData || [])
             .slice(0, 5)
             .map((item, index) => (
-
               <div
-                key={
-                  item.name ||
-                  index
-                }
+                key={item.name || index}
                 className="flex items-center justify-between p-3 rounded-xl bg-slate-50"
               >
-
                 <div className="flex items-center gap-3">
-
                   <span className="text-xs font-bold text-slate-400">
                     #{index + 1}
                   </span>
 
                   <span className="text-sm font-medium text-slate-700">
-                    {item.name ||
-                      "Unknown"}
+                    {item.name || "Unknown"}
                   </span>
-
                 </div>
 
                 <div className="text-sm font-semibold text-emerald-600">
-                  {formatCompactCurrency(
-                    item.value ||
-                      item.saleValue ||
-                      0
-                  )}
+                  {formatCompactCurrency(item.value || item.saleValue || 0)}
                 </div>
-
               </div>
-
             ))}
-
         </div>
-
       </div>
 
       {/* ========================================================
@@ -1175,53 +859,28 @@ const dailyReport = useMemo(() => {
       ======================================================== */}
 
       <div className="bg-slate-50 rounded-xl p-3 text-center">
-
         <p className="text-xs text-slate-400">
-
           Daily Order Date:
           <span className="font-medium text-blue-600 ml-1">
-            OrderReceiveDate /
-            ApprovedDate
+            OrderReceiveDate / ApprovedDate
           </span>
-
-          <span className="mx-2">
-            •
-          </span>
-
+          <span className="mx-2">•</span>
           Daily Sale Date:
-          <span className="font-medium text-emerald-600 ml-1">
-            ChallanDate
-          </span>
-
-          <span className="mx-2">
-            •
-          </span>
-
+          <span className="font-medium text-emerald-600 ml-1">ChallanDate</span>
+          <span className="mx-2">•</span>
           Sale Qty:
           <span className="font-medium text-slate-600 ml-1">
-            {formatNumber(
-              actualSaleTotals.qty
-            )}
+            {formatNumber(actualSaleTotals.qty)}
           </span>
-
-          <span className="mx-2">
-            •
-          </span>
-
+          <span className="mx-2">•</span>
           Sale Value:
           <span className="font-medium text-slate-600 ml-1">
-            {formatCurrency(
-              actualSaleTotals.value
-            )}
+            {formatCurrency(actualSaleTotals.value)}
           </span>
-
         </p>
-
       </div>
-
     </div>
   );
 };
 
 export default OverviewTab;
-

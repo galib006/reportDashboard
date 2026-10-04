@@ -306,7 +306,7 @@ function Inventory() {
       const receiveData = receiveResponse.data || [];
       const issueData = issueResponse.data || [];
       const statementData = statementResponse.data || [];
-
+      console.log("issueData :", issueData);
       // Store raw data
       setReceives(receiveData);
       setIssues(issueData);
@@ -1703,11 +1703,14 @@ const sortedRequisitions = [...issues]
             <tr className="bg-slate-50">
               <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase">#</th>
               <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Material</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Req. No</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Req. Date</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Required Qty</th>
               <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Issue Date</th>
               <th className="px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase">Quantity</th>
+              <th className="px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase">Due</th>
               <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Issued To</th>
               <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Issue No</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Requisition No</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -1715,11 +1718,14 @@ const sortedRequisitions = [...issues]
               <tr key={idx} className="hover:bg-slate-50 transition-colors">
                 <td className="px-4 py-3 text-sm text-slate-400">{idx + 1}</td>
                 <td className="px-4 py-3 text-sm font-medium text-slate-700">{issue.MaterialName || 'N/A'}</td>
+                <td className="px-4 py-3 text-sm text-slate-600">{issue.RequisitionNo || 'N/A'}</td>
+                <td className="px-4 py-3 text-sm text-slate-600">{formatDate(issue.RequisitionDate)}</td>
+                <td className="px-4 py-3 text-sm font-bold text-rose-600">{issue.RequiredQTY || 0}</td>
                 <td className="px-4 py-3 text-sm text-slate-600">{formatDate(issue.IssueDate)}</td>
-                <td className="px-4 py-3 text-sm text-right font-medium text-rose-600">{issue.IssueQTY || 0}</td>
+                <td className="px-4 py-3 text-sm text-right font-medium text-green-600">{issue.IssueQTY || 0}</td>
+                <td className="px-4 py-3 text-sm text-right font-medium text-blue-600">{issue.PendingQTY || 0}</td>
                 <td className="px-4 py-3 text-sm text-slate-600">{issue.IssuedBy || issue.JobCardNo || 'N/A'}</td>
                 <td className="px-4 py-3 text-sm text-slate-600">{issue.IssueNo || 'N/A'}</td>
-                <td className="px-4 py-3 text-sm text-slate-600">{issue.RequisitionNo || 'N/A'}</td>
               </tr>
             ))}
             {issues.length > 50 && (
@@ -1755,15 +1761,18 @@ const sortedRequisitions = [...issues]
         requisitionMap.set(issue.RequisitionNo, {
           material: issue.MaterialName || 'N/A',
           date: formatDate(issue.IssueDate),
-          quantity: Number(issue.IssueQTY || 0),
-          department: issue.DepartmentName || issue.JobCardNo || 'N/A',
+          Issuequantity: Number(issue.IssueQTY || 0),
+          department: issue.CostCenterName || issue.JobCardNo || 'N/A',
           requisitionNo: issue.RequisitionNo,
+          requisitionQty: issue.RequiredQTY,
+          issueNo: issue.IssueNo || 'N/A',
           status: isIssued ? 'Issued' : 'Pending'
         });
       }
     });
-
+    console.log("issues:", issues);
     const requisitions = Array.from(requisitionMap.values());
+    console.log("Requisitions:", requisitions);
 
     return (
       <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
@@ -1792,8 +1801,8 @@ const sortedRequisitions = [...issues]
                   <td className="px-4 py-3 text-sm text-slate-400">{idx + 1}</td>
                   <td className="px-4 py-3 text-sm font-medium text-slate-700">{req.material}</td>
                   <td className="px-4 py-3 text-sm text-slate-600">{req.date}</td>
-                  <td className="px-4 py-3 text-sm text-right font-medium text-amber-600">{req.quantity.toFixed(2)}</td>
-                  <td className="px-4 py-3 text-sm text-slate-600">{req.department}</td>
+                  <td className="px-4 py-3 text-sm text-right font-medium text-amber-600">{req.requisitionQty.toFixed(2)}</td>
+                  <td className="px-4 py-3 text-sm text-slate-600">{req.department} 123</td>
                   <td className="px-4 py-3 text-sm text-slate-600">{req.requisitionNo}</td>
                   <td className="px-4 py-3 text-center">
                     <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${

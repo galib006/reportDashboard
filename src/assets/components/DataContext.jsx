@@ -20,7 +20,6 @@ function DataContext({ children }) {
     _lastFetch: null
   });
   const [loading, setLoading] = useState(false);
-  
   // ===== API KEY STATE =====
   const [apiKey, setApiKey] = useState(() => {
     return localStorage.getItem('apiKey') || '';
