@@ -1,6 +1,6 @@
 // ============================================================
-// INVENTORY MANAGEMENT SYSTEM
-// Professional, Clean, and Well-Organized Component
+// INVENTORY MANAGEMENT SYSTEM — STOCK LEDGER EDITION
+// Professional deep stock tracking with full cycle
 // ============================================================
 
 import React, { useContext, useEffect, useMemo, useState, useCallback, useRef } from "react";
@@ -10,26 +10,26 @@ import axios from "axios";
 import { toast } from "react-toastify";
 import { saveAs } from "file-saver";
 import _ from "lodash";
-import XLSX from 'xlsx-js-style';
+import XLSX from "xlsx-js-style";
 import { HashLoader } from "react-spinners";
 import {
   FiSearch, FiDownload, FiRefreshCw, FiChevronDown, FiChevronUp,
   FiChevronLeft, FiChevronRight, FiChevronsLeft, FiChevronsRight,
-  FiFilter, FiEye, FiEyeOff, FiAlertCircle, FiTrendingUp, FiTrendingDown,
+  FiFilter, FiAlertCircle, FiTrendingUp, FiTrendingDown,
   FiBarChart2, FiPackage, FiTruck, FiClipboard, FiFileText,
-  FiHome, FiActivity, FiPieChart
+  FiHome, FiActivity, FiLayers, FiBookOpen, FiArrowDownCircle,
+  FiArrowUpCircle, FiDollarSign, FiPercent, FiBox
 } from "react-icons/fi";
 import { FaSort, FaSortUp, FaSortDown } from "react-icons/fa";
 
 // ============================================================
-// 1. CONSTANTS & CONFIGURATION
+// 1. CONSTANTS
 // ============================================================
 
 const API_BASE = "https://tpl-api.ebs365.info/api/InventoryBI";
-const DEFAULT_PAGE_SIZE = 10;
+const DEFAULT_PAGE_SIZE = 15;
 const LOW_STOCK_THRESHOLD = 50;
 
-// Opening balances for materials (should come from API in production)
 const OPENING_BALANCES = {
   "LDPE": 7258,
   "10 mm Single Satin (White)": 9,
@@ -73,1450 +73,1042 @@ const OPENING_BALANCES = {
 };
 
 // ============================================================
-// 2. TAB CONFIGURATION
+// 2. TABS
 // ============================================================
 
 const TABS = [
-  { id: 'dashboard', label: 'Dashboard', icon: FiHome, color: 'blue' },
-  { id: 'inventory', label: 'Inventory', icon: FiPackage, color: 'emerald' },
-  { id: 'issues', label: 'Issues', icon: FiTruck, color: 'rose' },
+  { id: 'dashboard', label: 'Dashboard',     icon: FiHome,      color: 'blue' },
+  { id: 'summary',   label: 'Stock Summary', icon: FiLayers,    color: 'emerald' },
+  { id: 'ledger',    label: 'Stock Ledger',  icon: FiBookOpen,  color: 'purple' },
+  { id: 'receives',  label: 'Receives',      icon: FiArrowDownCircle, color: 'cyan' },
+  { id: 'issues',    label: 'Issues',        icon: FiArrowUpCircle,   color: 'rose' },
   { id: 'requisitions', label: 'Requisitions', icon: FiClipboard, color: 'amber' },
-  { id: 'stock-report', label: 'Stock Report', icon: FiBarChart2, color: 'purple' },
-  { id: 'full-report', label: 'Full Report', icon: FiFileText, color: 'indigo' },
+  { id: 'full-report', label: 'Full Report', icon: FiFileText,  color: 'indigo' },
 ];
 
 // ============================================================
-// 3. HELPER FUNCTIONS
+// 3. HELPERS
 // ============================================================
 
-/**
- * Format date to readable string
- */
 const formatDate = (date) => {
-  if (!date) return "";
+  if (!date) return "—";
+  const dt = new Date(date);
+  if (isNaN(dt)) return date;
+  return dt.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+};
+
+const formatDateTime = (date) => {
+  if (!date) return "—";
   const dt = new Date(date);
   if (isNaN(dt)) return date;
   return dt.toLocaleDateString('en-GB', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric'
+    day: '2-digit', month: 'short', year: 'numeric'
   });
 };
 
-/**
- * Get status based on balance and gap
- */
-const getInventoryStatus = (balance, gap) => {
-  if (balance <= 0) return { type: 'danger', label: 'Critical', color: 'rose' };
-  if (gap < 0) return { type: 'warning', label: 'Gap Alert', color: 'amber' };
-  if (balance < LOW_STOCK_THRESHOLD) return { type: 'info', label: 'Low Stock', color: 'blue' };
-  return { type: 'success', label: 'Healthy', color: 'emerald' };
+const n = (v) => Number(v || 0);
+const fmt = (v, d = 2) => n(v).toFixed(d);
+const fmtMoney = (v, cur = "USD") =>
+  `${cur} ${n(v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+const getStockStatus = (balance, threshold = LOW_STOCK_THRESHOLD) => {
+  if (balance <= 0) return { key: 'out',      label: 'Out of Stock', cls: 'rose' };
+  if (balance < threshold) return { key: 'low', label: 'Low Stock', cls: 'amber' };
+  if (balance < threshold * 4) return { key: 'ok',  label: 'Healthy',    cls: 'emerald' };
+  return { key: 'high', label: 'Well Stocked', cls: 'blue' };
 };
 
-/**
- * Get status badge styles
- */
-const getStatusBadgeStyles = (status) => {
-  const styles = {
-    success: { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200' },
-    warning: { bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200' },
-    danger: { bg: 'bg-rose-50', text: 'text-rose-700', border: 'border-rose-200' },
-    info: { bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200' }
-  };
-  return styles[status] || styles.success;
-};
-
-/**
- * Get balance color class
- */
-const getBalanceColor = (balance) => {
-  if (balance <= 0) return 'text-rose-600';
-  if (balance < LOW_STOCK_THRESHOLD) return 'text-amber-600';
-  return 'text-slate-800';
-};
+const statusBadge = (cls) => ({
+  rose:    'bg-rose-50 text-rose-700 border-rose-200',
+  amber:   'bg-amber-50 text-amber-700 border-amber-200',
+  emerald: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  blue:    'bg-blue-50 text-blue-700 border-blue-200',
+  slate:   'bg-slate-100 text-slate-600 border-slate-200',
+}[cls] || 'bg-slate-100 text-slate-600 border-slate-200');
 
 // ============================================================
-// 4. SUB-COMPONENTS
+// 4. DATA PROCESSING (Grouping / Ledger / Requisitions)
 // ============================================================
 
 /**
- * Tab Navigation Component
+ * Build the STOCK LEDGER for each material.
+ * Opening → + Receives → − Issues → running balance.
  */
-const TabNavigation = ({ activeTab, setActiveTab }) => {
-  return (
-    <div className="border-b border-slate-200 bg-white/80 backdrop-blur-sm rounded-t-2xl overflow-x-auto">
-      <div className="flex px-4 space-x-1 min-w-max">
-        {TABS.map((tab) => {
-          const Icon = tab.icon;
-          const isActive = activeTab === tab.id;
-          return (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 px-4 py-3 border-b-2 transition-all duration-200 whitespace-nowrap ${
-                isActive
-                  ? `border-${tab.color}-500 text-${tab.color}-600`
-                  : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
-              }`}
-              aria-current={isActive ? 'page' : undefined}
-            >
-              <Icon size={18} className={isActive ? `text-${tab.color}-500` : ''} />
-              <span className="text-sm font-medium">{tab.label}</span>
-              {isActive && (
-                <span className={`w-1.5 h-1.5 rounded-full bg-${tab.color}-500 animate-pulse`} />
-              )}
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
+const buildStockLedger = (statement, receives, issues, startDate) => {
+  const materials = new Map();
+
+  // Seed with statement
+  statement.forEach((s) => {
+    if (!s.MaterialName) return;
+    if (!materials.has(s.MaterialName)) {
+      materials.set(s.MaterialName, {
+        name: s.MaterialName,
+        code: s.MaterialCode || '—',
+        unit: s.UnitName || 'KG',
+        category: s.CategoryName || '—',
+        subCategory: s.SubCategoryName || '—',
+        mainMaterial: s.MainMaterialName || '—',
+        opening: n(OPENING_BALANCES[s.MaterialName]),
+        receives: [],
+        issues: [],
+        ledger: [],
+        totalIn: 0,
+        totalOut: 0,
+        closing: 0,
+        avgCost: 0,
+        inValue: 0,
+        outValue: 0,
+      });
+    }
+  });
+
+  // Add receive rows
+  receives.forEach((r) => {
+    const name = r.MaterialName;
+    if (!name) return;
+    if (!materials.has(name)) {
+      materials.set(name, {
+        name, code: r.MaterialCode || '—', unit: r.Unit || 'KG',
+        category: r.CategoryName || '—', subCategory: r.SubCategoryName || '—',
+        mainMaterial: r.MainMaterialName || '—',
+        opening: n(OPENING_BALANCES[name]),
+        receives: [], issues: [], ledger: [],
+        totalIn: 0, totalOut: 0, closing: 0, avgCost: 0, inValue: 0, outValue: 0,
+      });
+    }
+    const m = materials.get(name);
+    const qty = n(r.ActualReceiveQTY);
+    const price = n(r.ActualReceivePrice);
+    m.receives.push({
+      date: r.GRNDate,
+      ref: r.GRNNo || '—',
+      qty, price,
+      value: qty * price,
+      vendor: r.VendorName || '—',
+      currency: r.Currency || 'USD',
+      kind: 'receive',
+    });
+    m.totalIn += qty;
+    m.inValue += qty * price;
+  });
+
+  // Add issue rows
+  issues.forEach((i) => {
+    const name = i.MaterialName;
+    if (!name) return;
+    if (!materials.has(name)) {
+      materials.set(name, {
+        name, code: i.MaterialCode || '—', unit: i.UnitName || 'KG',
+        category: i.CategoryName || '—', subCategory: i.SubCategoryName || '—',
+        mainMaterial: i.MainMaterialName || '—',
+        opening: n(OPENING_BALANCES[name]),
+        receives: [], issues: [], ledger: [],
+        totalIn: 0, totalOut: 0, closing: 0, avgCost: 0, inValue: 0, outValue: 0,
+      });
+    }
+    const m = materials.get(name);
+    const qty = n(i.IssueQTY);
+    const price = n(i.IssuePrice);
+    m.issues.push({
+      date: i.IssueDate,
+      ref: i.IssueNo || '—',
+      reqNo: i.RequisitionNo || '—',
+      reqDate: i.RequisitionDate,
+      qty, price,
+      value: qty * price,
+      issuedTo: i.IssuedBy || '—',
+      jobCard: i.JobCardNo || '—',
+      currency: i.Currency || 'USD',
+      kind: 'issue',
+    });
+    m.totalOut += qty;
+    m.outValue += qty * price;
+  });
+
+  // Build ledger per material
+  const result = [];
+  materials.forEach((m) => {
+    // Timeline: opening → all receives → all issues
+    let running = m.opening;
+    const ledger = [];
+
+    if (m.opening > 0) {
+      ledger.push({
+        date: startDate,
+        kind: 'opening',
+        ref: 'OPENING',
+        inQty: m.opening,
+        outQty: 0,
+        balance: running,
+        detail: 'Opening balance',
+        currency: '—',
+      });
+    }
+
+    const txs = [...m.receives, ...m.issues].sort(
+      (a, b) => new Date(a.date) - new Date(b.date)
+    );
+
+    txs.forEach((t) => {
+      if (t.kind === 'receive') {
+        running += t.qty;
+        ledger.push({
+          date: t.date, kind: 'receive', ref: t.ref,
+          inQty: t.qty, outQty: 0, balance: running,
+          detail: t.vendor, currency: t.currency,
+          value: t.value, price: t.price,
+        });
+      } else {
+        running -= t.qty;
+        ledger.push({
+          date: t.date, kind: 'issue', ref: t.ref,
+          inQty: 0, outQty: t.qty, balance: running,
+          detail: t.issuedTo, currency: t.currency,
+          value: t.value, price: t.price,
+          reqNo: t.reqNo, jobCard: t.jobCard,
+        });
+      }
+    });
+
+    m.ledger = ledger;
+    m.closing = running;
+    m.avgCost = m.totalIn > 0 ? m.inValue / m.totalIn : 0;
+    m.stockValue = m.closing * m.avgCost;
+
+    result.push(m);
+  });
+
+  return result;
 };
 
 /**
- * Loading Spinner Component
+ * Group ISSUES by RequisitionNo.
+ * FIX: RequiredQTY is the SAME on every row — take it ONCE.
+ *      IssueQTY is different per row — SUM it.
  */
-const LoadingSpinner = ({ message = 'Loading data...' }) => (
-  <div className="flex justify-center items-center h-96 bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-white/50">
-    <div className="text-center">
-      <HashLoader color="#3b82f6" size={50} />
-      <p className="text-slate-500 mt-4 font-medium">{message}</p>
+const groupIssuesByRequisition = (issues) => {
+  const map = new Map();
+
+  issues.forEach((row) => {
+    const key = row.RequisitionNo || `ORPHAN-${row.IssueNo}`;
+
+    if (!map.has(key)) {
+      map.set(key, {
+        requisitionNo: row.RequisitionNo || '—',
+        requisitionDate: row.RequisitionDate,
+        materialName: row.MaterialName,
+        materialCode: row.MaterialCode || '—',
+        category: row.CategoryName || '—',
+        subCategory: row.SubCategoryName || '—',
+        unit: row.UnitName || 'KG',
+        requiredQTY: n(row.RequiredQTY), // ✅ take ONCE
+        raisedBy: row.RequistionRaiseBy || '—',
+        department: row.Department || '—',
+        costCenter: row.CostCenterName || '—',
+        company: row.CompanyName || '—',
+        currencies: new Set(),
+        issues: [],
+        totalIssued: 0,
+        totalValue: 0,
+      });
+    }
+
+    const g = map.get(key);
+    g.issues.push({
+      issueNo: row.IssueNo || '—',
+      issueDate: row.IssueDate,
+      issueQTY: n(row.IssueQTY),
+      issuePrice: n(row.IssuePrice),
+      issueValue: n(row.IssueValue),
+      issuedBy: row.IssuedBy || '—',
+      jobCardNo: row.JobCardNo || '—',
+      grnNo: row.GRNNo || '—',
+      currency: row.Currency || 'USD',
+      pendingQTY: n(row.PendingQTY),
+    });
+    g.totalIssued += n(row.IssueQTY);
+    g.totalValue += n(row.IssueValue);
+    g.currencies.add(row.Currency || 'USD');
+  });
+
+  return Array.from(map.values()).map((g) => {
+    const pending = Math.max(0, g.requiredQTY - g.totalIssued);
+    const pct = g.requiredQTY > 0
+      ? Math.min(100, (g.totalIssued / g.requiredQTY) * 100)
+      : 0;
+
+    let status = 'Pending';
+    if (g.totalIssued >= g.requiredQTY && g.requiredQTY > 0) status = 'Completed';
+    else if (g.totalIssued > 0) status = 'Partial';
+
+    return {
+      ...g,
+      pendingQTY: pending,
+      fulfillmentPct: pct,
+      status,
+      currency: g.currencies.size === 1 ? [...g.currencies][0] : 'MIXED',
+      issueCount: g.issues.length,
+      // sort issues chronologically
+      issues: [...g.issues].sort((a, b) => new Date(a.issueDate) - new Date(b.issueDate)),
+    };
+  });
+};
+
+// ============================================================
+// 5. SUB-COMPONENTS
+// ============================================================
+
+const TabBar = ({ active, setActive }) => (
+  <div className="border-b border-slate-200 bg-white/90 backdrop-blur-md rounded-t-2xl overflow-x-auto scrollbar-thin">
+    <div className="flex px-2 sm:px-4 gap-1 min-w-max">
+      {TABS.map((tab) => {
+        const Icon = tab.icon;
+        const isActive = active === tab.id;
+        return (
+          <button
+            key={tab.id}
+            onClick={() => setActive(tab.id)}
+            className={`flex items-center gap-2 px-3 sm:px-4 py-3 border-b-2 transition-all whitespace-nowrap text-sm ${
+              isActive
+                ? `border-${tab.color}-500 text-${tab.color}-600 font-semibold`
+                : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'
+            }`}
+          >
+            <Icon size={16} />
+            <span>{tab.label}</span>
+            {isActive && (
+              <span className={`w-1.5 h-1.5 rounded-full bg-${tab.color}-500`} />
+            )}
+          </button>
+        );
+      })}
     </div>
   </div>
 );
 
-/**
- * Empty State Component
- */
-const EmptyState = ({ onReset }) => (
+const Loader = ({ msg = 'Loading…' }) => (
+  <div className="flex flex-col items-center justify-center h-96 bg-white rounded-2xl border border-slate-100">
+    <HashLoader color="#3b82f6" size={50} />
+    <p className="text-slate-500 mt-4 font-medium">{msg}</p>
+  </div>
+);
+
+const Empty = ({ onReset }) => (
   <tr>
-    <td colSpan="8" className="px-4 py-12 text-center">
+    <td colSpan="20" className="px-4 py-16 text-center">
       <div className="flex flex-col items-center gap-3">
-        <div className="p-4 bg-slate-50 rounded-full">
-          <FiAlertCircle size={40} className="text-slate-300" />
-        </div>
-        <p className="text-slate-600 font-medium">No materials found</p>
-        <p className="text-slate-400 text-sm">Try adjusting your filters or search criteria</p>
+        <FiAlertCircle size={44} className="text-slate-300" />
+        <p className="text-slate-600 font-medium">No data found</p>
         <button
           onClick={onReset}
-          className="mt-2 px-4 py-2 text-blue-600 hover:text-blue-700 text-sm font-medium hover:bg-blue-50 rounded-lg transition-colors"
+          className="mt-2 px-4 py-2 text-blue-600 hover:bg-blue-50 rounded-lg text-sm font-medium"
         >
-          Clear all filters
+          Clear filters
         </button>
       </div>
     </td>
   </tr>
 );
 
+const KpiCard = ({ label, value, sub, icon: Icon, color = 'blue' }) => (
+  <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
+    <div className="flex items-start justify-between gap-3">
+      <div className="min-w-0 flex-1">
+        <p className="text-[11px] uppercase tracking-wider text-slate-400 font-semibold truncate">
+          {label}
+        </p>
+        <p className={`text-2xl sm:text-3xl font-bold mt-1 text-${color}-600 truncate`}>
+          {value}
+        </p>
+        {sub && <p className="text-xs text-slate-400 mt-1 truncate">{sub}</p>}
+      </div>
+      {Icon && (
+        <div className={`p-2.5 rounded-xl bg-${color}-50 text-${color}-500 shrink-0`}>
+          <Icon size={20} />
+        </div>
+      )}
+    </div>
+  </div>
+);
+
 // ============================================================
-// 5. MAIN COMPONENT
+// 6. MAIN COMPONENT
 // ============================================================
 
-function Inventory() {
-  // ============================================================
-  // 5.1 CONTEXT & REFS
-  // ============================================================
-  
+export default function Inventory() {
   const { cndata, apiKey } = useContext(GetDataContext);
   const tableRef = useRef(null);
 
-  // ============================================================
-  // 5.2 STATE MANAGEMENT
-  // ============================================================
-  
-  // UI State
-  const [activeTab, setActiveTab] = useState('inventory');
+  // UI
+  const [activeTab, setActiveTab] = useState('dashboard');
   const [loading, setLoading] = useState(false);
   const [showFilters, setShowFilters] = useState(true);
-  const [expandedRows, setExpandedRows] = useState({});
+  const [expandedMaterials, setExpandedMaterials] = useState({});
+  const [expandedReqs, setExpandedReqs] = useState({});
 
-  // Data State
+  // Data
   const [receives, setReceives] = useState([]);
   const [issues, setIssues] = useState([]);
-  const [inventoryStatement, setInventoryStatement] = useState([]);
-  const [materialData, setMaterialData] = useState([]);
+  const [statement, setStatement] = useState([]);
 
-  // Filter State
+  // Derived
+  const [materials, setMaterials] = useState([]);           // ledger-based
+  const [requisitions, setRequisitions] = useState([]);     // grouped issues
+
+  // Filters
   const [filters, setFilters] = useState({
-    company: "all",
-    category: "all",
-    subcategory: "all",
-    material: "all",
-    search: "",
-    negativeGap: false,
-    zeroBalance: false,
-    lowStock: false,
+    search: '',
+    category: 'all',
+    subCategory: 'all',
+    material: 'all',
+    company: 'all',
+    status: 'all',
+    onlyAlerts: false,
+    showAll: false,
     startDate: null,
     endDate: null,
-    showAll: false,
   });
 
-  // Pagination State
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
-  
-  // Sort State
-  const [sortConfig, setSortConfig] = useState({ key: "itemName", direction: "asc" });
+  const [sort, setSort] = useState({ key: 'name', dir: 'asc' });
 
-  // Filter Options State
-  const [filterOptions, setFilterOptions] = useState({
-    companies: [],
-    categories: [],
-    subCategories: [],
-    materials: [],
-  });
-
-  // ============================================================
-  // 5.3 DATA FETCHING
-  // ============================================================
-
-  /**
-   * Fetch all inventory data from API
-   */
-  const fetchInventoryData = useCallback(async () => {
-    // Validate date selection
+  // ==============================
+  // FETCH
+  // ==============================
+  const fetchData = useCallback(async () => {
     if (!cndata?.startDate || !cndata?.endDate) {
-      toast.error("Please select start and end dates!");
+      toast.error("Please select start and end dates");
       return;
     }
-
     setLoading(true);
     setPage(1);
 
-    const startDate = cndata.startDate.toISOString().split("T")[0];
-    const endDate = cndata.endDate.toISOString().split("T")[0];
+    const sd = cndata.startDate.toISOString().split("T")[0];
+    const ed = cndata.endDate.toISOString().split("T")[0];
 
     try {
-      // Fetch all three data sources in parallel
-      const [receiveResponse, issueResponse, statementResponse] = await Promise.all([
-        axios.get(
-          `${API_BASE}/SCM_GetMaterialReceiveDetail?CompanyID=1&ParentCategoryID=6&CategoryID=0&SubCategoryID=0&MainMaterialID=0&StartDate=${startDate}&EndDate=${endDate}&CommandID=0`,
-          { headers: { Authorization: `${apiKey}` } }
-        ),
-        axios.get(
-          `${API_BASE}/SCM_GET_MaterialIssueDetail?CompanyID=1&ParentCategoryID=6&CategoryID=0&SubCategoryID=0&MainMaterialID=0&StartDate=${startDate}&EndDate=${endDate}&CommandID=2`,
-          { headers: { Authorization: `${apiKey}` } }
-        ),
-        axios.get(
-          `${API_BASE}/BI_SCM_GETInventoryStatement?CompanyID=1&ParentCategoryID=6&CategoryID=0&SubCategoryID=0&MaterialID=0&StartDate=${startDate}&EndDate=${endDate}&CommandID=2&EmpID=0`,
-          { headers: { Authorization: `${apiKey}` } }
-        ),
+      const [rRes, iRes, sRes] = await Promise.all([
+        axios.get(`${API_BASE}/SCM_GetMaterialReceiveDetail?CompanyID=1&ParentCategoryID=6&CategoryID=0&SubCategoryID=0&MainMaterialID=0&StartDate=${sd}&EndDate=${ed}&CommandID=0`, { headers: { Authorization: `${apiKey}` } }),
+        axios.get(`${API_BASE}/SCM_GET_MaterialIssueDetail?CompanyID=1&ParentCategoryID=6&CategoryID=0&SubCategoryID=0&MainMaterialID=0&StartDate=${sd}&EndDate=${ed}&CommandID=2`, { headers: { Authorization: `${apiKey}` } }),
+        axios.get(`${API_BASE}/BI_SCM_GETInventoryStatement?CompanyID=1&ParentCategoryID=6&CategoryID=0&SubCategoryID=0&MaterialID=0&StartDate=${sd}&EndDate=${ed}&CommandID=2&EmpID=0`, { headers: { Authorization: `${apiKey}` } }),
       ]);
 
-      const receiveData = receiveResponse.data || [];
-      const issueData = issueResponse.data || [];
-      const statementData = statementResponse.data || [];
-      console.log("issueData :", issueData);
-      // Store raw data
-      setReceives(receiveData);
-      setIssues(issueData);
-      setInventoryStatement(statementData);
+      const rData = rRes.data || [];
+      const iData = iRes.data || [];
+      const sData = sRes.data || [];
 
-      // Build filter options
-      const allItems = [...receiveData, ...issueData];
-      setFilterOptions({
-        companies: _.uniq(allItems.map(x => x.CompanyName).filter(Boolean)),
-        categories: _.uniq(allItems.map(x => x.CategoryName).filter(Boolean)),
-        subCategories: _.uniq(allItems.map(x => x.SubCategoryName).filter(Boolean)),
-        materials: _.uniq(statementData.map(x => x.MaterialName).filter(Boolean)),
-      });
+      setReceives(rData);
+      setIssues(iData);
+      setStatement(sData);
 
-      // Process material data with timeline
-      const processedMaterials = processMaterialData(
-        statementData,
-        receiveData,
-        issueData,
-        cndata.startDate
-      );
+      // Build ledger
+      const ledger = buildStockLedger(sData, rData, iData, cndata.startDate);
+      setMaterials(ledger);
 
-      setMaterialData(processedMaterials);
-      
-      // Update filters with dates
-      setFilters(prev => ({
-        ...prev,
+      // Group issues → requisitions
+      const reqs = groupIssuesByRequisition(iData);
+      setRequisitions(reqs);
+
+      setFilters((f) => ({
+        ...f,
         startDate: cndata.startDate,
         endDate: cndata.endDate,
       }));
 
-      toast.success(`✓ Loaded ${processedMaterials.length} materials successfully!`);
-    } catch (error) {
-      console.error("Error fetching data:", error);
-      toast.error(error?.response?.data?.message || "Failed to load data. Please try again.");
+      toast.success(`✓ Loaded ${ledger.length} materials · ${reqs.length} requisitions`);
+    } catch (err) {
+      console.error(err);
+      toast.error(err?.response?.data?.message || "Failed to load data");
     } finally {
       setLoading(false);
     }
   }, [cndata, apiKey]);
 
-  /**
-   * Process raw data into structured material information with timeline
-   */
-  const processMaterialData = (statementData, receiveData, issueData, startDate) => {
-    return statementData.map((item) => {
-      const materialName = item.MaterialName;
-      
-      // Get opening balance
-      const openingQty = OPENING_BALANCES[materialName] || 0;
-      
-      // Filter transactions for this material
-      const materialReceives = receiveData
-        .filter(d => d.MaterialName === materialName)
-        .sort((a, b) => new Date(a.GRNDate) - new Date(b.GRNDate));
-      
-      const materialIssues = issueData
-        .filter(d => d.MaterialName === materialName)
-        .sort((a, b) => new Date(a.IssueDate) - new Date(b.IssueDate));
+  // Filter options
+  const filterOptions = useMemo(() => {
+    const cats = _.uniq(materials.map((m) => m.category).filter((c) => c && c !== '—'));
+    const subs = _.uniq(materials.map((m) => m.subCategory).filter((s) => s && s !== '—'));
+    const mats = _.uniq(materials.map((m) => m.name).filter(Boolean));
+    const comps = _.uniq([
+      ...receives.map((r) => r.CompanyName),
+      ...issues.map((i) => i.CompanyName),
+    ].filter(Boolean));
+    return { cats, subs, mats, comps };
+  }, [materials, receives, issues]);
 
-      // Build transaction timeline
-      let timeline = [];
-      let runningBalance = openingQty;
+  // ==============================
+  // APPLY FILTERS + SORT
+  // ==============================
+  const filteredMaterials = useMemo(() => {
+    let data = [...materials];
 
-      // Add opening balance if exists
-      if (openingQty > 0) {
-        timeline.push({
-          type: "Opening",
-          date: startDate,
-          reference: "OPENING",
-          receiveQty: openingQty,
-          issueQty: 0,
-          runningBalance: openingQty,
-          remarks: "Opening Balance",
-          isOpening: true,
-        });
-      }
-
-      // Add receive transactions
-      materialReceives.forEach(rec => {
-        const qty = Number(rec.ActualReceiveQTY || 0);
-        runningBalance += qty;
-        timeline.push({
-          type: "Receive",
-          date: rec.GRNDate,
-          reference: rec.GRNNo || "N/A",
-          receiveQty: qty,
-          issueQty: 0,
-          runningBalance: runningBalance,
-          remarks: rec.VendorName || "N/A",
-        });
-      });
-
-      // Add issue transactions
-      materialIssues.forEach(issue => {
-        const qty = Number(issue.IssueQTY || 0);
-        runningBalance -= qty;
-        timeline.push({
-          type: "Issue",
-          date: issue.IssueDate,
-          reference: issue.IssueNo || issue.RequisitionNo || "N/A",
-          receiveQty: 0,
-          issueQty: qty,
-          runningBalance: runningBalance,
-          remarks: issue.IssuedBy || issue.JobCardNo || "N/A",
-        });
-      });
-
-      // Sort timeline by date
-      timeline = timeline.sort((a, b) => new Date(a.date) - new Date(b.date));
-
-      // Calculate totals
-      const totalReceive = materialReceives.reduce(
-        (sum, r) => sum + Number(r.ActualReceiveQTY || 0), 
-        openingQty
-      );
-      const totalIssue = materialIssues.reduce(
-        (sum, i) => sum + Number(i.IssueQTY || 0), 
-        0
-      );
-
-      return {
-        name: materialName,
-        balance: runningBalance,
-        openingBalance: openingQty,
-        totalReceive: totalReceive,
-        totalIssue: totalIssue,
-        gap: totalReceive - totalIssue,
-        timeline: timeline,
-        transactionCount: timeline.length,
-      };
-    });
-  };
-
-  // ============================================================
-  // 5.4 DATA PROCESSING (Filtering & Sorting)
-  // ============================================================
-
-  /**
-   * Apply filters and sorting to material data
-   */
-  const processedData = useMemo(() => {
-    let data = [...materialData];
-
-    // Apply filters
-    if (filters.company !== "all") {
-      data = data.filter(item => 
-        item.timeline.some(t => t.remarks === filters.company)
+    if (filters.search.trim()) {
+      const q = filters.search.toLowerCase();
+      data = data.filter((m) =>
+        m.name.toLowerCase().includes(q) ||
+        m.code.toLowerCase().includes(q) ||
+        m.category.toLowerCase().includes(q) ||
+        m.subCategory.toLowerCase().includes(q)
       );
     }
+    if (filters.category !== 'all') data = data.filter((m) => m.category === filters.category);
+    if (filters.subCategory !== 'all') data = data.filter((m) => m.subCategory === filters.subCategory);
+    if (filters.material !== 'all') data = data.filter((m) => m.name === filters.material);
 
-    if (filters.category !== "all") {
-      data = data.filter(item => 
-        item.timeline.some(t => t.remarks === filters.category)
-      );
+    if (filters.onlyAlerts) {
+      data = data.filter((m) => m.closing <= 0 || m.closing < LOW_STOCK_THRESHOLD);
     }
+    if (filters.status === 'out') data = data.filter((m) => m.closing <= 0);
+    if (filters.status === 'low') data = data.filter((m) => m.closing > 0 && m.closing < LOW_STOCK_THRESHOLD);
+    if (filters.status === 'ok') data = data.filter((m) => m.closing >= LOW_STOCK_THRESHOLD);
 
-    if (filters.subcategory !== "all") {
-      data = data.filter(item => 
-        item.timeline.some(t => t.remarks === filters.subcategory)
-      );
-    }
-
-    if (filters.material !== "all") {
-      data = data.filter(item => item.name === filters.material);
-    }
-
-    if (filters.search.trim() !== "") {
-      const searchTerm = filters.search.toLowerCase();
-      data = data.filter(item => 
-        item.name.toLowerCase().includes(searchTerm) ||
-        item.timeline.some(t => 
-          String(t.remarks).toLowerCase().includes(searchTerm) ||
-          String(t.reference).toLowerCase().includes(searchTerm)
-        )
-      );
-    }
-
-    if (filters.negativeGap) {
-      data = data.filter(item => item.gap < 0);
-    }
-
-    if (filters.zeroBalance) {
-      data = data.filter(item => Math.abs(item.balance) < 0.01);
-    }
-
-    if (filters.lowStock) {
-      data = data.filter(item => item.balance > 0 && item.balance < LOW_STOCK_THRESHOLD);
-    }
-
-    // Apply sorting
-    data = _.orderBy(data, [sortConfig.key], [sortConfig.direction]);
-
+    data = _.orderBy(data, [sort.key], [sort.dir]);
     return data;
-  }, [materialData, filters, sortConfig]);
+  }, [materials, filters, sort]);
 
-  /**
-   * Calculate summary statistics
-   */
-  const summaryStats = useMemo(() => {
-    const totalItems = processedData.length;
-    const negativeGapItems = processedData.filter(item => item.gap < 0).length;
-    const zeroBalanceItems = processedData.filter(item => Math.abs(item.balance) < 0.01).length;
-    const lowStockItems = processedData.filter(
-      item => item.balance > 0 && item.balance < LOW_STOCK_THRESHOLD
-    ).length;
-    
-    const totalBalance = processedData.reduce((sum, item) => sum + item.balance, 0);
-    const totalReceives = processedData.reduce((sum, item) => sum + item.totalReceive, 0);
-    const totalIssues = processedData.reduce((sum, item) => sum + item.totalIssue, 0);
-    
-    const healthyItems = totalItems - negativeGapItems - zeroBalanceItems;
-    const healthScore = totalItems > 0 
-      ? ((totalItems - negativeGapItems - zeroBalanceItems) / totalItems * 100).toFixed(1)
-      : 0;
+  const filteredRequisitions = useMemo(() => {
+    let data = [...requisitions];
+    if (filters.search.trim()) {
+      const q = filters.search.toLowerCase();
+      data = data.filter((r) =>
+        r.requisitionNo.toLowerCase().includes(q) ||
+        r.materialName.toLowerCase().includes(q) ||
+        r.raisedBy.toLowerCase().includes(q)
+      );
+    }
+    if (filters.category !== 'all') data = data.filter((r) => r.category === filters.category);
+    if (filters.status !== 'all') data = data.filter((r) => r.status.toLowerCase() === filters.status);
+    if (filters.onlyAlerts) data = data.filter((r) => r.status !== 'Completed');
+    return _.orderBy(data, ['requisitionDate'], ['desc']);
+  }, [requisitions, filters]);
+
+  // ==============================
+  // STATS
+  // ==============================
+  const stats = useMemo(() => {
+    const total = materials.length;
+    const out = materials.filter((m) => m.closing <= 0).length;
+    const low = materials.filter((m) => m.closing > 0 && m.closing < LOW_STOCK_THRESHOLD).length;
+    const healthy = total - out - low;
+
+    const totalIn = materials.reduce((s, m) => s + m.totalIn, 0);
+    const totalOut = materials.reduce((s, m) => s + m.totalOut, 0);
+    const closing = materials.reduce((s, m) => s + m.closing, 0);
+    const inValue = materials.reduce((s, m) => s + m.inValue, 0);
+    const stockValue = materials.reduce((s, m) => s + (m.stockValue || 0), 0);
+
+    const pendingReq = requisitions.filter((r) => r.status !== 'Completed').length;
+    const partialReq = requisitions.filter((r) => r.status === 'Partial').length;
 
     return {
-      totalItems,
-      negativeGapItems,
-      zeroBalanceItems,
-      lowStockItems,
-      healthyItems,
-      totalBalance: totalBalance.toFixed(2),
-      totalReceives: totalReceives.toFixed(2),
-      totalIssues: totalIssues.toFixed(2),
-      healthScore: Number(healthScore),
+      total, out, low, healthy,
+      totalIn, totalOut, closing,
+      inValue, stockValue,
+      pendingReq, partialReq,
+      totalReqs: requisitions.length,
     };
-  }, [processedData]);
+  }, [materials, requisitions]);
 
-  // ============================================================
-  // 5.5 PAGINATION
-  // ============================================================
+  // ==============================
+  // PAGINATION
+  // ==============================
+  const currentData =
+    activeTab === 'requisitions' || activeTab === 'issues'
+      ? filteredRequisitions
+      : filteredMaterials;
 
-  const totalPages = Math.max(1, Math.ceil(processedData.length / pageSize));
-  const paginatedData = filters.showAll 
-    ? processedData 
-    : processedData.slice((page - 1) * pageSize, page * pageSize);
+  const totalPages = Math.max(1, Math.ceil(currentData.length / pageSize));
+  const paginated = filters.showAll
+    ? currentData
+    : currentData.slice((page - 1) * pageSize, page * pageSize);
 
-  const handlePageChange = useCallback((newPage) => {
-    setPage(Math.min(Math.max(1, newPage), totalPages));
-    if (tableRef.current) {
-      tableRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-  }, [totalPages]);
+  const gotoPage = (p) => {
+    setPage(Math.min(Math.max(1, p), totalPages));
+    tableRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
 
-  // ============================================================
-  // 5.6 EVENT HANDLERS
-  // ============================================================
+  // ==============================
+  // HANDLERS
+  // ==============================
+  const resetFilters = () => {
+    setFilters((f) => ({
+      ...f, search: '', category: 'all', subCategory: 'all',
+      material: 'all', company: 'all', status: 'all', onlyAlerts: false,
+    }));
+    setPage(1);
+    toast.info("Filters reset");
+  };
 
-  const toggleRowExpansion = useCallback((name) => {
-    setExpandedRows(prev => ({ ...prev, [name]: !prev[name] }));
-  }, []);
-
-  const toggleSort = useCallback((key) => {
-    setSortConfig(prev => ({
+  const toggleSort = (key) => {
+    setSort((s) => ({
       key,
-      direction: prev.key === key && prev.direction === "asc" ? "desc" : "asc"
+      dir: s.key === key && s.dir === 'asc' ? 'desc' : 'asc',
     }));
-  }, []);
+  };
 
-  const resetFilters = useCallback(() => {
-    setFilters(prev => ({
-      ...prev,
-      company: "all",
-      category: "all",
-      subcategory: "all",
-      material: "all",
-      search: "",
-      negativeGap: false,
-      zeroBalance: false,
-      lowStock: false,
-    }));
-    setPage(1);
-    toast.info("Filters have been reset");
-  }, []);
+  const SortIcon = ({ col }) => {
+    if (sort.key !== col) return <FaSort className="text-slate-300" size={11} />;
+    return sort.dir === 'asc'
+      ? <FaSortUp className="text-blue-500" size={11} />
+      : <FaSortDown className="text-blue-500" size={11} />;
+  };
 
-  const handleFilterChange = useCallback((key, value) => {
-    setFilters(prev => ({ ...prev, [key]: value }));
-    setPage(1);
-  }, []);
-
-
-/**
- * Export inventory data to professional Excel with full styling
- * Data sorted from NEWEST to OLDEST
- */
-const exportToExcel = useCallback(async () => {
-  try {
-    toast.info('📊 Generating professional report...', { autoClose: false });
-
-    // ============================================================
-    // 1. CREATE UNIT MAPPING FROM RECEIVES & ISSUES
-    // ============================================================
-    
-    const unitMap = new Map();
-    
-    receives.forEach(item => {
-      if (item.MaterialName && item.Unit) {
-        unitMap.set(item.MaterialName, item.Unit);
-      }
-    });
-    
-    issues.forEach(item => {
-      if (item.MaterialName && item.UnitName) {
-        unitMap.set(item.MaterialName, item.UnitName);
-      }
-    });
-    
-    inventoryStatement.forEach(item => {
-      if (item.MaterialName && item.UnitName) {
-        unitMap.set(item.MaterialName, item.UnitName);
-      }
-    });
-
-    // ============================================================
-    // 2. SORT DATA - NEWEST TO OLDEST
-    // ============================================================
-    
-    // Sort receives by GRN Date (newest first)
-const sortedReceives = [...receives].sort((a, b) => {
-  const dateA = new Date(a.GRNDate || 0);
-  const dateB = new Date(b.GRNDate || 0);
-  return dateB - dateA; // Descending = newest first
-});
-
-// Sort issues by Issue Date (newest first)
-const sortedIssues = [...issues].sort((a, b) => {
-  const dateA = new Date(a.IssueDate || 0);
-  const dateB = new Date(b.IssueDate || 0);
-  return dateB - dateA;
-});
-
-// Sort requisitions by Date (newest first)
-const sortedRequisitions = [...issues]
-  .filter(i => i.RequisitionNo)
-  .sort((a, b) => {
-    const dateA = new Date(a.RequisitionDate || 0);
-    const dateB = new Date(b.RequisitionDate || 0);
-    return dateB - dateA;
-  });
-
-    // Sort inventory statement by Balance QTY (highest first) or by name
-    const sortedInventory = [...inventoryStatement].sort((a, b) => {
-      // Sort by Balance QTY descending (highest first)
-      return (Number(b.BalanceQTY || 0) - Number(a.BalanceQTY || 0));
-    });
-
-    // ============================================================
-    // 3. CALCULATE TURNOVER & STATISTICS
-    // ============================================================
-    
-    const totalReceiveValue = receives.reduce((sum, r) => 
-      sum + Number(r.ReceiveValue || r.ActualReceiveQTY * r.ActualReceivePrice || 0), 0
-    );
-    
-    const totalIssueValue = issues.reduce((sum, i) => 
-      sum + Number(i.IssueValue || i.IssueQTY * i.IssuePrice || 0), 0
-    );
-    
-    const annualTurnover = totalReceiveValue * 12;
-
-    const totalQtyInHand = inventoryStatement.reduce((sum, item) => 
-      sum + Number(item.BalanceQTY || 0), 0
-    );
-    
-    const totalAvailableQty = receives.reduce((sum, r) => 
-      sum + Number(r.ActualReceiveQTY || 0), 0
-    );
-    
-    const totalQtyToShip = issues.reduce((sum, i) => 
-      sum + Number(i.IssueQTY || 0), 0
-    );
-    
-    const totalIncomingQty = receives.reduce((sum, r) => 
-      sum + Number(r.ActualReceiveQTY || 0), 0
-    );
-
-    // ============================================================
-    // 4. STYLE DEFINITIONS
-    // ============================================================
-    
-    const STYLES = {
-      title: {
-        font: { bold: true, sz: 22, color: { rgb: "1A3A5C" }, name: 'Calibri' },
-        alignment: { horizontal: "center", vertical: "center" },
-        fill: { fgColor: { rgb: "E8EDF5" } },
-        border: {
-          top: { style: "medium", color: { rgb: "1A3A5C" } },
-          bottom: { style: "medium", color: { rgb: "1A3A5C" } },
-          left: { style: "medium", color: { rgb: "1A3A5C" } },
-          right: { style: "medium", color: { rgb: "1A3A5C" } }
-        }
-      },
-      
-      subtitle: {
-        font: { sz: 12, color: { rgb: "4A5568" }, name: 'Calibri' },
-        alignment: { horizontal: "center", vertical: "center" }
-      },
-      
-      sectionHeader: {
-        font: { bold: true, sz: 16, color: { rgb: "1A3A5C" }, name: 'Calibri' },
-        fill: { fgColor: { rgb: "F0F4F8" } },
-        alignment: { horizontal: "left", vertical: "center" },
-        border: {
-          bottom: { style: "medium", color: { rgb: "1A3A5C" } }
-        }
-      },
-
-      headerBlue: {
-        font: { bold: true, sz: 11, color: { rgb: "FFFFFF" }, name: 'Calibri' },
-        fill: { fgColor: { rgb: "1A56DB" } },
-        alignment: { horizontal: "center", vertical: "center", wrapText: true },
-        border: {
-          top: { style: "medium", color: { rgb: "153E7C" } },
-          bottom: { style: "medium", color: { rgb: "153E7C" } },
-          left: { style: "medium", color: { rgb: "153E7C" } },
-          right: { style: "medium", color: { rgb: "153E7C" } }
-        }
-      },
-      headerGreen: {
-        font: { bold: true, sz: 11, color: { rgb: "FFFFFF" }, name: 'Calibri' },
-        fill: { fgColor: { rgb: "059669" } },
-        alignment: { horizontal: "center", vertical: "center", wrapText: true },
-        border: {
-          top: { style: "medium", color: { rgb: "047857" } },
-          bottom: { style: "medium", color: { rgb: "047857" } },
-          left: { style: "medium", color: { rgb: "047857" } },
-          right: { style: "medium", color: { rgb: "047857" } }
-        }
-      },
-      headerOrange: {
-        font: { bold: true, sz: 11, color: { rgb: "FFFFFF" }, name: 'Calibri' },
-        fill: { fgColor: { rgb: "D97706" } },
-        alignment: { horizontal: "center", vertical: "center", wrapText: true },
-        border: {
-          top: { style: "medium", color: { rgb: "B45309" } },
-          bottom: { style: "medium", color: { rgb: "B45309" } },
-          left: { style: "medium", color: { rgb: "B45309" } },
-          right: { style: "medium", color: { rgb: "B45309" } }
-        }
-      },
-      headerPurple: {
-        font: { bold: true, sz: 11, color: { rgb: "FFFFFF" }, name: 'Calibri' },
-        fill: { fgColor: { rgb: "7C3AED" } },
-        alignment: { horizontal: "center", vertical: "center", wrapText: true },
-        border: {
-          top: { style: "medium", color: { rgb: "6D28D9" } },
-          bottom: { style: "medium", color: { rgb: "6D28D9" } },
-          left: { style: "medium", color: { rgb: "6D28D9" } },
-          right: { style: "medium", color: { rgb: "6D28D9" } }
-        }
-      },
-      headerRose: {
-        font: { bold: true, sz: 11, color: { rgb: "FFFFFF" }, name: 'Calibri' },
-        fill: { fgColor: { rgb: "E11D48" } },
-        alignment: { horizontal: "center", vertical: "center", wrapText: true },
-        border: {
-          top: { style: "medium", color: { rgb: "BE123C" } },
-          bottom: { style: "medium", color: { rgb: "BE123C" } },
-          left: { style: "medium", color: { rgb: "BE123C" } },
-          right: { style: "medium", color: { rgb: "BE123C" } }
-        }
-      },
-
-      kpiLabel: {
-        font: { bold: true, sz: 11, color: { rgb: "FFFFFF" }, name: 'Calibri' },
-        fill: { fgColor: { rgb: "1A56DB" } },
-        alignment: { horizontal: "center", vertical: "center" },
-        border: {
-          top: { style: "medium", color: { rgb: "153E7C" } },
-          bottom: { style: "medium", color: { rgb: "153E7C" } },
-          left: { style: "medium", color: { rgb: "153E7C" } },
-          right: { style: "medium", color: { rgb: "153E7C" } }
-        }
-      },
-      kpiValue: {
-        font: { bold: true, sz: 16, color: { rgb: "1A3A5C" }, name: 'Calibri' },
-        fill: { fgColor: { rgb: "E8EDF5" } },
-        alignment: { horizontal: "center", vertical: "center" },
-        border: {
-          top: { style: "thin", color: { rgb: "1A3A5C" } },
-          bottom: { style: "medium", color: { rgb: "1A3A5C" } },
-          left: { style: "medium", color: { rgb: "1A3A5C" } },
-          right: { style: "medium", color: { rgb: "1A3A5C" } }
-        }
-      },
-      kpiValueGreen: {
-        font: { bold: true, sz: 16, color: { rgb: "059669" }, name: 'Calibri' },
-        fill: { fgColor: { rgb: "D1FAE5" } },
-        alignment: { horizontal: "center", vertical: "center" },
-        border: {
-          top: { style: "thin", color: { rgb: "059669" } },
-          bottom: { style: "medium", color: { rgb: "059669" } },
-          left: { style: "medium", color: { rgb: "059669" } },
-          right: { style: "medium", color: { rgb: "059669" } }
-        }
-      },
-      kpiValueRed: {
-        font: { bold: true, sz: 16, color: { rgb: "DC2626" }, name: 'Calibri' },
-        fill: { fgColor: { rgb: "FEE2E2" } },
-        alignment: { horizontal: "center", vertical: "center" },
-        border: {
-          top: { style: "thin", color: { rgb: "DC2626" } },
-          bottom: { style: "medium", color: { rgb: "DC2626" } },
-          left: { style: "medium", color: { rgb: "DC2626" } },
-          right: { style: "medium", color: { rgb: "DC2626" } }
-        }
-      },
-
-      cellLeft: {
-        font: { sz: 10, name: 'Calibri' },
-        alignment: { horizontal: "left", vertical: "center" },
-        border: {
-          top: { style: "thin", color: { rgb: "D1D5DB" } },
-          bottom: { style: "thin", color: { rgb: "D1D5DB" } },
-          left: { style: "thin", color: { rgb: "D1D5DB" } },
-          right: { style: "thin", color: { rgb: "D1D5DB" } }
-        }
-      },
-      cellCenter: {
-        font: { sz: 10, name: 'Calibri' },
-        alignment: { horizontal: "center", vertical: "center" },
-        border: {
-          top: { style: "thin", color: { rgb: "D1D5DB" } },
-          bottom: { style: "thin", color: { rgb: "D1D5DB" } },
-          left: { style: "thin", color: { rgb: "D1D5DB" } },
-          right: { style: "thin", color: { rgb: "D1D5DB" } }
-        }
-      },
-      cellRight: {
-        font: { sz: 10, name: 'Calibri' },
-        alignment: { horizontal: "right", vertical: "center" },
-        border: {
-          top: { style: "thin", color: { rgb: "D1D5DB" } },
-          bottom: { style: "thin", color: { rgb: "D1D5DB" } },
-          left: { style: "thin", color: { rgb: "D1D5DB" } },
-          right: { style: "thin", color: { rgb: "D1D5DB" } }
-        }
-      },
-      cellBold: {
-        font: { bold: true, sz: 10, name: 'Calibri' },
-        alignment: { horizontal: "left", vertical: "center" },
-        border: {
-          top: { style: "thin", color: { rgb: "D1D5DB" } },
-          bottom: { style: "thin", color: { rgb: "D1D5DB" } },
-          left: { style: "thin", color: { rgb: "D1D5DB" } },
-          right: { style: "thin", color: { rgb: "D1D5DB" } }
-        }
-      },
-      cellRightBold: {
-        font: { bold: true, sz: 10, name: 'Calibri' },
-        alignment: { horizontal: "right", vertical: "center" },
-        border: {
-          top: { style: "thin", color: { rgb: "D1D5DB" } },
-          bottom: { style: "thin", color: { rgb: "D1D5DB" } },
-          left: { style: "thin", color: { rgb: "D1D5DB" } },
-          right: { style: "thin", color: { rgb: "D1D5DB" } }
-        }
-      },
-
-      rowEven: {
-        font: { sz: 10, name: 'Calibri' },
-        fill: { fgColor: { rgb: "F9FAFB" } },
-        alignment: { horizontal: "left", vertical: "center" },
-        border: {
-          top: { style: "thin", color: { rgb: "D1D5DB" } },
-          bottom: { style: "thin", color: { rgb: "D1D5DB" } },
-          left: { style: "thin", color: { rgb: "D1D5DB" } },
-          right: { style: "thin", color: { rgb: "D1D5DB" } }
-        }
-      },
-      rowOdd: {
-        font: { sz: 10, name: 'Calibri' },
-        alignment: { horizontal: "left", vertical: "center" },
-        border: {
-          top: { style: "thin", color: { rgb: "D1D5DB" } },
-          bottom: { style: "thin", color: { rgb: "D1D5DB" } },
-          left: { style: "thin", color: { rgb: "D1D5DB" } },
-          right: { style: "thin", color: { rgb: "D1D5DB" } }
-        }
-      },
-      rowEvenRight: {
-        font: { sz: 10, name: 'Calibri' },
-        fill: { fgColor: { rgb: "F9FAFB" } },
-        alignment: { horizontal: "right", vertical: "center" },
-        border: {
-          top: { style: "thin", color: { rgb: "D1D5DB" } },
-          bottom: { style: "thin", color: { rgb: "D1D5DB" } },
-          left: { style: "thin", color: { rgb: "D1D5DB" } },
-          right: { style: "thin", color: { rgb: "D1D5DB" } }
-        }
-      },
-      rowOddRight: {
-        font: { sz: 10, name: 'Calibri' },
-        alignment: { horizontal: "right", vertical: "center" },
-        border: {
-          top: { style: "thin", color: { rgb: "D1D5DB" } },
-          bottom: { style: "thin", color: { rgb: "D1D5DB" } },
-          left: { style: "thin", color: { rgb: "D1D5DB" } },
-          right: { style: "thin", color: { rgb: "D1D5DB" } }
-        }
-      },
-
-      statusGreen: {
-        font: { bold: true, color: { rgb: "065F46" }, sz: 10, name: 'Calibri' },
-        fill: { fgColor: { rgb: "D1FAE5" } },
-        alignment: { horizontal: "center", vertical: "center" },
-        border: {
-          top: { style: "thin", color: { rgb: "A7F3D0" } },
-          bottom: { style: "thin", color: { rgb: "A7F3D0" } },
-          left: { style: "thin", color: { rgb: "A7F3D0" } },
-          right: { style: "thin", color: { rgb: "A7F3D0" } }
-        }
-      },
-      statusYellow: {
-        font: { bold: true, color: { rgb: "92400E" }, sz: 10, name: 'Calibri' },
-        fill: { fgColor: { rgb: "FEF3C7" } },
-        alignment: { horizontal: "center", vertical: "center" },
-        border: {
-          top: { style: "thin", color: { rgb: "FDE68A" } },
-          bottom: { style: "thin", color: { rgb: "FDE68A" } },
-          left: { style: "thin", color: { rgb: "FDE68A" } },
-          right: { style: "thin", color: { rgb: "FDE68A" } }
-        }
-      },
-      statusRed: {
-        font: { bold: true, color: { rgb: "991B1B" }, sz: 10, name: 'Calibri' },
-        fill: { fgColor: { rgb: "FEE2E2" } },
-        alignment: { horizontal: "center", vertical: "center" },
-        border: {
-          top: { style: "thin", color: { rgb: "FCA5A5" } },
-          bottom: { style: "thin", color: { rgb: "FCA5A5" } },
-          left: { style: "thin", color: { rgb: "FCA5A5" } },
-          right: { style: "thin", color: { rgb: "FCA5A5" } }
-        }
-      },
-      statusBlue: {
-        font: { bold: true, color: { rgb: "1E40AF" }, sz: 10, name: 'Calibri' },
-        fill: { fgColor: { rgb: "DBEAFE" } },
-        alignment: { horizontal: "center", vertical: "center" },
-        border: {
-          top: { style: "thin", color: { rgb: "93C5FD" } },
-          bottom: { style: "thin", color: { rgb: "93C5FD" } },
-          left: { style: "thin", color: { rgb: "93C5FD" } },
-          right: { style: "thin", color: { rgb: "93C5FD" } }
-        }
-      }
-    };
-
-    // ============================================================
-    // 5. HELPER FUNCTION
-    // ============================================================
-    const applyStyleToRow = (sheet, row, startCol, endCol, style) => {
-      for (let C = startCol; C <= endCol; C++) {
-        const address = XLSX.utils.encode_cell({ r: row, c: C });
-        if (sheet[address]) {
-          sheet[address].s = style;
-        }
-      }
-    };
-
-    // ============================================================
-    // 6. SHEET 1: EXECUTIVE SUMMARY
-    // ============================================================
-    const summaryData = [];
-
-    summaryData.push(['INVENTORY MANAGEMENT REPORT']);
-    summaryData.push([`${issues[0]?.CompanyName || 'Texas Packages & Accessories Ltd.'}`]);
-    summaryData.push([`Annual Turnover: $${annualTurnover.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`]);
-    summaryData.push([`Production: ${issues[0]?.Department || 'Manufacturing'} | Location: ${issues[0]?.CompanyName || 'Bangladesh'}`]);
-    summaryData.push([]);
-    summaryData.push([]);
-
-    summaryData.push(['KEY PERFORMANCE INDICATORS']);
-    summaryData.push([]);
-    summaryData.push([
-      'Total Quantity in Hand',
-      'Total Available Quantity',
-      'Total Quantity to Ship',
-      'Total Incoming Quantity'
-    ]);
-    summaryData.push([
-      totalQtyInHand.toFixed(2),
-      totalAvailableQty.toFixed(2),
-      totalQtyToShip.toFixed(2),
-      totalIncomingQty.toFixed(2)
-    ]);
-    summaryData.push([]);
-    summaryData.push([]);
-
-    summaryData.push(['FINANCIAL SUMMARY']);
-    summaryData.push([]);
-    summaryData.push([
-      'Total Receive Value',
-      'Total Issue Value',
-      'Inventory Value',
-      'Annual Turnover'
-    ]);
-    summaryData.push([
-      `$${totalReceiveValue.toFixed(2)}`,
-      `$${totalIssueValue.toFixed(2)}`,
-      `$${(totalReceiveValue - totalIssueValue).toFixed(2)}`,
-      `$${annualTurnover.toFixed(2)}`
-    ]);
-    summaryData.push([]);
-    summaryData.push([]);
-
-    summaryData.push(['STOCK SUMMARY']);
-    summaryData.push([]);
-    summaryData.push([
-      'Total Materials',
-      'Total Balance QTY',
-      'Average Price',
-      'Total Categories'
-    ]);
-    
-    const uniqueCategories = [...new Set(inventoryStatement.map(item => item.CategoryName))];
-    const avgPrice = receives.length > 0 
-      ? receives.reduce((sum, r) => sum + Number(r.ActualReceivePrice || 0), 0) / receives.length 
-      : 0;
-      
-    summaryData.push([
-      inventoryStatement.length,
-      totalQtyInHand.toFixed(2),
-      `$${avgPrice.toFixed(2)}`,
-      uniqueCategories.length
-    ]);
-
-    const summarySheet = XLSX.utils.aoa_to_sheet(summaryData);
-    summarySheet['!cols'] = [
-      { wch: 30 }, { wch: 30 }, { wch: 25 }, { wch: 25 }
-    ];
-
-    summarySheet['!merges'] = [
-      { s: { r: 0, c: 0 }, e: { r: 0, c: 3 } },
-      { s: { r: 6, c: 0 }, e: { r: 6, c: 3 } },
-      { s: { r: 13, c: 0 }, e: { r: 13, c: 3 } },
-      { s: { r: 20, c: 0 }, e: { r: 20, c: 3 } },
-    ];
-
-    if (summarySheet['A1']) summarySheet['A1'].s = STYLES.title;
-    if (summarySheet['A2']) summarySheet['A2'].s = STYLES.subtitle;
-    if (summarySheet['A3']) summarySheet['A3'].s = { ...STYLES.subtitle, font: { ...STYLES.subtitle.font, color: { rgb: "059669" }, bold: true } };
-    if (summarySheet['A4']) summarySheet['A4'].s = STYLES.subtitle;
-    if (summarySheet['A7']) summarySheet['A7'].s = STYLES.sectionHeader;
-    if (summarySheet['A14']) summarySheet['A14'].s = STYLES.sectionHeader;
-    if (summarySheet['A21']) summarySheet['A21'].s = STYLES.sectionHeader;
-
-    applyStyleToRow(summarySheet, 9, 0, 3, STYLES.kpiLabel);
-    applyStyleToRow(summarySheet, 10, 0, 3, STYLES.kpiValue);
-
-    applyStyleToRow(summarySheet, 16, 0, 3, { ...STYLES.kpiLabel, fill: { fgColor: { rgb: "059669" } } });
-    applyStyleToRow(summarySheet, 17, 0, 3, STYLES.kpiValueGreen);
-
-    applyStyleToRow(summarySheet, 23, 0, 3, { ...STYLES.kpiLabel, fill: { fgColor: { rgb: "7C3AED" } } });
-    applyStyleToRow(summarySheet, 24, 0, 3, { ...STYLES.kpiValue, fill: { fgColor: { rgb: "EDE9FE" } } });
-
-    // ============================================================
-    // 7. SHEET 2: INVENTORY STATEMENT (SORTED - HIGHEST BALANCE FIRST)
-    // ============================================================
-    const inventoryData = [
-      ['SL', 'Material Name', 'Material Code', 'Balance QTY', 'Unit', 'Category', 'Sub Category']
-    ];
-
-    sortedInventory.forEach((item, index) => {
-      let unit = item.UnitName || 'N/A';
-      if (unit === 'N/A' && item.MaterialName) {
-        unit = unitMap.get(item.MaterialName) || 'N/A';
-      }
-      
-      inventoryData.push([
-        index + 1,
-        item.MaterialName || 'N/A',
-        item.MaterialCode || 'N/A',
-        Number(item.BalanceQTY || 0).toFixed(2),
-        unit,
-        item.CategoryName || 'N/A',
-        item.SubCategoryName || 'N/A'
-      ]);
-    });
-
-    const invSheet = XLSX.utils.aoa_to_sheet(inventoryData);
-    invSheet['!cols'] = [
-      { wch: 8 }, { wch: 45 }, { wch: 20 }, { wch: 15 }, 
-      { wch: 12 }, { wch: 25 }, { wch: 25 }
-    ];
-
-    applyStyleToRow(invSheet, 0, 0, 6, STYLES.headerPurple);
-
-    for (let row = 1; row < inventoryData.length; row++) {
-      const isEven = row % 2 === 0;
-      for (let col = 0; col < inventoryData[row].length; col++) {
-        const cellRef = XLSX.utils.encode_cell({ r: row, c: col });
-        if (!invSheet[cellRef]) continue;
-
-        if (col === 0 || col === 4 || col === 5 || col === 6) {
-          invSheet[cellRef].s = isEven ? STYLES.rowEven : STYLES.rowOdd;
-        } else if (col === 1) {
-          invSheet[cellRef].s = isEven ? STYLES.rowEven : STYLES.rowOdd;
-          invSheet[cellRef].s.font = { ...invSheet[cellRef].s.font, bold: true };
-        } else if (col === 3) {
-          const balance = parseFloat(inventoryData[row][col]);
-          const style = isEven ? STYLES.rowEvenRight : STYLES.rowOddRight;
-          if (balance <= 0) {
-            invSheet[cellRef].s = { ...style, font: { ...style.font, color: { rgb: "DC2626" }, bold: true } };
-          } else if (balance < 50) {
-            invSheet[cellRef].s = { ...style, font: { ...style.font, color: { rgb: "D97706" }, bold: true } };
-          } else {
-            invSheet[cellRef].s = { ...style, font: { ...style.font, color: { rgb: "059669" }, bold: true } };
-          }
-        } else {
-          invSheet[cellRef].s = isEven ? STYLES.rowEven : STYLES.rowOdd;
-        }
-      }
-    }
-
-    // ============================================================
-    // 8. SHEET 3: RECEIVES (SORTED - NEWEST FIRST)
-    // ============================================================
-    const receiveData = [
-      ['GRN No', 'Material Name', 'Material Code', 'Receive QTY', 'Unit', 'Unit Price', 'Total Value', 'Vendor', 'GRN Date']
-    ];
-
-    sortedReceives.forEach((item) => {
-      const qty = Number(item.ActualReceiveQTY || 0);
-      const price = Number(item.ActualReceivePrice || 0);
-      const total = qty * price;
-      
-      receiveData.push([
-        item.GRNNo || 'N/A',
-        item.MaterialName || 'N/A',
-        item.MaterialCode || 'N/A',
-        qty.toFixed(2),
-        item.Unit || 'KG',
-        `$${price.toFixed(2)}`,
-        `$${total.toFixed(2)}`,
-        item.VendorName || 'N/A',
-        formatDate(item.GRNDate)
-      ]);
-    });
-
-    const recSheet = XLSX.utils.aoa_to_sheet(receiveData);
-    recSheet['!cols'] = [
-      { wch: 20 }, { wch: 45 }, { wch: 20 }, { wch: 15 }, 
-      { wch: 12 }, { wch: 15 }, { wch: 18 }, { wch: 30 }, { wch: 15 }
-    ];
-
-    applyStyleToRow(recSheet, 0, 0, 8, STYLES.headerGreen);
-
-    for (let row = 1; row < receiveData.length; row++) {
-      const isEven = row % 2 === 0;
-      for (let col = 0; col < receiveData[row].length; col++) {
-        const cellRef = XLSX.utils.encode_cell({ r: row, c: col });
-        if (!recSheet[cellRef]) continue;
-
-        if (col === 3) {
-          const style = isEven ? STYLES.rowEvenRight : STYLES.rowOddRight;
-          recSheet[cellRef].s = { ...style, font: { ...style.font, color: { rgb: "059669" }, bold: true } };
-        } else if (col === 5 || col === 6) {
-          const style = isEven ? STYLES.rowEvenRight : STYLES.rowOddRight;
-          recSheet[cellRef].s = { ...style, font: { ...style.font, color: { rgb: "1A56DB" }, bold: true } };
-        } else if (col === 1) {
-          recSheet[cellRef].s = isEven ? STYLES.rowEven : STYLES.rowOdd;
-          recSheet[cellRef].s.font = { ...recSheet[cellRef].s.font, bold: true };
-        } else {
-          recSheet[cellRef].s = isEven ? STYLES.rowEven : STYLES.rowOdd;
-        }
-      }
-    }
-
-    // ============================================================
-    // 9. SHEET 4: ISSUES (SORTED - NEWEST FIRST)
-    // ============================================================
-    const issueData = [
-      ['Issue No', 'Material Name', 'Material Code', 'Issue QTY', 'Unit', 'Unit Price', 'Total Value', 'Issued To', 'Issue Date']
-    ];
-
-    sortedIssues.forEach((item) => {
-      const qty = Number(item.IssueQTY || 0);
-      const price = Number(item.IssuePrice || 0);
-      const total = qty * price;
-      
-      issueData.push([
-        item.IssueNo || 'N/A',
-        item.MaterialName || 'N/A',
-        item.MaterialCode || 'N/A',
-        qty.toFixed(2),
-        item.UnitName || 'KG',
-        `$${price.toFixed(2)}`,
-        `$${total.toFixed(2)}`,
-        item.IssuedBy || 'N/A',
-        formatDate(item.IssueDate)
-      ]);
-    });
-
-    const issSheet = XLSX.utils.aoa_to_sheet(issueData);
-    issSheet['!cols'] = [
-      { wch: 20 }, { wch: 45 }, { wch: 20 }, { wch: 15 }, 
-      { wch: 12 }, { wch: 15 }, { wch: 18 }, { wch: 30 }, { wch: 15 }
-    ];
-
-    applyStyleToRow(issSheet, 0, 0, 8, STYLES.headerRose);
-
-    for (let row = 1; row < issueData.length; row++) {
-      const isEven = row % 2 === 0;
-      for (let col = 0; col < issueData[row].length; col++) {
-        const cellRef = XLSX.utils.encode_cell({ r: row, c: col });
-        if (!issSheet[cellRef]) continue;
-
-        if (col === 3) {
-          const style = isEven ? STYLES.rowEvenRight : STYLES.rowOddRight;
-          issSheet[cellRef].s = { ...style, font: { ...style.font, color: { rgb: "DC2626" }, bold: true } };
-        } else if (col === 5 || col === 6) {
-          const style = isEven ? STYLES.rowEvenRight : STYLES.rowOddRight;
-          issSheet[cellRef].s = { ...style, font: { ...style.font, color: { rgb: "DC2626" }, bold: true } };
-        } else if (col === 1) {
-          issSheet[cellRef].s = isEven ? STYLES.rowEven : STYLES.rowOdd;
-          issSheet[cellRef].s.font = { ...issSheet[cellRef].s.font, bold: true };
-        } else {
-          issSheet[cellRef].s = isEven ? STYLES.rowEven : STYLES.rowOdd;
-        }
-      }
-    }
-
-    // ============================================================
-    // 10. SHEET 5: REQUISITIONS (SORTED - NEWEST FIRST)
-    // ============================================================
-    const reqMap = new Map();
-    sortedRequisitions.forEach(issue => {
-      if (!issue.RequisitionNo) return;
-      if (!reqMap.has(issue.RequisitionNo)) {
-        reqMap.set(issue.RequisitionNo, {
-          reqNo: issue.RequisitionNo,
-          material: issue.MaterialName || 'N/A',
-          qty: Number(issue.RequiredQTY || 0),
-          unit: issue.UnitName || 'KG',
-          dept: issue.Department || 'N/A',
-          date: formatDate(issue.RequisitionDate),
-          raisedBy: issue.RequistionRaiseBy || 'N/A',
-          status: issue.IssueNo && issue.IssueNo !== 'N/A' ? 'Issued' : 'Pending'
-        });
-      }
-    });
-
-    const reqData = [
-      ['Requisition No', 'Material Name', 'Required QTY', 'Unit', 'Department', 'Date', 'Raised By', 'Status']
-    ];
-
-    Array.from(reqMap.values()).forEach((req) => {
-      reqData.push([
-        req.reqNo,
-        req.material,
-        req.qty.toFixed(2),
-        req.unit,
-        req.dept,
-        req.date,
-        req.raisedBy,
-        req.status
-      ]);
-    });
-
-    const reqSheet = XLSX.utils.aoa_to_sheet(reqData);
-    reqSheet['!cols'] = [
-      { wch: 20 }, { wch: 45 }, { wch: 15 }, { wch: 12 }, 
-      { wch: 25 }, { wch: 15 }, { wch: 25 }, { wch: 15 }
-    ];
-
-    applyStyleToRow(reqSheet, 0, 0, 7, STYLES.headerOrange);
-
-    for (let row = 1; row < reqData.length; row++) {
-      const isEven = row % 2 === 0;
-      const status = reqData[row][7];
-      
-      for (let col = 0; col < reqData[row].length; col++) {
-        const cellRef = XLSX.utils.encode_cell({ r: row, c: col });
-        if (!reqSheet[cellRef]) continue;
-
-        if (col === 2) {
-          const style = isEven ? STYLES.rowEvenRight : STYLES.rowOddRight;
-          reqSheet[cellRef].s = { ...style, font: { ...style.font, color: { rgb: "D97706" }, bold: true } };
-        } else if (col === 7) {
-          reqSheet[cellRef].s = status === 'Issued' ? STYLES.statusGreen : STYLES.statusYellow;
-        } else if (col === 1) {
-          reqSheet[cellRef].s = isEven ? STYLES.rowEven : STYLES.rowOdd;
-          reqSheet[cellRef].s.font = { ...reqSheet[cellRef].s.font, bold: true };
-        } else {
-          reqSheet[cellRef].s = isEven ? STYLES.rowEven : STYLES.rowOdd;
-        }
-      }
-    }
-
-    // ============================================================
-    // 11. CREATE WORKBOOK & DOWNLOAD
-    // ============================================================
-    const wb = XLSX.utils.book_new();
-    
-    XLSX.utils.book_append_sheet(wb, summarySheet, "Summary");
-    XLSX.utils.book_append_sheet(wb, invSheet, "Inventory");
-    XLSX.utils.book_append_sheet(wb, recSheet, "Receives");
-    XLSX.utils.book_append_sheet(wb, issSheet, "Issues");
-    XLSX.utils.book_append_sheet(wb, reqSheet, "Requisitions");
-
-    const fileName = `inventory_report_${new Date().toISOString().slice(0, 10)}.xlsx`;
-    const wbout = XLSX.write(wb, { 
-      bookType: "xlsx", 
-      type: "array",
-      cellStyles: true,
-      bookSST: false
-    });
-    
-    saveAs(
-      new Blob([wbout], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }),
-      fileName
-    );
-    
-    toast.dismiss();
-    toast.success('✅ Professional report exported successfully!');
-  } catch (error) {
-    console.error("Export error:", error);
-    toast.dismiss();
-    toast.error("Failed to export report. Please try again.");
-  }
-}, [processedData, issues, receives, inventoryStatement, formatDate]);
-  // ============================================================
-  // 5.8 RENDER FUNCTIONS
-  // ============================================================
-
-  /**
-   * Render inventory table with all features
-   */
-  const renderInventoryTable = () => (
-    <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+  // ==============================
+  // RENDER: SUMMARY TABLE
+  // ==============================
+  const renderSummaryTable = () => (
+    <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
       <div className="overflow-x-auto">
-        <table className="w-full">
-          <thead>
-            <tr className="bg-slate-50/80 border-b border-slate-200">
-              <th className="px-4 py-3.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">#</th>
-              <th 
-                className="px-4 py-3.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:text-slate-700"
-                onClick={() => toggleSort("name")}
-              >
-                <div className="flex items-center gap-1">
-                  Material
-                  {sortConfig.key === "name" ? (
-                    sortConfig.direction === "asc" ? <FaSortUp className="text-blue-500" /> : <FaSortDown className="text-blue-500" />
-                  ) : (
-                    <FaSort className="text-slate-300" />
-                  )}
-                </div>
+        <table className="w-full min-w-[1100px]">
+          <thead className="bg-slate-50/80 border-b border-slate-200">
+            <tr>
+              <th className="px-3 py-3 text-left text-[11px] uppercase tracking-wider font-semibold text-slate-500 w-10">#</th>
+              <th className="px-3 py-3 text-left text-[11px] uppercase tracking-wider font-semibold text-slate-500">Material</th>
+              <th className="px-3 py-3 text-left text-[11px] uppercase tracking-wider font-semibold text-slate-500">Category</th>
+              <th className="px-3 py-3 text-right text-[11px] uppercase tracking-wider font-semibold text-slate-500 cursor-pointer" onClick={() => toggleSort('opening')}>
+                <span className="inline-flex items-center gap-1">Opening <SortIcon col="opening" /></span>
               </th>
-              <th 
-                className="px-4 py-3.5 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:text-slate-700"
-                onClick={() => toggleSort("totalReceive")}
-              >
-                <div className="flex items-center justify-end gap-1">
-                  Receive
-                  {sortConfig.key === "totalReceive" && (
-                    sortConfig.direction === "asc" ? <FaSortUp className="text-blue-500" /> : <FaSortDown className="text-blue-500" />
-                  )}
-                </div>
+              <th className="px-3 py-3 text-right text-[11px] uppercase tracking-wider font-semibold text-slate-500 cursor-pointer" onClick={() => toggleSort('totalIn')}>
+                <span className="inline-flex items-center gap-1">Stock In <SortIcon col="totalIn" /></span>
               </th>
-              <th 
-                className="px-4 py-3.5 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:text-slate-700"
-                onClick={() => toggleSort("totalIssue")}
-              >
-                <div className="flex items-center justify-end gap-1">
-                  Issue
-                  {sortConfig.key === "totalIssue" && (
-                    sortConfig.direction === "asc" ? <FaSortUp className="text-blue-500" /> : <FaSortDown className="text-blue-500" />
-                  )}
-                </div>
+              <th className="px-3 py-3 text-right text-[11px] uppercase tracking-wider font-semibold text-slate-500 cursor-pointer" onClick={() => toggleSort('totalOut')}>
+                <span className="inline-flex items-center gap-1">Stock Out <SortIcon col="totalOut" /></span>
               </th>
-              <th 
-                className="px-4 py-3.5 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:text-slate-700"
-                onClick={() => toggleSort("balance")}
-              >
-                <div className="flex items-center justify-end gap-1">
-                  Balance
-                  {sortConfig.key === "balance" && (
-                    sortConfig.direction === "asc" ? <FaSortUp className="text-blue-500" /> : <FaSortDown className="text-blue-500" />
-                  )}
-                </div>
+              <th className="px-3 py-3 text-right text-[11px] uppercase tracking-wider font-semibold text-slate-500 cursor-pointer" onClick={() => toggleSort('closing')}>
+                <span className="inline-flex items-center gap-1">Closing <SortIcon col="closing" /></span>
               </th>
-              <th className="px-4 py-3.5 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Gap</th>
-              <th className="px-4 py-3.5 text-center text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</th>
-              <th className="px-4 py-3.5 text-center text-xs font-semibold text-slate-500 uppercase tracking-wider">Details</th>
+              <th className="px-3 py-3 text-center text-[11px] uppercase tracking-wider font-semibold text-slate-500">Unit</th>
+              <th className="px-3 py-3 text-right text-[11px] uppercase tracking-wider font-semibold text-slate-500">Avg Cost</th>
+              <th className="px-3 py-3 text-right text-[11px] uppercase tracking-wider font-semibold text-slate-500">Stock Value</th>
+              <th className="px-3 py-3 text-center text-[11px] uppercase tracking-wider font-semibold text-slate-500">Status</th>
+              <th className="px-3 py-3 text-center text-[11px] uppercase tracking-wider font-semibold text-slate-500">Ledger</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {paginatedData.length === 0 && <EmptyState onReset={resetFilters} />}
-            
-            {paginatedData.map((item, index) => {
-              const status = getInventoryStatus(item.balance, item.gap);
-              const statusStyles = getStatusBadgeStyles(status.type);
-              const isExpanded = expandedRows[item.name];
-              const rowNumber = (page - 1) * pageSize + index + 1;
+            {paginated.length === 0 && <Empty onReset={resetFilters} />}
+            {paginated.map((m, idx) => {
+              const status = getStockStatus(m.closing);
+              const rowNum = (page - 1) * pageSize + idx + 1;
+              return (
+                <tr key={m.name} className="hover:bg-slate-50/70 transition-colors">
+                  <td className="px-3 py-3 text-xs text-slate-400">{rowNum}</td>
+                  <td className="px-3 py-3">
+                    <div className="font-medium text-slate-800 text-sm">{m.name}</div>
+                    <div className="text-[11px] text-slate-400">{m.code}</div>
+                  </td>
+                  <td className="px-3 py-3 text-xs text-slate-600">
+                    <div>{m.category}</div>
+                    <div className="text-[10px] text-slate-400">{m.subCategory}</div>
+                  </td>
+                  <td className="px-3 py-3 text-right text-sm text-slate-500">{fmt(m.opening)}</td>
+                  <td className="px-3 py-3 text-right text-sm font-semibold text-emerald-600">
+                    +{fmt(m.totalIn)}
+                  </td>
+                  <td className="px-3 py-3 text-right text-sm font-semibold text-rose-500">
+                    −{fmt(m.totalOut)}
+                  </td>
+                  <td className={`px-3 py-3 text-right text-sm font-bold ${
+                    m.closing <= 0 ? 'text-rose-600'
+                    : m.closing < LOW_STOCK_THRESHOLD ? 'text-amber-600'
+                    : 'text-slate-800'
+                  }`}>
+                    {fmt(m.closing)}
+                  </td>
+                  <td className="px-3 py-3 text-center text-xs text-slate-500">{m.unit}</td>
+                  <td className="px-3 py-3 text-right text-xs text-slate-600">{fmtMoney(m.avgCost)}</td>
+                  <td className="px-3 py-3 text-right text-xs font-medium text-slate-700">
+                    {fmtMoney(m.stockValue)}
+                  </td>
+                  <td className="px-3 py-3 text-center">
+                    <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold border ${statusBadge(status.cls)}`}>
+                      {status.label}
+                    </span>
+                  </td>
+                  <td className="px-3 py-3 text-center">
+                    <button
+                      onClick={() => {
+                        setActiveTab('ledger');
+                        setExpandedMaterials({ [m.name]: true });
+                      }}
+                      className="p-1.5 rounded-lg bg-purple-50 text-purple-600 hover:bg-purple-100 transition-colors"
+                      title="Open ledger"
+                    >
+                      <FiBookOpen size={14} />
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      <Pagination
+        page={page} totalPages={totalPages} pageSize={pageSize}
+        total={currentData.length}
+        onPage={gotoPage} onSize={setPageSize}
+        showAll={filters.showAll}
+      />
+    </div>
+  );
+
+  // ==============================
+  // RENDER: LEDGER VIEW
+  // ==============================
+  const renderLedger = () => {
+    const openMaterial = Object.keys(expandedMaterials).find((k) => expandedMaterials[k]);
+    const material = filteredMaterials.find((m) => m.name === openMaterial);
+
+    if (!material) {
+      return (
+        <div className="bg-white rounded-2xl border border-slate-100 p-12 text-center">
+          <FiBookOpen size={48} className="mx-auto text-slate-300 mb-3" />
+          <p className="text-slate-600 font-medium">Select a material to view its ledger</p>
+          <p className="text-slate-400 text-sm mt-1">Click the ledger icon on any material in Stock Summary</p>
+        </div>
+      );
+    }
+
+    const status = getStockStatus(material.closing);
+
+    return (
+      <div className="space-y-5">
+        {/* Material header */}
+        <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-2xl p-6 text-white">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p className="text-xs uppercase tracking-wider text-slate-400">Stock Ledger</p>
+              <h2 className="text-2xl font-bold mt-1">{material.name}</h2>
+              <div className="flex flex-wrap gap-3 mt-3 text-xs text-slate-300">
+                <span>Code: <strong>{material.code}</strong></span>
+                <span>Category: <strong>{material.category}</strong></span>
+                <span>Sub: <strong>{material.subCategory}</strong></span>
+                <span>Unit: <strong>{material.unit}</strong></span>
+              </div>
+            </div>
+            <div className="text-right">
+              <p className="text-xs text-slate-400 uppercase tracking-wider">Closing Balance</p>
+              <p className={`text-4xl font-bold mt-1 ${
+                material.closing <= 0 ? 'text-rose-400'
+                : material.closing < LOW_STOCK_THRESHOLD ? 'text-amber-400'
+                : 'text-emerald-400'
+              }`}>
+                {fmt(material.closing)}
+              </p>
+              <p className="text-xs text-slate-400 mt-1">≈ {fmtMoney(material.stockValue)}</p>
+            </div>
+          </div>
+
+          {/* Mini stats */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-5">
+            {[
+              { l: 'Opening', v: fmt(material.opening) },
+              { l: 'Stock In', v: `+${fmt(material.totalIn)}`, c: 'text-emerald-400' },
+              { l: 'Stock Out', v: `−${fmt(material.totalOut)}`, c: 'text-rose-400' },
+              { l: 'Avg Cost', v: fmtMoney(material.avgCost) },
+            ].map((k) => (
+              <div key={k.l} className="bg-white/5 backdrop-blur rounded-xl p-3 border border-white/10">
+                <p className="text-[10px] uppercase tracking-wider text-slate-400">{k.l}</p>
+                <p className={`text-lg font-bold mt-0.5 ${k.c || 'text-white'}`}>{k.v}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Ledger table */}
+        <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
+          <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+            <div>
+              <h3 className="font-semibold text-slate-800">Transaction Ledger</h3>
+              <p className="text-xs text-slate-500">Chronological · running balance</p>
+            </div>
+            <button
+              onClick={() => setExpandedMaterials({})}
+              className="text-xs text-slate-500 hover:text-slate-800 px-3 py-1.5 rounded-lg hover:bg-slate-50"
+            >
+              ← Back to summary
+            </button>
+          </div>
+          <div className="overflow-x-auto max-h-[70vh]">
+            <table className="w-full min-w-[800px]">
+              <thead className="bg-slate-50 sticky top-0 z-10">
+                <tr>
+                  <th className="px-3 py-2.5 text-left text-[11px] uppercase tracking-wider font-semibold text-slate-500 w-10">#</th>
+                  <th className="px-3 py-2.5 text-left text-[11px] uppercase tracking-wider font-semibold text-slate-500">Date</th>
+                  <th className="px-3 py-2.5 text-left text-[11px] uppercase tracking-wider font-semibold text-slate-500">Type</th>
+                  <th className="px-3 py-2.5 text-left text-[11px] uppercase tracking-wider font-semibold text-slate-500">Reference</th>
+                  <th className="px-3 py-2.5 text-right text-[11px] uppercase tracking-wider font-semibold text-slate-500">In</th>
+                  <th className="px-3 py-2.5 text-right text-[11px] uppercase tracking-wider font-semibold text-slate-500">Out</th>
+                  <th className="px-3 py-2.5 text-right text-[11px] uppercase tracking-wider font-semibold text-slate-500">Balance</th>
+                  <th className="px-3 py-2.5 text-left text-[11px] uppercase tracking-wider font-semibold text-slate-500">Detail</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {material.ledger.map((tx, i) => {
+                  const isNeg = tx.balance < 0;
+                  const typeCls =
+                    tx.kind === 'opening' ? 'bg-blue-50 text-blue-700 border-blue-200'
+                    : tx.kind === 'receive' ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                    : 'bg-rose-50 text-rose-700 border-rose-200';
+                  const typeLabel =
+                    tx.kind === 'opening' ? 'Opening'
+                    : tx.kind === 'receive' ? 'Receive'
+                    : 'Issue';
+                  return (
+                    <tr key={i} className={isNeg ? 'bg-rose-50/50' : 'hover:bg-slate-50/60'}>
+                      <td className="px-3 py-2.5 text-xs text-slate-400">{i + 1}</td>
+                      <td className="px-3 py-2.5 text-xs text-slate-600 whitespace-nowrap">{formatDate(tx.date)}</td>
+                      <td className="px-3 py-2.5">
+                        <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold border ${typeCls}`}>
+                          {typeLabel}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2.5 text-xs font-medium text-slate-700">{tx.ref}</td>
+                      <td className="px-3 py-2.5 text-right text-xs font-semibold text-emerald-600">
+                        {tx.inQty > 0 ? `+${fmt(tx.inQty)}` : '—'}
+                      </td>
+                      <td className="px-3 py-2.5 text-right text-xs font-semibold text-rose-500">
+                        {tx.outQty > 0 ? `−${fmt(tx.outQty)}` : '—'}
+                      </td>
+                      <td className={`px-3 py-2.5 text-right text-xs font-bold ${
+                        isNeg ? 'text-rose-600'
+                        : tx.balance < LOW_STOCK_THRESHOLD ? 'text-amber-600'
+                        : 'text-slate-800'
+                      }`}>
+                        {fmt(tx.balance)}
+                      </td>
+                      <td className="px-3 py-2.5 text-xs text-slate-500 truncate max-w-[220px]" title={tx.detail}>
+                        {tx.detail}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // ==============================
+  // RENDER: RECEIVES VIEW
+  // ==============================
+  const renderReceives = () => {
+    const rows = [...receives].sort((a, b) => new Date(b.GRNDate) - new Date(a.GRNDate));
+    return (
+      <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
+        <div className="px-5 py-4 border-b border-slate-100">
+          <h3 className="font-semibold text-slate-800">Material Receives</h3>
+          <p className="text-xs text-slate-500">{rows.length} GRN records · newest first</p>
+        </div>
+        <div className="overflow-x-auto max-h-[75vh]">
+          <table className="w-full min-w-[1000px]">
+            <thead className="bg-slate-50 sticky top-0 z-10">
+              <tr>
+                {['#', 'GRN No', 'Date', 'Material', 'Qty', 'Unit', 'Rate', 'Value', 'Vendor'].map((h, i) => (
+                  <th key={h} className={`px-3 py-2.5 text-[11px] uppercase tracking-wider font-semibold text-slate-500 ${i >= 4 ? 'text-right' : 'text-left'} ${h === '#' ? 'w-10' : ''}`}>
+                    {h}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {rows.map((r, i) => (
+                <tr key={i} className="hover:bg-slate-50/60">
+                  <td className="px-3 py-2.5 text-xs text-slate-400">{i + 1}</td>
+                  <td className="px-3 py-2.5 text-xs font-medium text-cyan-700">{r.GRNNo}</td>
+                  <td className="px-3 py-2.5 text-xs text-slate-600 whitespace-nowrap">{formatDate(r.GRNDate)}</td>
+                  <td className="px-3 py-2.5 text-xs text-slate-700">
+                    <div className="font-medium">{r.MaterialName}</div>
+                    <div className="text-[10px] text-slate-400">{r.MaterialCode}</div>
+                  </td>
+                  <td className="px-3 py-2.5 text-right text-xs font-semibold text-emerald-600">
+                    {fmt(r.ActualReceiveQTY)}
+                  </td>
+                  <td className="px-3 py-2.5 text-right text-xs text-slate-500">{r.Unit || 'KG'}</td>
+                  <td className="px-3 py-2.5 text-right text-xs text-slate-600">
+                    {fmt(r.ActualReceivePrice)}
+                  </td>
+                  <td className="px-3 py-2.5 text-right text-xs font-medium text-slate-700">
+                    {fmtMoney(n(r.ActualReceiveQTY) * n(r.ActualReceivePrice), r.Currency || 'USD')}
+                  </td>
+                  <td className="px-3 py-2.5 text-xs text-slate-600">{r.VendorName || '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  };
+
+  // ==============================
+  // RENDER: ISSUES (REQUISITION-GROUPED)
+  // ==============================
+  const renderIssues = () => (
+    <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
+      <div className="px-5 py-4 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h3 className="font-semibold text-slate-800">Issues — Grouped by Requisition</h3>
+          <p className="text-xs text-slate-500">
+            {paginated.length} requisitions · click a row to expand issue transactions
+          </p>
+        </div>
+        <div className="flex gap-2 text-xs">
+          <span className="px-2 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+            {filteredRequisitions.filter(r => r.status === 'Completed').length} Completed
+          </span>
+          <span className="px-2 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+            {filteredRequisitions.filter(r => r.status === 'Partial').length} Partial
+          </span>
+          <span className="px-2 py-1 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
+            {filteredRequisitions.filter(r => r.status === 'Pending').length} Pending
+          </span>
+        </div>
+      </div>
+
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[1100px]">
+          <thead className="bg-slate-50 border-b border-slate-200">
+            <tr>
+              <th className="w-10 px-3 py-3"></th>
+              <th className="px-3 py-3 text-left text-[11px] uppercase tracking-wider font-semibold text-slate-500 w-10">#</th>
+              <th className="px-3 py-3 text-left text-[11px] uppercase tracking-wider font-semibold text-slate-500">Material</th>
+              <th className="px-3 py-3 text-left text-[11px] uppercase tracking-wider font-semibold text-slate-500">Requisition</th>
+              <th className="px-3 py-3 text-right text-[11px] uppercase tracking-wider font-semibold text-slate-500">Required</th>
+              <th className="px-3 py-3 text-right text-[11px] uppercase tracking-wider font-semibold text-slate-500">Issued</th>
+              <th className="px-3 py-3 text-right text-[11px] uppercase tracking-wider font-semibold text-slate-500">Pending</th>
+              <th className="px-3 py-3 text-left text-[11px] uppercase tracking-wider font-semibold text-slate-500">Raised By</th>
+              <th className="px-3 py-3 text-center text-[11px] uppercase tracking-wider font-semibold text-slate-500">Status</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {paginated.length === 0 && <Empty onReset={resetFilters} />}
+            {paginated.map((r, idx) => {
+              const isExp = expandedReqs[r.requisitionNo];
+              const rowNum = (page - 1) * pageSize + idx + 1;
+              const pct = r.fulfillmentPct;
+              const statusCls =
+                r.status === 'Completed' ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                : r.status === 'Partial' ? 'bg-amber-50 text-amber-700 border-amber-200'
+                : 'bg-slate-100 text-slate-600 border-slate-200';
 
               return (
-                <React.Fragment key={item.name}>
-                  <tr className="hover:bg-slate-50/80 transition-colors group">
-                    <td className="px-4 py-3.5 text-sm text-slate-400">{rowNumber}</td>
-                    <td className="px-4 py-3.5">
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => toggleRowExpansion(item.name)}
-                          className="p-1 hover:bg-slate-100 rounded-lg transition-colors"
-                          aria-label={isExpanded ? 'Collapse details' : 'Expand details'}
-                        >
-                          {isExpanded ? (
-                            <FiChevronDown size={16} className="text-blue-500" />
-                          ) : (
-                            <FiChevronUp size={16} className="text-slate-400" />
-                          )}
-                        </button>
-                        <span className="font-medium text-slate-800 text-sm">{item.name}</span>
-                        {item.openingBalance > 0 && (
-                          <span className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full border border-blue-100">
-                            Opening: {item.openingBalance}
-                          </span>
-                        )}
-                      </div>
+                <React.Fragment key={r.requisitionNo}>
+                  <tr
+                    className="hover:bg-slate-50/70 cursor-pointer"
+                    onClick={() => setExpandedReqs((p) => ({ ...p, [r.requisitionNo]: !p[r.requisitionNo] }))}
+                  >
+                    <td className="px-3 py-3 text-center">
+                      {r.issueCount > 1 && (
+                        <FiChevronRight
+                          size={14}
+                          className={`transition-transform text-slate-400 ${isExp ? 'rotate-90 text-blue-500' : ''}`}
+                        />
+                      )}
                     </td>
-                    <td className="px-4 py-3.5 text-right text-sm font-medium text-emerald-600">
-                      {Number(item.totalReceive).toFixed(2)}
+                    <td className="px-3 py-3 text-xs text-slate-400">{rowNum}</td>
+                    <td className="px-3 py-3">
+                      <div className="font-medium text-slate-800 text-sm">{r.materialName}</div>
+                      <div className="text-[10px] text-slate-400">{r.materialCode}</div>
                     </td>
-                    <td className="px-4 py-3.5 text-right text-sm font-medium text-rose-500">
-                      {Number(item.totalIssue).toFixed(2)}
+                    <td className="px-3 py-3">
+                      <div className="text-xs font-medium text-slate-700">{r.requisitionNo}</div>
+                      <div className="text-[10px] text-slate-400">{formatDate(r.requisitionDate)}</div>
                     </td>
-                    <td className={`px-4 py-3.5 text-right text-sm font-bold ${getBalanceColor(item.balance)}`}>
-                      {Number(item.balance).toFixed(2)}
+                    <td className="px-3 py-3 text-right text-sm font-semibold text-slate-700">
+                      {fmt(r.requiredQTY)}
+                      <span className="text-[10px] text-slate-400 ml-1">{r.unit}</span>
                     </td>
-                    <td className="px-4 py-3.5 text-right text-sm font-bold">
-                      <div className="flex items-center justify-end gap-1.5">
-                        {item.gap >= 0 ? (
-                          <FiTrendingUp className="text-emerald-500" size={14} />
-                        ) : (
-                          <FiTrendingDown className="text-rose-500" size={14} />
-                        )}
-                        <span className={item.gap < 0 ? 'text-rose-600' : 'text-emerald-600'}>
-                          {item.gap.toFixed(2)}
-                        </span>
-                      </div>
+                    <td className="px-3 py-3 text-right text-sm font-semibold text-emerald-600">
+                      {fmt(r.totalIssued)}
                     </td>
-                    <td className="px-4 py-3.5 text-center">
-                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${statusStyles.bg} ${statusStyles.text} ${statusStyles.border}`}>
-                        <span className={`w-1.5 h-1.5 rounded-full bg-${status.color}-500`} />
-                        {status.label}
+                    <td className="px-3 py-3 text-right text-sm font-semibold">
+                      <span className={r.pendingQTY > 0 ? 'text-amber-600' : 'text-slate-400'}>
+                        {fmt(r.pendingQTY)}
                       </span>
                     </td>
-                    <td className="px-4 py-3.5 text-center text-sm text-slate-400">
-                      {item.transactionCount} events
+                    <td className="px-3 py-3 text-xs text-slate-600 truncate max-w-[140px]">{r.raisedBy}</td>
+                    <td className="px-3 py-3 text-center">
+                      <div className="inline-flex flex-col items-center gap-1">
+                        <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold border ${statusCls}`}>
+                          {r.status}
+                        </span>
+                        {r.issueCount > 1 && (
+                          <span className="text-[9px] text-slate-400">{r.issueCount} issues</span>
+                        )}
+                      </div>
                     </td>
                   </tr>
 
-                  {/* Expanded row with transaction timeline */}
-                  {isExpanded && (
-                    <tr className="bg-slate-50/50">
-                      <td colSpan="8" className="px-4 py-4">
-                        <div className="overflow-x-auto max-h-96">
-                          <table className="w-full text-sm">
-                            <thead className="bg-white">
+                  {isExp && (
+                    <tr className="bg-slate-50/40">
+                      <td colSpan="9" className="px-6 pb-4 pt-1">
+                        {/* Progress bar */}
+                        <div className="mb-3">
+                          <div className="flex justify-between text-[11px] text-slate-500 mb-1">
+                            <span>Fulfillment</span>
+                            <span className="font-semibold">{pct.toFixed(1)}%</span>
+                          </div>
+                          <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
+                            <div
+                              className={`h-full rounded-full transition-all ${
+                                r.status === 'Completed' ? 'bg-emerald-500'
+                                : r.status === 'Partial' ? 'bg-amber-500'
+                                : 'bg-slate-300'
+                              }`}
+                              style={{ width: `${pct}%` }}
+                            />
+                          </div>
+                        </div>
+
+                        {/* Issue sub-table */}
+                        <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+                          <table className="w-full text-xs">
+                            <thead className="bg-slate-50 border-b">
                               <tr>
-                                <th className="px-3 py-2.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">#</th>
-                                <th className="px-3 py-2.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Date</th>
-                                <th className="px-3 py-2.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Reference</th>
-                                <th className="px-3 py-2.5 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Receive</th>
-                                <th className="px-3 py-2.5 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Issue</th>
-                                <th className="px-3 py-2.5 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Balance</th>
-                                <th className="px-3 py-2.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Remarks</th>
+                                <th className="px-3 py-2 text-left text-[10px] uppercase text-slate-500 font-semibold">Issue No</th>
+                                <th className="px-3 py-2 text-left text-[10px] uppercase text-slate-500 font-semibold">Date</th>
+                                <th className="px-3 py-2 text-right text-[10px] uppercase text-slate-500 font-semibold">Qty</th>
+                                <th className="px-3 py-2 text-right text-[10px] uppercase text-slate-500 font-semibold">Rate</th>
+                                <th className="px-3 py-2 text-left text-[10px] uppercase text-slate-500 font-semibold">Issued To</th>
+                                <th className="px-3 py-2 text-left text-[10px] uppercase text-slate-500 font-semibold">Job Card</th>
+                                <th className="px-3 py-2 text-right text-[10px] uppercase text-slate-500 font-semibold">Value</th>
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
-                              {item.timeline.map((transaction, idx) => {
-                                const isNegative = transaction.runningBalance < 0;
-                                const isOpening = transaction.type === "Opening";
-                                const isReceive = transaction.type === "Receive";
-                                const isIssue = transaction.type === "Issue";
-
-                                return (
-                                  <tr key={idx} className={isNegative ? 'bg-rose-50/50' : 'hover:bg-white/50 transition-colors'}>
-                                    <td className="px-3 py-2.5 text-slate-400">{idx + 1}</td>
-                                    <td className="px-3 py-2.5 text-slate-700">{formatDate(transaction.date)}</td>
-                                    <td className="px-3 py-2.5">
-                                      <span className={`inline-flex px-2.5 py-1 rounded-lg text-xs font-medium ${
-                                        isOpening ? 'bg-blue-50 text-blue-700 border border-blue-100' :
-                                        isReceive ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' :
-                                        'bg-rose-50 text-rose-700 border border-rose-100'
-                                      }`}>
-                                        {transaction.reference || '-'}
-                                      </span>
-                                    </td>
-                                    <td className="px-3 py-2.5 text-right text-emerald-600 font-medium">
-                                      {isReceive || isOpening ? transaction.receiveQty : '-'}
-                                    </td>
-                                    <td className="px-3 py-2.5 text-right text-rose-500 font-medium">
-                                      {isIssue ? transaction.issueQty : '-'}
-                                    </td>
-                                    <td className={`px-3 py-2.5 text-right font-bold ${
-                                      isNegative ? 'text-rose-600' : 
-                                      transaction.runningBalance < LOW_STOCK_THRESHOLD ? 'text-amber-600' : 'text-slate-800'
-                                    }`}>
-                                      {Number(transaction.runningBalance).toFixed(2)}
-                                    </td>
-                                    <td className="px-3 py-2.5 text-slate-600 text-sm">
-                                      {transaction.remarks || '-'}
-                                    </td>
-                                  </tr>
-                                );
-                              })}
+                              {r.issues.map((iss, i) => (
+                                <tr key={i} className="hover:bg-blue-50/30">
+                                  <td className="px-3 py-2 font-medium text-blue-700">{iss.issueNo}</td>
+                                  <td className="px-3 py-2 text-slate-600 whitespace-nowrap">{formatDate(iss.issueDate)}</td>
+                                  <td className="px-3 py-2 text-right font-semibold text-slate-700">{fmt(iss.issueQTY)}</td>
+                                  <td className="px-3 py-2 text-right text-slate-600">{fmt(iss.issuePrice)}</td>
+                                  <td className="px-3 py-2 text-slate-600">{iss.issuedBy}</td>
+                                  <td className="px-3 py-2 text-slate-500">{iss.jobCardNo}</td>
+                                  <td className="px-3 py-2 text-right font-medium text-slate-700">
+                                    {fmtMoney(iss.issueValue, iss.currency)}
+                                  </td>
+                                </tr>
+                              ))}
                             </tbody>
+                            <tfoot className="bg-slate-50/80 border-t">
+                              <tr className="font-semibold text-slate-700">
+                                <td colSpan="2" className="px-3 py-2 text-right text-[11px] uppercase">Total</td>
+                                <td className="px-3 py-2 text-right text-emerald-700">{fmt(r.totalIssued)}</td>
+                                <td colSpan="3"></td>
+                                <td className="px-3 py-2 text-right text-slate-800">{fmtMoney(r.totalValue, r.currency)}</td>
+                              </tr>
+                            </tfoot>
                           </table>
+                        </div>
+
+                        {/* Metadata row */}
+                        <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px] text-slate-500">
+                          <div><span className="text-slate-400">Department:</span> {r.department}</div>
+                          <div><span className="text-slate-400">Cost Center:</span> {r.costCenter}</div>
+                          <div><span className="text-slate-400">Company:</span> {r.company}</div>
+                          <div><span className="text-slate-400">Currency:</span> {r.currency}</div>
                         </div>
                       </td>
                     </tr>
@@ -1527,616 +1119,675 @@ const sortedRequisitions = [...issues]
           </tbody>
         </table>
       </div>
+      <Pagination
+        page={page} totalPages={totalPages} pageSize={pageSize}
+        total={currentData.length}
+        onPage={gotoPage} onSize={setPageSize}
+        showAll={filters.showAll}
+      />
+    </div>
+  );
 
-      {/* Pagination Controls */}
-      {!filters.showAll && processedData.length > 0 && (
-        <div className="flex flex-wrap items-center justify-between gap-4 px-4 py-4 border-t border-slate-200 bg-slate-50/50">
-          <div className="text-sm text-slate-500">
-            Showing <span className="font-medium text-slate-700">
-              {Math.min((page - 1) * pageSize + 1, processedData.length)}
-            </span> -{' '}
-            <span className="font-medium text-slate-700">
-              {Math.min(page * pageSize, processedData.length)}
-            </span> of{' '}
-            <span className="font-medium text-slate-700">{processedData.length}</span> items
-          </div>
-          
-          <div className="flex items-center gap-1.5">
-            <button
-              onClick={() => handlePageChange(1)}
-              disabled={page === 1}
-              className="p-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all text-slate-600"
-              aria-label="First page"
-            >
-              <FiChevronsLeft size={16} />
-            </button>
-            <button
-              onClick={() => handlePageChange(page - 1)}
-              disabled={page === 1}
-              className="p-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all text-slate-600"
-              aria-label="Previous page"
-            >
-              <FiChevronLeft size={16} />
-            </button>
-            
-            <span className="px-4 py-1.5 bg-blue-50 text-blue-600 rounded-lg text-sm font-medium border border-blue-100">
-              {page} / {totalPages}
-            </span>
-            
-            <button
-              onClick={() => handlePageChange(page + 1)}
-              disabled={page === totalPages}
-              className="p-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all text-slate-600"
-              aria-label="Next page"
-            >
-              <FiChevronRight size={16} />
-            </button>
-            <button
-              onClick={() => handlePageChange(totalPages)}
-              disabled={page === totalPages}
-              className="p-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all text-slate-600"
-              aria-label="Last page"
-            >
-              <FiChevronsRight size={16} />
-            </button>
-            
-            <select
-              value={pageSize}
-              onChange={(e) => {
-                setPageSize(Number(e.target.value));
-                setPage(1);
-              }}
-              className="ml-2 px-2.5 py-1.5 border border-slate-200 rounded-lg bg-white text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
-              aria-label="Items per page"
-            >
-              <option value={5}>5</option>
-              <option value={10}>10</option>
-              <option value={20}>20</option>
-              <option value={50}>50</option>
-              <option value={100}>100</option>
-            </select>
+  // ==============================
+  // RENDER: DASHBOARD
+  // ==============================
+  const renderDashboard = () => (
+    <div className="space-y-5">
+      {/* KPIs */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+        <KpiCard label="Materials" value={stats.total} icon={FiPackage} color="blue" />
+        <KpiCard label="Total Stock In" value={fmt(stats.totalIn)} sub="units" icon={FiTrendingUp} color="emerald" />
+        <KpiCard label="Total Stock Out" value={fmt(stats.totalOut)} sub="units" icon={FiTrendingDown} color="rose" />
+        <KpiCard label="Closing Balance" value={fmt(stats.closing)} sub="units" icon={FiBox} color="indigo" />
+        <KpiCard label="Stock Value" value={fmtMoney(stats.stockValue)} icon={FiDollarSign} color="cyan" />
+        <KpiCard label="Pending Reqs" value={stats.pendingReq} sub={`of ${stats.totalReqs}`} icon={FiClipboard} color="amber" />
+      </div>
+
+      {/* Health strip */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* Health ring */}
+        <div className="bg-white rounded-2xl border border-slate-100 p-5">
+          <h3 className="font-semibold text-slate-800 mb-4">Inventory Health</h3>
+          {(() => {
+            const total = stats.total || 1;
+            const pct = (stats.healthy / total) * 100;
+            const circ = 2 * Math.PI * 42;
+            const dash = (pct / 100) * circ;
+            return (
+              <div className="flex items-center gap-5">
+                <svg width="110" height="110" viewBox="0 0 110 110" className="-rotate-90">
+                  <circle cx="55" cy="55" r="42" fill="none" stroke="#e2e8f0" strokeWidth="10" />
+                  <circle cx="55" cy="55" r="42" fill="none" stroke="#10b981" strokeWidth="10"
+                    strokeDasharray={`${dash} ${circ}`} strokeLinecap="round" />
+                </svg>
+                <div>
+                  <p className="text-3xl font-bold text-emerald-600">{pct.toFixed(0)}%</p>
+                  <p className="text-xs text-slate-500">Healthy stock</p>
+                  <div className="mt-3 space-y-1 text-xs">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                      <span className="text-slate-600">{stats.healthy} Healthy</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-amber-500" />
+                      <span className="text-slate-600">{stats.low} Low</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-rose-500" />
+                      <span className="text-slate-600">{stats.out} Out</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+        </div>
+
+        {/* Alerts */}
+        <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-100 p-5">
+          <h3 className="font-semibold text-slate-800 mb-3 flex items-center gap-2">
+            <FiAlertCircle className="text-rose-500" size={16} />
+            Critical Stock Alerts
+          </h3>
+          <div className="space-y-2 max-h-64 overflow-y-auto">
+            {materials
+              .filter((m) => m.closing <= 0 || m.closing < LOW_STOCK_THRESHOLD)
+              .sort((a, b) => a.closing - b.closing)
+              .slice(0, 8)
+              .map((m) => (
+                <div key={m.name} className="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 hover:bg-slate-100 transition-colors">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-slate-700 truncate">{m.name}</p>
+                    <p className="text-[10px] text-slate-400">{m.category} · {m.subCategory}</p>
+                  </div>
+                  <span className={`text-xs font-bold px-2 py-1 rounded ${
+                    m.closing <= 0 ? 'bg-rose-100 text-rose-700' : 'bg-amber-100 text-amber-700'
+                  }`}>
+                    {fmt(m.closing)} {m.unit}
+                  </span>
+                </div>
+              ))}
+            {materials.filter((m) => m.closing <= 0 || m.closing < LOW_STOCK_THRESHOLD).length === 0 && (
+              <p className="text-sm text-slate-400 text-center py-8">All materials are healthy ✓</p>
+            )}
           </div>
         </div>
+      </div>
+
+      {/* Top movers */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="bg-white rounded-2xl border border-slate-100 p-5">
+          <h3 className="font-semibold text-slate-800 mb-3 flex items-center gap-2">
+            <FiTrendingDown className="text-rose-500" size={16} />
+            Top Consumers (by Issue Qty)
+          </h3>
+          <div className="space-y-2">
+            {[...materials].sort((a, b) => b.totalOut - a.totalOut).slice(0, 6).map((m, i) => (
+              <div key={m.name} className="flex items-center gap-3">
+                <span className="w-6 text-xs text-slate-400 font-medium">#{i + 1}</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-slate-700 truncate">{m.name}</p>
+                  <div className="h-1.5 bg-slate-100 rounded-full mt-1 overflow-hidden">
+                    <div
+                      className="h-full bg-rose-400 rounded-full"
+                      style={{ width: `${(m.totalOut / (materials[0]?.totalOut || 1)) * 100}%` }}
+                    />
+                  </div>
+                </div>
+                <span className="text-xs font-semibold text-rose-600 shrink-0">{fmt(m.totalOut)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl border border-slate-100 p-5">
+          <h3 className="font-semibold text-slate-800 mb-3 flex items-center gap-2">
+            <FiTrendingUp className="text-emerald-500" size={16} />
+            Top Inflows (by Receive Qty)
+          </h3>
+          <div className="space-y-2">
+            {[...materials].sort((a, b) => b.totalIn - a.totalIn).slice(0, 6).map((m, i) => (
+              <div key={m.name} className="flex items-center gap-3">
+                <span className="w-6 text-xs text-slate-400 font-medium">#{i + 1}</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-slate-700 truncate">{m.name}</p>
+                  <div className="h-1.5 bg-slate-100 rounded-full mt-1 overflow-hidden">
+                    <div
+                      className="h-full bg-emerald-400 rounded-full"
+                      style={{ width: `${(m.totalIn / (materials[0]?.totalIn || 1)) * 100}%` }}
+                    />
+                  </div>
+                </div>
+                <span className="text-xs font-semibold text-emerald-600 shrink-0">{fmt(m.totalIn)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  // ==============================
+  // RENDER: FULL REPORT (compact summary + export CTA)
+  // ==============================
+  const renderFullReport = () => (
+    <div className="space-y-5">
+      <div className="bg-gradient-to-br from-indigo-600 to-indigo-800 rounded-2xl p-6 text-white">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <p className="text-xs uppercase tracking-wider text-indigo-200">Complete Snapshot</p>
+            <h2 className="text-2xl font-bold mt-1">Full Inventory Report</h2>
+            <p className="text-sm text-indigo-200 mt-1">
+              {stats.total} materials · {receives.length} receives · {issues.length} issues · {stats.totalReqs} requisitions
+            </p>
+          </div>
+          <button
+            onClick={exportToExcel}
+            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white text-indigo-700 font-semibold hover:bg-indigo-50 transition-colors shadow-lg"
+          >
+            <FiDownload size={16} />
+            Export Excel (6 sheets)
+          </button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="bg-white rounded-2xl border border-slate-100 p-5">
+          <h3 className="font-semibold text-slate-800 mb-4">Financial Summary</h3>
+          <div className="space-y-3">
+            {[
+              { l: 'Total Receive Value', v: fmtMoney(stats.inValue), c: 'text-emerald-600' },
+              { l: 'Total Stock Value (closing)', v: fmtMoney(stats.stockValue), c: 'text-blue-600' },
+              { l: 'Avg Unit Cost', v: fmtMoney(stats.totalIn > 0 ? stats.inValue / stats.totalIn : 0), c: 'text-slate-700' },
+              { l: 'Total Materials', v: stats.total, c: 'text-slate-700' },
+              { l: 'Categories', v: filterOptions.cats.length, c: 'text-slate-700' },
+            ].map((r) => (
+              <div key={r.l} className="flex items-center justify-between py-2 border-b border-slate-100 last:border-0">
+                <span className="text-sm text-slate-500">{r.l}</span>
+                <span className={`text-sm font-bold ${r.c}`}>{r.v}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl border border-slate-100 p-5">
+          <h3 className="font-semibold text-slate-800 mb-4">Requisition Breakdown</h3>
+          <div className="space-y-3">
+            {[
+              { l: 'Completed', v: filteredRequisitions.filter(r => r.status === 'Completed').length, c: 'text-emerald-600' },
+              { l: 'Partial', v: filteredRequisitions.filter(r => r.status === 'Partial').length, c: 'text-amber-600' },
+              { l: 'Pending', v: filteredRequisitions.filter(r => r.status === 'Pending').length, c: 'text-slate-600' },
+            ].map((r) => (
+              <div key={r.l} className="flex items-center justify-between py-2 border-b border-slate-100 last:border-0">
+                <span className="text-sm text-slate-500">{r.l}</span>
+                <span className={`text-sm font-bold ${r.c}`}>{r.v}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  // ==============================
+  // EXCEL EXPORT
+  // ==============================
+  const exportToExcel = useCallback(() => {
+    try {
+      toast.info("📊 Generating report…", { autoClose: false });
+
+      const STYLES = {
+        title: { font: { bold: true, sz: 20, color: { rgb: "1A3A5C" } }, alignment: { horizontal: "center", vertical: "center" }, fill: { fgColor: { rgb: "E8EDF5" } } },
+        subtitle: { font: { sz: 11, color: { rgb: "4A5568" } }, alignment: { horizontal: "center", vertical: "center" } },
+        section: { font: { bold: true, sz: 14, color: { rgb: "1A3A5C" } }, fill: { fgColor: { rgb: "F0F4F8" } }, alignment: { horizontal: "left", vertical: "center" } },
+        headerBlue:    { font: { bold: true, sz: 11, color: { rgb: "FFFFFF" } }, fill: { fgColor: { rgb: "1A56DB" } }, alignment: { horizontal: "center", vertical: "center", wrapText: true }, border: { top: { style: "medium", color: { rgb: "153E7C" } }, bottom: { style: "medium", color: { rgb: "153E7C" } }, left: { style: "medium", color: { rgb: "153E7C" } }, right: { style: "medium", color: { rgb: "153E7C" } } } },
+        headerGreen:   { font: { bold: true, sz: 11, color: { rgb: "FFFFFF" } }, fill: { fgColor: { rgb: "059669" } }, alignment: { horizontal: "center", vertical: "center", wrapText: true }, border: { top: { style: "medium", color: { rgb: "047857" } }, bottom: { style: "medium", color: { rgb: "047857" } }, left: { style: "medium", color: { rgb: "047857" } }, right: { style: "medium", color: { rgb: "047857" } } } },
+        headerPurple:  { font: { bold: true, sz: 11, color: { rgb: "FFFFFF" } }, fill: { fgColor: { rgb: "7C3AED" } }, alignment: { horizontal: "center", vertical: "center", wrapText: true }, border: { top: { style: "medium", color: { rgb: "6D28D9" } }, bottom: { style: "medium", color: { rgb: "6D28D9" } }, left: { style: "medium", color: { rgb: "6D28D9" } }, right: { style: "medium", color: { rgb: "6D28D9" } } } },
+        headerRose:    { font: { bold: true, sz: 11, color: { rgb: "FFFFFF" } }, fill: { fgColor: { rgb: "E11D48" } }, alignment: { horizontal: "center", vertical: "center", wrapText: true }, border: { top: { style: "medium", color: { rgb: "BE123C" } }, bottom: { style: "medium", color: { rgb: "BE123C" } }, left: { style: "medium", color: { rgb: "BE123C" } }, right: { style: "medium", color: { rgb: "BE123C" } } } },
+        headerCyan:    { font: { bold: true, sz: 11, color: { rgb: "FFFFFF" } }, fill: { fgColor: { rgb: "0891B2" } }, alignment: { horizontal: "center", vertical: "center", wrapText: true }, border: { top: { style: "medium", color: { rgb: "0E7490" } }, bottom: { style: "medium", color: { rgb: "0E7490" } }, left: { style: "medium", color: { rgb: "0E7490" } }, right: { style: "medium", color: { rgb: "0E7490" } } } },
+        headerAmber:   { font: { bold: true, sz: 11, color: { rgb: "FFFFFF" } }, fill: { fgColor: { rgb: "D97706" } }, alignment: { horizontal: "center", vertical: "center", wrapText: true }, border: { top: { style: "medium", color: { rgb: "B45309" } }, bottom: { style: "medium", color: { rgb: "B45309" } }, left: { style: "medium", color: { rgb: "B45309" } }, right: { style: "medium", color: { rgb: "B45309" } } } },
+        cell:     { font: { sz: 10 }, alignment: { horizontal: "left", vertical: "center" }, border: { top: { style: "thin", color: { rgb: "E2E8F0" } }, bottom: { style: "thin", color: { rgb: "E2E8F0" } }, left: { style: "thin", color: { rgb: "E2E8F0" } }, right: { style: "thin", color: { rgb: "E2E8F0" } } } },
+        cellR:    { font: { sz: 10 }, alignment: { horizontal: "right", vertical: "center" }, border: { top: { style: "thin", color: { rgb: "E2E8F0" } }, bottom: { style: "thin", color: { rgb: "E2E8F0" } }, left: { style: "thin", color: { rgb: "E2E8F0" } }, right: { style: "thin", color: { rgb: "E2E8F0" } } } },
+        cellB:    { font: { sz: 10, bold: true }, alignment: { horizontal: "left", vertical: "center" }, border: { top: { style: "thin", color: { rgb: "E2E8F0" } }, bottom: { style: "thin", color: { rgb: "E2E8F0" } }, left: { style: "thin", color: { rgb: "E2E8F0" } }, right: { style: "thin", color: { rgb: "E2E8F0" } } } },
+        cellRB:   { font: { sz: 10, bold: true }, alignment: { horizontal: "right", vertical: "center" }, border: { top: { style: "thin", color: { rgb: "E2E8F0" } }, bottom: { style: "thin", color: { rgb: "E2E8F0" } }, left: { style: "thin", color: { rgb: "E2E8F0" } }, right: { style: "thin", color: { rgb: "E2E8F0" } } } },
+        pos:      { font: { sz: 10, bold: true, color: { rgb: "047857" } }, alignment: { horizontal: "right", vertical: "center" } },
+        neg:      { font: { sz: 10, bold: true, color: { rgb: "DC2626" } }, alignment: { horizontal: "right", vertical: "center" } },
+        low:      { font: { sz: 10, bold: true, color: { rgb: "D97706" } }, alignment: { horizontal: "right", vertical: "center" } },
+      };
+
+      const wb = XLSX.utils.book_new();
+
+      // ---------- SHEET 1: EXECUTIVE SUMMARY ----------
+      const sum = [];
+      sum.push(["INVENTORY MANAGEMENT REPORT"]);
+      sum.push([`Period: ${formatDate(filters.startDate)}  →  ${formatDate(filters.endDate)}`]);
+      sum.push([`Generated: ${new Date().toLocaleString()}`]);
+      sum.push([]);
+      sum.push(["KEY METRICS"]);
+      sum.push(["Metric", "Value"]);
+      const kpis = [
+        ["Total Materials", stats.total],
+        ["Total Stock In (units)", fmt(stats.totalIn)],
+        ["Total Stock Out (units)", fmt(stats.totalOut)],
+        ["Closing Balance (units)", fmt(stats.closing)],
+        ["Total Receive Value", fmtMoney(stats.inValue)],
+        ["Total Stock Value", fmtMoney(stats.stockValue)],
+        ["Healthy Materials", stats.healthy],
+        ["Low Stock Materials", stats.low],
+        ["Out of Stock Materials", stats.out],
+        ["Total Requisitions", stats.totalReqs],
+        ["Pending Requisitions", stats.pendingReq],
+        ["Partial Requisitions", stats.partialReq],
+      ];
+      kpis.forEach((k) => sum.push(k));
+      const sumSheet = XLSX.utils.aoa_to_sheet(sum);
+      sumSheet["!cols"] = [{ wch: 32 }, { wch: 26 }];
+      sumSheet["!merges"] = [
+        { s: { r: 0, c: 0 }, e: { r: 0, c: 1 } },
+        { s: { r: 1, c: 0 }, e: { r: 1, c: 1 } },
+        { s: { r: 2, c: 0 }, e: { r: 2, c: 1 } },
+        { s: { r: 4, c: 0 }, e: { r: 4, c: 1 } },
+      ];
+      if (sumSheet["A1"]) sumSheet["A1"].s = STYLES.title;
+      if (sumSheet["A2"]) sumSheet["A2"].s = STYLES.subtitle;
+      if (sumSheet["A3"]) sumSheet["A3"].s = STYLES.subtitle;
+      if (sumSheet["A5"]) sumSheet["A5"].s = STYLES.section;
+      if (sumSheet["A6"]) sumSheet["A6"].s = STYLES.headerBlue;
+      if (sumSheet["B6"]) sumSheet["B6"].s = STYLES.headerBlue;
+      for (let r = 7; r <= 6 + kpis.length; r++) {
+        if (sumSheet[`A${r + 1}`]) sumSheet[`A${r + 1}`].s = STYLES.cellB;
+        if (sumSheet[`B${r + 1}`]) sumSheet[`B${r + 1}`].s = STYLES.cellR;
+      }
+      XLSX.utils.book_append_sheet(wb, sumSheet, "Executive Summary");
+
+      // ---------- SHEET 2: STOCK SUMMARY ----------
+      const stockRows = [["#", "Material", "Code", "Category", "Sub Category", "Unit", "Opening", "Stock In", "Stock Out", "Closing", "Avg Cost", "Stock Value", "Status"]];
+      filteredMaterials.forEach((m, i) => {
+        const st = getStockStatus(m.closing);
+        stockRows.push([
+          i + 1, m.name, m.code, m.category, m.subCategory, m.unit,
+          n(m.opening), n(m.totalIn), n(m.totalOut), n(m.closing),
+          n(m.avgCost), n(m.stockValue), st.label,
+        ]);
+      });
+      const stockSheet = XLSX.utils.aoa_to_sheet(stockRows);
+      stockSheet["!cols"] = [
+        { wch: 5 }, { wch: 42 }, { wch: 16 }, { wch: 20 }, { wch: 20 },
+        { wch: 8 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 },
+        { wch: 12 }, { wch: 16 }, { wch: 14 },
+      ];
+      stockRows[0].forEach((_, c) => {
+        const addr = XLSX.utils.encode_cell({ r: 0, c });
+        if (stockSheet[addr]) stockSheet[addr].s = STYLES.headerGreen;
+      });
+      for (let r = 1; r < stockRows.length; r++) {
+        for (let c = 0; c < stockRows[r].length; c++) {
+          const addr = XLSX.utils.encode_cell({ r, c });
+          if (!stockSheet[addr]) continue;
+          const isNum = c >= 6 && c <= 11;
+          let base = isNum ? STYLES.cellR : STYLES.cell;
+          if (c === 1) base = STYLES.cellB;
+          if (c === 9) {
+            const v = n(stockRows[r][9]);
+            base = v <= 0 ? STYLES.neg : v < LOW_STOCK_THRESHOLD ? STYLES.low : STYLES.pos;
+          }
+          stockSheet[addr].s = base;
+        }
+      }
+      XLSX.utils.book_append_sheet(wb, stockSheet, "Stock Summary");
+
+      // ---------- SHEET 3: STOCK LEDGER ----------
+      const ledgerRows = [["Material", "Code", "Unit", "Date", "Type", "Reference", "Stock In", "Stock Out", "Balance", "Detail"]];
+      filteredMaterials.forEach((m) => {
+        m.ledger.forEach((tx) => {
+          ledgerRows.push([
+            m.name, m.code, m.unit,
+            formatDate(tx.date),
+            tx.kind === 'opening' ? 'Opening' : tx.kind === 'receive' ? 'Receive' : 'Issue',
+            tx.ref,
+            n(tx.inQty), n(tx.outQty), n(tx.balance), tx.detail || '',
+          ]);
+        });
+      });
+      const ledgerSheet = XLSX.utils.aoa_to_sheet(ledgerRows);
+      ledgerSheet["!cols"] = [
+        { wch: 40 }, { wch: 16 }, { wch: 8 }, { wch: 14 }, { wch: 12 },
+        { wch: 22 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 30 },
+      ];
+      ledgerRows[0].forEach((_, c) => {
+        const addr = XLSX.utils.encode_cell({ r: 0, c });
+        if (ledgerSheet[addr]) ledgerSheet[addr].s = STYLES.headerPurple;
+      });
+      for (let r = 1; r < ledgerRows.length; r++) {
+        for (let c = 0; c < ledgerRows[r].length; c++) {
+          const addr = XLSX.utils.encode_cell({ r, c });
+          if (!ledgerSheet[addr]) continue;
+          const isNum = c >= 6 && c <= 8;
+          let base = isNum ? STYLES.cellR : STYLES.cell;
+          if (c === 6 && n(ledgerRows[r][6]) > 0) base = STYLES.pos;
+          if (c === 7 && n(ledgerRows[r][7]) > 0) base = STYLES.neg;
+          if (c === 8) {
+            const v = n(ledgerRows[r][8]);
+            base = v < 0 ? STYLES.neg : v < LOW_STOCK_THRESHOLD ? STYLES.low : STYLES.cellRB;
+          }
+          ledgerSheet[addr].s = base;
+        }
+      }
+      XLSX.utils.book_append_sheet(wb, ledgerSheet, "Stock Ledger");
+
+      // ---------- SHEET 4: RECEIVES ----------
+      const recRows = [["#", "GRN No", "Date", "Material", "Code", "Qty", "Unit", "Rate", "Value", "Currency", "Vendor", "Company"]];
+      [...receives]
+        .sort((a, b) => new Date(b.GRNDate) - new Date(a.GRNDate))
+        .forEach((r, i) => {
+          recRows.push([
+            i + 1, r.GRNNo || '—', formatDate(r.GRNDate),
+            r.MaterialName || '—', r.MaterialCode || '—',
+            n(r.ActualReceiveQTY), r.Unit || 'KG',
+            n(r.ActualReceivePrice),
+            n(r.ActualReceiveQTY) * n(r.ActualReceivePrice),
+            r.Currency || 'USD',
+            r.VendorName || '—',
+            r.CompanyName || '—',
+          ]);
+        });
+      const recSheet = XLSX.utils.aoa_to_sheet(recRows);
+      recSheet["!cols"] = [
+        { wch: 5 }, { wch: 22 }, { wch: 14 }, { wch: 40 }, { wch: 16 },
+        { wch: 12 }, { wch: 8 }, { wch: 12 }, { wch: 16 }, { wch: 10 },
+        { wch: 28 }, { wch: 30 },
+      ];
+      recRows[0].forEach((_, c) => {
+        const addr = XLSX.utils.encode_cell({ r: 0, c });
+        if (recSheet[addr]) recSheet[addr].s = STYLES.headerCyan;
+      });
+      for (let r = 1; r < recRows.length; r++) {
+        for (let c = 0; c < recRows[r].length; c++) {
+          const addr = XLSX.utils.encode_cell({ r, c });
+          if (!recSheet[addr]) continue;
+          const isNum = [5, 7, 8].includes(c);
+          recSheet[addr].s = isNum ? STYLES.cellR : STYLES.cell;
+          if (c === 5) recSheet[addr].s = STYLES.pos;
+        }
+      }
+      XLSX.utils.book_append_sheet(wb, recSheet, "Receives");
+
+      // ---------- SHEET 5: REQUISITIONS (GROUPED) ----------
+      const reqRows = [["#", "Requisition No", "Date", "Material", "Code", "Unit", "Required", "Issued", "Pending", "Fulfill %", "Issues", "Status", "Raised By", "Department", "Cost Center"]];
+      filteredRequisitions.forEach((r, i) => {
+        reqRows.push([
+          i + 1,
+          r.requisitionNo, formatDate(r.requisitionDate),
+          r.materialName, r.materialCode, r.unit,
+          n(r.requiredQTY), n(r.totalIssued), n(r.pendingQTY),
+          `${r.fulfillmentPct.toFixed(1)}%`,
+          r.issueCount,
+          r.status, r.raisedBy, r.department, r.costCenter,
+        ]);
+      });
+      const reqSheet = XLSX.utils.aoa_to_sheet(reqRows);
+      reqSheet["!cols"] = [
+        { wch: 5 }, { wch: 20 }, { wch: 14 }, { wch: 40 }, { wch: 16 },
+        { wch: 8 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 10 },
+        { wch: 8 }, { wch: 12 }, { wch: 22 }, { wch: 18 }, { wch: 20 },
+      ];
+      reqRows[0].forEach((_, c) => {
+        const addr = XLSX.utils.encode_cell({ r: 0, c });
+        if (reqSheet[addr]) reqSheet[addr].s = STYLES.headerAmber;
+      });
+      for (let r = 1; r < reqRows.length; r++) {
+        for (let c = 0; c < reqRows[r].length; c++) {
+          const addr = XLSX.utils.encode_cell({ r, c });
+          if (!reqSheet[addr]) continue;
+          const isNum = [6, 7, 8].includes(c);
+          let base = isNum ? STYLES.cellR : STYLES.cell;
+          if (c === 7) base = STYLES.pos;
+          if (c === 8) {
+            const v = n(reqRows[r][8]);
+            base = v > 0 ? STYLES.low : STYLES.cellR;
+          }
+          if (c === 11) {
+            const v = reqRows[r][11];
+            if (v === 'Completed') base = { ...STYLES.cell, font: { sz: 10, bold: true, color: { rgb: "047857" } } };
+            if (v === 'Partial') base = { ...STYLES.cell, font: { sz: 10, bold: true, color: { rgb: "D97706" } } };
+          }
+          reqSheet[addr].s = base;
+        }
+      }
+      XLSX.utils.book_append_sheet(wb, reqSheet, "Requisitions");
+
+      // ---------- SHEET 6: ISSUE DETAILS ----------
+      const issRows = [["#", "Requisition", "Issue No", "Issue Date", "Material", "Qty", "Unit", "Rate", "Value", "Currency", "Issued To", "Job Card", "GRN"]];
+      let issIdx = 1;
+      filteredRequisitions.forEach((req) => {
+        req.issues.forEach((iss) => {
+          issRows.push([
+            issIdx++, req.requisitionNo, iss.issueNo, formatDate(iss.issueDate),
+            req.materialName, n(iss.issueQTY), req.unit,
+            n(iss.issuePrice), n(iss.issueValue), iss.currency,
+            iss.issuedBy, iss.jobCardNo, iss.grnNo,
+          ]);
+        });
+      });
+      const issSheet = XLSX.utils.aoa_to_sheet(issRows);
+      issSheet["!cols"] = [
+        { wch: 5 }, { wch: 20 }, { wch: 22 }, { wch: 14 }, { wch: 40 },
+        { wch: 12 }, { wch: 8 }, { wch: 12 }, { wch: 16 }, { wch: 10 },
+        { wch: 22 }, { wch: 18 }, { wch: 22 },
+      ];
+      issRows[0].forEach((_, c) => {
+        const addr = XLSX.utils.encode_cell({ r: 0, c });
+        if (issSheet[addr]) issSheet[addr].s = STYLES.headerRose;
+      });
+      for (let r = 1; r < issRows.length; r++) {
+        for (let c = 0; c < issRows[r].length; c++) {
+          const addr = XLSX.utils.encode_cell({ r, c });
+          if (!issSheet[addr]) continue;
+          const isNum = [5, 7, 8].includes(c);
+          let base = isNum ? STYLES.cellR : STYLES.cell;
+          if (c === 5) base = STYLES.neg;
+          issSheet[addr].s = base;
+        }
+      }
+      XLSX.utils.book_append_sheet(wb, issSheet, "Issue Details");
+
+      // ---------- WRITE ----------
+      const fileName = `inventory_report_${new Date().toISOString().slice(0, 10)}.xlsx`;
+      const wbout = XLSX.write(wb, { bookType: "xlsx", type: "array", cellStyles: true });
+      saveAs(new Blob([wbout], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }), fileName);
+      toast.dismiss();
+      toast.success("✅ Report exported (6 sheets)");
+    } catch (err) {
+      console.error(err);
+      toast.dismiss();
+      toast.error("Export failed");
+    }
+  }, [filteredMaterials, filteredRequisitions, receives, stats, filters]);
+
+  // ==============================
+  // PAGINATION COMPONENT
+  // ==============================
+  function Pagination({ page, totalPages, pageSize, total, onPage, onSize, showAll }) {
+    if (showAll) return null;
+    return (
+      <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-t border-slate-200 bg-slate-50/50 text-xs">
+        <div className="text-slate-500">
+          Showing <strong className="text-slate-700">{Math.min((page - 1) * pageSize + 1, total)}</strong>–
+          <strong className="text-slate-700">{Math.min(page * pageSize, total)}</strong> of <strong className="text-slate-700">{total}</strong>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <button onClick={() => onPage(1)} disabled={page === 1} className="p-1.5 rounded border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40">
+            <FiChevronsLeft size={14} />
+          </button>
+          <button onClick={() => onPage(page - 1)} disabled={page === 1} className="p-1.5 rounded border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40">
+            <FiChevronLeft size={14} />
+          </button>
+          <span className="px-3 py-1 bg-blue-50 text-blue-600 rounded border border-blue-100 font-medium">
+            {page} / {totalPages}
+          </span>
+          <button onClick={() => onPage(page + 1)} disabled={page === totalPages} className="p-1.5 rounded border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40">
+            <FiChevronRight size={14} />
+          </button>
+          <button onClick={() => onPage(totalPages)} disabled={page === totalPages} className="p-1.5 rounded border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40">
+            <FiChevronsRight size={14} />
+          </button>
+          <select
+            value={pageSize}
+            onChange={(e) => { onSize(Number(e.target.value)); onPage(1); }}
+            className="ml-2 px-2 py-1 border border-slate-200 rounded bg-white"
+          >
+            {[10, 15, 25, 50, 100].map((v) => <option key={v} value={v}>{v}/page</option>)}
+          </select>
+        </div>
+      </div>
+    );
+  }
+
+  // ==============================
+  // FILTER BAR
+  // ==============================
+  const FilterBar = () => (
+    <div className="bg-white rounded-2xl border border-slate-100 p-4 sm:p-5">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2 text-slate-700">
+          <FiFilter size={16} className="text-blue-500" />
+          <span className="font-semibold text-sm">Filters</span>
+          {(filters.search || filters.category !== 'all' || filters.subCategory !== 'all' || filters.material !== 'all' || filters.status !== 'all' || filters.onlyAlerts) && (
+            <span className="text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">active</span>
+          )}
+        </div>
+        <button
+          onClick={() => setShowFilters(!showFilters)}
+          className="text-xs text-slate-500 hover:text-slate-800 flex items-center gap-1"
+        >
+          {showFilters ? 'Hide' : 'Show'}
+          {showFilters ? <FiChevronUp size={12} /> : <FiChevronDown size={12} />}
+        </button>
+      </div>
+
+      {showFilters && (
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+            <select value={filters.category} onChange={(e) => { setFilters({ ...filters, category: e.target.value }); setPage(1); }}
+              className="px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 outline-none">
+              <option value="all">All Categories</option>
+              {filterOptions.cats.map((c) => <option key={c} value={c}>{c}</option>)}
+            </select>
+
+            <select value={filters.subCategory} onChange={(e) => { setFilters({ ...filters, subCategory: e.target.value }); setPage(1); }}
+              className="px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 outline-none">
+              <option value="all">All Subcategories</option>
+              {filterOptions.subs.map((s) => <option key={s} value={s}>{s}</option>)}
+            </select>
+
+            <select value={filters.material} onChange={(e) => { setFilters({ ...filters, material: e.target.value }); setPage(1); }}
+              className="px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 outline-none">
+              <option value="all">All Materials</option>
+              {filterOptions.mats.map((m) => <option key={m} value={m}>{m}</option>)}
+            </select>
+
+            <select value={filters.status} onChange={(e) => { setFilters({ ...filters, status: e.target.value }); setPage(1); }}
+              className="px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 outline-none">
+              <option value="all">Any Status</option>
+              <option value="out">Out of Stock</option>
+              <option value="low">Low Stock</option>
+              <option value="ok">Healthy</option>
+              <option value="pending">Pending Req</option>
+              <option value="partial">Partial Req</option>
+              <option value="completed">Completed Req</option>
+            </select>
+
+            <div className="relative">
+              <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
+              <input
+                type="text"
+                placeholder="Search materials, refs…"
+                value={filters.search}
+                onChange={(e) => { setFilters({ ...filters, search: e.target.value }); setPage(1); }}
+                className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 outline-none"
+              />
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-3 mt-4">
+            <div className="flex flex-wrap items-center gap-4 text-xs">
+              <label className="flex items-center gap-2 cursor-pointer text-slate-600">
+                <input type="checkbox" checked={filters.onlyAlerts} onChange={(e) => { setFilters({ ...filters, onlyAlerts: e.target.checked }); setPage(1); }} className="rounded border-slate-300 text-blue-600" />
+                Alerts only
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer text-slate-600">
+                <input type="checkbox" checked={filters.showAll} onChange={(e) => { setFilters({ ...filters, showAll: e.target.checked }); setPage(1); }} className="rounded border-slate-300 text-blue-600" />
+                Show all (no paging)
+              </label>
+            </div>
+            <div className="flex gap-2">
+              <button onClick={resetFilters} className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-600">
+                <FiRefreshCw size={12} /> Reset
+              </button>
+              <button onClick={exportToExcel} className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-medium">
+                <FiDownload size={12} /> Export
+              </button>
+            </div>
+          </div>
+        </>
       )}
     </div>
   );
 
-  /**
-   * Render dashboard with summary statistics
-   */
-  const renderDashboard = () => (
-    <div className="space-y-6">
-      {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
-          <p className="text-xs text-slate-400 font-medium uppercase tracking-wider">Total Materials</p>
-          <p className="text-3xl font-bold text-slate-800 mt-1">{summaryStats.totalItems}</p>
-        </div>
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
-          <p className="text-xs text-slate-400 font-medium uppercase tracking-wider">Total Balance</p>
-          <p className="text-3xl font-bold text-emerald-600 mt-1">{summaryStats.totalBalance}</p>
-        </div>
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
-          <p className="text-xs text-slate-400 font-medium uppercase tracking-wider">Total Issues</p>
-          <p className="text-3xl font-bold text-rose-600 mt-1">{summaryStats.totalIssues}</p>
-        </div>
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
-          <p className="text-xs text-slate-400 font-medium uppercase tracking-wider">Health Score</p>
-          <p className="text-3xl font-bold text-blue-600 mt-1">{summaryStats.healthScore}%</p>
-        </div>
-      </div>
-
-      {/* Status Breakdown */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
-          <h3 className="text-sm font-semibold text-slate-700 mb-4 flex items-center gap-2">
-            <FiPieChart className="text-blue-500" />
-            Stock Status Distribution
-          </h3>
-          <div className="space-y-3">
-            <div className="flex items-center justify-between p-3 bg-emerald-50 rounded-xl">
-              <span className="text-sm text-emerald-700">Healthy Stock</span>
-              <span className="text-sm font-bold text-emerald-700">
-                {summaryStats.totalItems - summaryStats.negativeGapItems - summaryStats.zeroBalanceItems}
-              </span>
-            </div>
-            <div className="flex items-center justify-between p-3 bg-amber-50 rounded-xl">
-              <span className="text-sm text-amber-700">Negative Gap</span>
-              <span className="text-sm font-bold text-amber-700">{summaryStats.negativeGapItems}</span>
-            </div>
-            <div className="flex items-center justify-between p-3 bg-rose-50 rounded-xl">
-              <span className="text-sm text-rose-700">Zero Balance</span>
-              <span className="text-sm font-bold text-rose-700">{summaryStats.zeroBalanceItems}</span>
-            </div>
-            <div className="flex items-center justify-between p-3 bg-blue-50 rounded-xl">
-              <span className="text-sm text-blue-700">Low Stock</span>
-              <span className="text-sm font-bold text-blue-700">{summaryStats.lowStockItems}</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
-          <h3 className="text-sm font-semibold text-slate-700 mb-4 flex items-center gap-2">
-            <FiActivity className="text-emerald-500" />
-            Recent Issues
-          </h3>
-          <div className="space-y-3">
-            {issues.slice(0, 5).map((issue, idx) => (
-              <div key={idx} className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl">
-                <div className="w-2 h-2 rounded-full bg-rose-400" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-slate-700 truncate">
-                    {issue.MaterialName || 'Unknown Material'}
-                  </p>
-                  <p className="text-xs text-slate-400">
-                    {formatDate(issue.IssueDate)} • QTY: {issue.IssueQTY || 0}
-                  </p>
-                </div>
-                <span className="text-xs font-medium text-rose-600 bg-rose-50 px-2 py-1 rounded-full">
-                  Issued
-                </span>
-              </div>
-            ))}
-            {issues.length === 0 && (
-              <p className="text-center text-slate-400 py-8">No recent issues</p>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-
-  /**
-   * Render issues report
-   */
-  const renderIssuesReport = () => (
-    <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-      <div className="p-4 border-b border-slate-100 flex items-center justify-between">
-        <h3 className="font-semibold text-slate-700 flex items-center gap-2">
-          <FiTruck className="text-rose-500" />
-          Issues Report ({issues.length} total)
-        </h3>
-      </div>
-      <div className="overflow-x-auto">
-        <table className="w-full">
-          <thead>
-            <tr className="bg-slate-50">
-              <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase">#</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Material</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Req. No</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Req. Date</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Required Qty</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Issue Date</th>
-              <th className="px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase">Quantity</th>
-              <th className="px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase">Due</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Issued To</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Issue No</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {issues.slice(0, 50).map((issue, idx) => (
-              <tr key={idx} className="hover:bg-slate-50 transition-colors">
-                <td className="px-4 py-3 text-sm text-slate-400">{idx + 1}</td>
-                <td className="px-4 py-3 text-sm font-medium text-slate-700">{issue.MaterialName || 'N/A'}</td>
-                <td className="px-4 py-3 text-sm text-slate-600">{issue.RequisitionNo || 'N/A'}</td>
-                <td className="px-4 py-3 text-sm text-slate-600">{formatDate(issue.RequisitionDate)}</td>
-                <td className="px-4 py-3 text-sm font-bold text-rose-600">{issue.RequiredQTY || 0}</td>
-                <td className="px-4 py-3 text-sm text-slate-600">{formatDate(issue.IssueDate)}</td>
-                <td className="px-4 py-3 text-sm text-right font-medium text-green-600">{issue.IssueQTY || 0}</td>
-                <td className="px-4 py-3 text-sm text-right font-medium text-blue-600">{issue.PendingQTY || 0}</td>
-                <td className="px-4 py-3 text-sm text-slate-600">{issue.IssuedBy || issue.JobCardNo || 'N/A'}</td>
-                <td className="px-4 py-3 text-sm text-slate-600">{issue.IssueNo || 'N/A'}</td>
-              </tr>
-            ))}
-            {issues.length > 50 && (
-              <tr>
-                <td colSpan="7" className="px-4 py-3 text-center text-sm text-slate-400">
-                  Showing first 50 of {issues.length} issues
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-
-  /**
-   * Render requisitions report
-   */
-  const renderRequisitionsReport = () => {
-    // Group and deduplicate requisitions
-    const requisitionMap = new Map();
-    issues.forEach(issue => {
-      if (!issue.RequisitionNo) return;
-      
-      if (!requisitionMap.has(issue.RequisitionNo)) {
-        const isIssued = issues.some(i => 
-          i.RequisitionNo === issue.RequisitionNo && 
-          i.IssueNo && 
-          i.IssueNo !== 'N/A' &&
-          i.IssueNo !== ''
-        );
-        
-        requisitionMap.set(issue.RequisitionNo, {
-          material: issue.MaterialName || 'N/A',
-          date: formatDate(issue.IssueDate),
-          Issuequantity: Number(issue.IssueQTY || 0),
-          department: issue.CostCenterName || issue.JobCardNo || 'N/A',
-          requisitionNo: issue.RequisitionNo,
-          requisitionQty: issue.RequiredQTY,
-          issueNo: issue.IssueNo || 'N/A',
-          status: isIssued ? 'Issued' : 'Pending'
-        });
-      }
-    });
-    console.log("issues:", issues);
-    const requisitions = Array.from(requisitionMap.values());
-    console.log("Requisitions:", requisitions);
-
-    return (
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-        <div className="p-4 border-b border-slate-100 flex items-center justify-between">
-          <h3 className="font-semibold text-slate-700 flex items-center gap-2">
-            <FiClipboard className="text-amber-500" />
-            Requisitions Report ({requisitions.length} total)
-          </h3>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="bg-slate-50">
-                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase">#</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Material</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Date</th>
-                <th className="px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase">Quantity</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Department</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Requisition No</th>
-                <th className="px-4 py-3 text-center text-xs font-semibold text-slate-500 uppercase">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {requisitions.map((req, idx) => (
-                <tr key={idx} className="hover:bg-slate-50 transition-colors">
-                  <td className="px-4 py-3 text-sm text-slate-400">{idx + 1}</td>
-                  <td className="px-4 py-3 text-sm font-medium text-slate-700">{req.material}</td>
-                  <td className="px-4 py-3 text-sm text-slate-600">{req.date}</td>
-                  <td className="px-4 py-3 text-sm text-right font-medium text-amber-600">{req.requisitionQty.toFixed(2)}</td>
-                  <td className="px-4 py-3 text-sm text-slate-600">{req.department} 123</td>
-                  <td className="px-4 py-3 text-sm text-slate-600">{req.requisitionNo}</td>
-                  <td className="px-4 py-3 text-center">
-                    <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${
-                      req.status === 'Issued' 
-                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
-                        : 'bg-amber-50 text-amber-700 border border-amber-200'
-                    }`}>
-                      {req.status}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-              {requisitions.length === 0 && (
-                <tr>
-                  <td colSpan="7" className="px-4 py-8 text-center text-slate-400">
-                    No requisitions found
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    );
-  };
-
-  /**
-   * Render stock report
-   */
-  const renderStockReport = () => (
-    <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-      <div className="p-4 border-b border-slate-100 flex items-center justify-between">
-        <h3 className="font-semibold text-slate-700 flex items-center gap-2">
-          <FiBarChart2 className="text-purple-500" />
-          Stock Position Report
-        </h3>
-      </div>
-      <div className="overflow-x-auto">
-        <table className="w-full">
-          <thead>
-            <tr className="bg-slate-50">
-              <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Material</th>
-              <th className="px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase">Opening</th>
-              <th className="px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase">Receive</th>
-              <th className="px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase">Issue</th>
-              <th className="px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase">Balance</th>
-              <th className="px-4 py-3 text-center text-xs font-semibold text-slate-500 uppercase">Status</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {processedData.map((item, idx) => {
-              const status = getInventoryStatus(item.balance, item.gap);
-              const statusStyles = getStatusBadgeStyles(status.type);
-              
-              return (
-                <tr key={idx} className="hover:bg-slate-50 transition-colors">
-                  <td className="px-4 py-3 text-sm font-medium text-slate-700">{item.name}</td>
-                  <td className="px-4 py-3 text-sm text-right text-slate-600">
-                    {Number(item.openingBalance || 0).toFixed(2)}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-right text-emerald-600">
-                    {Number(item.totalReceive).toFixed(2)}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-right text-rose-600">
-                    {Number(item.totalIssue).toFixed(2)}
-                  </td>
-                  <td className={`px-4 py-3 text-sm text-right font-bold ${getBalanceColor(item.balance)}`}>
-                    {Number(item.balance).toFixed(2)}
-                  </td>
-                  <td className="px-4 py-3 text-center">
-                    <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${statusStyles.bg} ${statusStyles.text} ${statusStyles.border}`}>
-                      {status.label}
-                    </span>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-
-  /**
-   * Render full report (combination of all views)
-   */
-  const renderFullReport = () => (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-slate-700 flex items-center gap-2">
-          <FiFileText className="text-indigo-500" />
-          Complete Management Report
-        </h3>
-        <button
-          onClick={exportToExcel}
-          className="px-5 py-2.5 bg-gradient-to-r from-indigo-500 to-indigo-600 text-white rounded-xl hover:shadow-lg hover:shadow-indigo-500/25 transition-all flex items-center gap-2 font-medium"
-        >
-          <FiDownload size={18} />
-          Export Full Report
-        </button>
-      </div>
-
-      {/* Summary Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-100">
-          <p className="text-xs text-slate-400">Total Items</p>
-          <p className="text-2xl font-bold text-slate-800">{summaryStats.totalItems}</p>
-        </div>
-        <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-100">
-          <p className="text-xs text-slate-400">Total Balance</p>
-          <p className="text-2xl font-bold text-emerald-600">{summaryStats.totalBalance}</p>
-        </div>
-        <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-100">
-          <p className="text-xs text-slate-400">Total Issues</p>
-          <p className="text-2xl font-bold text-rose-600">{summaryStats.totalIssues}</p>
-        </div>
-        <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-100">
-          <p className="text-xs text-slate-400">Health Score</p>
-          <p className="text-2xl font-bold text-blue-600">{summaryStats.healthScore}%</p>
-        </div>
-      </div>
-
-      {renderInventoryTable()}
-    </div>
-  );
-
-  // ============================================================
-  // 5.9 MAIN RENDER
-  // ============================================================
-
+  // ==============================
+  // MAIN RENDER
+  // ==============================
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/30">
-      <div className="max-w-7xl mx-auto p-4 md:p-6 lg:p-8">
-        
-        {/* Header */}
-        <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+    <div className="min-h-screen bg-slate-50 p-3 sm:p-5 lg:p-6">
+      <div className="max-w-[1600px] mx-auto space-y-4 sm:space-y-5">
+        {/* HEADER */}
+        <div className="bg-white rounded-2xl border border-slate-100 p-4 sm:p-5 flex flex-wrap items-center gap-4 justify-between">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg shadow-blue-500/25">
-              <FiPackage className="w-6 h-6 text-white" />
+            <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white shadow-md">
+              <FiPackage size={22} />
             </div>
             <div>
-              <h1 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">
-                Inventory Pro
-              </h1>
-              <p className="text-xs text-slate-400">Advanced Management System</p>
+              <h1 className="text-lg sm:text-xl font-bold text-slate-800">Inventory Pro</h1>
+              <p className="text-xs text-slate-500">Deep Stock Management · Ledger · Requisitions</p>
             </div>
           </div>
-          
-          <div className="flex items-center gap-3 flex-wrap">
+
+          <div className="flex flex-wrap items-center gap-3">
             <DateRangePicker />
             <button
-              onClick={fetchInventoryData}
+              onClick={fetchData}
               disabled={loading}
-              className="px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors flex items-center gap-2 text-sm font-medium shadow-lg shadow-blue-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold disabled:opacity-50 shadow-sm transition-colors"
             >
-              <FiRefreshCw size={16} className={loading ? 'animate-spin' : ''} />
-              {loading ? 'Loading...' : 'Load Data'}
+              <FiRefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+              Load Data
             </button>
           </div>
         </div>
 
-        {/* Tab Navigation */}
-        <div className="bg-white/80 backdrop-blur-sm rounded-t-2xl shadow-sm border border-white/50 overflow-hidden mb-6">
-          <TabNavigation activeTab={activeTab} setActiveTab={setActiveTab} />
-        </div>
+        {/* TABS */}
+        <TabBar active={activeTab} setActive={(t) => { setActiveTab(t); setPage(1); }} />
 
-        {/* Filter Section */}
-        <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-white/50 p-4 md:p-6 mb-6">
-          <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-            <h3 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-              <FiFilter className="text-blue-500" />
-              Filters
-            </h3>
-            <button
-              onClick={() => setShowFilters(!showFilters)}
-              className="text-xs text-slate-500 hover:text-slate-700 flex items-center gap-1 px-2.5 py-1.5 rounded-lg hover:bg-slate-100 transition-colors"
-            >
-              {showFilters ? <FiEyeOff size={14} /> : <FiEye size={14} />}
-              {showFilters ? 'Hide' : 'Show'}
-            </button>
-          </div>
+        {/* FILTERS */}
+        {(activeTab === 'summary' || activeTab === 'ledger' || activeTab === 'issues' || activeTab === 'requisitions') && (
+          <FilterBar />
+        )}
 
-          {showFilters && (
-            <div className="space-y-4">
-              {/* Filter Row 1 */}
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-                <div>
-                  <label className="text-xs font-medium text-slate-600 block mb-1">Company</label>
-                  <select
-                    value={filters.company}
-                    onChange={(e) => handleFilterChange('company', e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
-                  >
-                    <option value="all">All Companies</option>
-                    {filterOptions.companies.map(c => (
-                      <option key={c} value={c}>{c}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="text-xs font-medium text-slate-600 block mb-1">Category</label>
-                  <select
-                    value={filters.category}
-                    onChange={(e) => handleFilterChange('category', e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
-                  >
-                    <option value="all">All Categories</option>
-                    {filterOptions.categories.map(c => (
-                      <option key={c} value={c}>{c}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="text-xs font-medium text-slate-600 block mb-1">Subcategory</label>
-                  <select
-                    value={filters.subcategory}
-                    onChange={(e) => handleFilterChange('subcategory', e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
-                  >
-                    <option value="all">All Subcategories</option>
-                    {filterOptions.subCategories.map(s => (
-                      <option key={s} value={s}>{s}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="text-xs font-medium text-slate-600 block mb-1">Material</label>
-                  <select
-                    value={filters.material}
-                    onChange={(e) => handleFilterChange('material', e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
-                  >
-                    <option value="all">All Materials</option>
-                    {filterOptions.materials.map(m => (
-                      <option key={m} value={m}>{m}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="text-xs font-medium text-slate-600 block mb-1">Search</label>
-                  <div className="relative">
-                    <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={14} />
-                    <input
-                      value={filters.search}
-                      onChange={(e) => handleFilterChange('search', e.target.value)}
-                      placeholder="Search materials..."
-                      className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Filter Row 2 - Checkboxes & Actions */}
-              <div className="flex flex-wrap items-center gap-4">
-                <div className="flex flex-wrap items-center gap-3">
-                  <label className="flex items-center gap-1.5 cursor-pointer text-sm text-slate-600">
-                    <input
-                      type="checkbox"
-                      checked={filters.negativeGap}
-                      onChange={(e) => handleFilterChange('negativeGap', e.target.checked)}
-                      className="rounded text-blue-600 focus:ring-blue-500/20"
-                    />
-                    Negative Gap
-                  </label>
-                  <label className="flex items-center gap-1.5 cursor-pointer text-sm text-slate-600">
-                    <input
-                      type="checkbox"
-                      checked={filters.zeroBalance}
-                      onChange={(e) => handleFilterChange('zeroBalance', e.target.checked)}
-                      className="rounded text-blue-600 focus:ring-blue-500/20"
-                    />
-                    Zero Balance
-                  </label>
-                  <label className="flex items-center gap-1.5 cursor-pointer text-sm text-slate-600">
-                    <input
-                      type="checkbox"
-                      checked={filters.lowStock}
-                      onChange={(e) => handleFilterChange('lowStock', e.target.checked)}
-                      className="rounded text-blue-600 focus:ring-blue-500/20"
-                    />
-                    Low Stock
-                  </label>
-                  <label className="flex items-center gap-1.5 cursor-pointer text-sm text-slate-600">
-                    <input
-                      type="checkbox"
-                      checked={filters.showAll}
-                      onChange={(e) => handleFilterChange('showAll', e.target.checked)}
-                      className="rounded text-blue-600 focus:ring-blue-500/20"
-                    />
-                    Show All
-                  </label>
-                </div>
-
-                <div className="flex items-center gap-2 ml-auto">
-                  <button
-                    onClick={resetFilters}
-                    className="px-3.5 py-1.5 bg-slate-100 text-slate-600 rounded-xl hover:bg-slate-200 transition-colors text-sm font-medium flex items-center gap-1.5"
-                  >
-                    <FiRefreshCw size={14} />
-                    Reset
-                  </button>
-                  <button
-                    onClick={exportToExcel}
-                    className="px-3.5 py-1.5 bg-emerald-50 text-emerald-600 rounded-xl hover:bg-emerald-100 transition-colors text-sm font-medium flex items-center gap-1.5"
-                  >
-                    <FiDownload size={14} />
-                    Export
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Main Content */}
+        {/* CONTENT */}
         {loading ? (
-          <LoadingSpinner />
+          <Loader />
         ) : (
           <div ref={tableRef}>
-            {activeTab === 'dashboard' && renderDashboard()}
-            {activeTab === 'inventory' && renderInventoryTable()}
-            {activeTab === 'issues' && renderIssuesReport()}
-            {activeTab === 'requisitions' && renderRequisitionsReport()}
-            {activeTab === 'stock-report' && renderStockReport()}
-            {activeTab === 'full-report' && renderFullReport()}
+            {activeTab === 'dashboard'    && renderDashboard()}
+            {activeTab === 'summary'      && renderSummaryTable()}
+            {activeTab === 'ledger'       && renderLedger()}
+            {activeTab === 'receives'     && renderReceives()}
+            {activeTab === 'issues'       && renderIssues()}
+            {activeTab === 'requisitions' && renderIssues()}
+            {activeTab === 'full-report'  && renderFullReport()}
           </div>
         )}
       </div>
     </div>
   );
 }
-
-export default Inventory;
